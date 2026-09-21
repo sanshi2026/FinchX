@@ -27,7 +27,13 @@ FinchX 提供九个 namespace、稳定的 `FetchResult` 外层结构、标准化
 
 ## 安装
 
-FinchX 当前仍是源码安装版本，尚未发布到 PyPI。
+正式发布版本推荐：
+
+```bash
+python -m pip install finchx
+```
+
+如果从源码目录安装：
 
 ```bash
 python -m pip install .
@@ -37,12 +43,6 @@ python -m pip install .
 
 ```bash
 python -m pip install -e ".[dev]"
-```
-
-未来发布到 PyPI 后：
-
-```bash
-pip install finchx
 ```
 
 FinchX 要求 Python 3.10 或更高版本，基础运行时依赖 Pydantic 2。
@@ -177,7 +177,7 @@ python -m pip install ".[calendar]"
 python -m pip install ".[jygs]"
 ```
 
-未来发布到 PyPI 后，对应形式为 `pip install "finchx[calendar]"` 和 `pip install "finchx[jygs]"`。
+正式发布版本对应的安装形式为 `pip install "finchx[calendar]"` 和 `pip install "finchx[jygs]"`。
 
 - `calendar` 安装 `pandas_market_calendars`，用于 `pandas_market_calendars` 交易日历 Provider。
 - `jygs` 为需要认证的 `jiuyangongshe.daily_replay` Provider 安装 Playwright。该 Provider 还要求提供 `JYGS_SESSION` 值和可用的浏览器安装。

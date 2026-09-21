@@ -28,7 +28,13 @@ FinchX exposes nine namespaces, a stable `FetchResult` envelope, normalized Data
 
 ## Installation
 
-FinchX is currently a source-install draft and is not published on PyPI.
+For the released package:
+
+```bash
+python -m pip install finchx
+```
+
+For a source checkout:
 
 ```bash
 python -m pip install .
@@ -38,12 +44,6 @@ For local development:
 
 ```bash
 python -m pip install -e ".[dev]"
-```
-
-Once published on PyPI:
-
-```bash
-pip install finchx
 ```
 
 FinchX requires Python 3.10 or newer and the base runtime depends on Pydantic 2.
@@ -178,7 +178,7 @@ python -m pip install ".[calendar]"
 python -m pip install ".[jygs]"
 ```
 
-Once published on PyPI, the equivalent forms are `pip install "finchx[calendar]"` and `pip install "finchx[jygs]"`.
+For the released package, the equivalent forms are `pip install "finchx[calendar]"` and `pip install "finchx[jygs]"`.
 
 - `calendar` installs `pandas_market_calendars` for the `pandas_market_calendars` trading-calendar Provider.
 - `jygs` installs Playwright for the authenticated `jiuyangongshe.daily_replay` Provider. That Provider also requires a `JYGS_SESSION` value and a usable browser installation.
