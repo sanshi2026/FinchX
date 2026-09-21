@@ -24,7 +24,7 @@ PROTOCOL_TYPES = {
 }
 
 
-def test_stage_6_1_inventory_is_explicitly_covered():
+def test_provider_inventory_is_explicitly_covered():
     public_providers = {
         getattr(provider_exports, name)
         for name in provider_exports.__all__

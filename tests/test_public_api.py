@@ -1,4 +1,4 @@
-"""Final v1 public Client API freeze tests."""
+"""Public v1 Client API contract tests."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from finchx.providers import __all__ as PROVIDER_EXPORTS
 from finchx.providers.registry import PROVIDER_REGISTRY
 
 
-FROZEN_TOP_LEVEL_EXPORTS = {
+PUBLIC_TOP_LEVEL_EXPORTS = {
     "CLIENT_ENDPOINTS",
     "Collector",
     "DisclosureService",
@@ -30,7 +30,7 @@ FROZEN_TOP_LEVEL_EXPORTS = {
     "news",
 }
 
-FROZEN_PROVIDER_EXPORTS = {
+PUBLIC_PROVIDER_EXPORTS = {
     "AigupiaoDragonTigerProvider",
     "AigupiaoMarketNewsProvider",
     "AigupiaoMarketSentimentProvider",
@@ -69,7 +69,7 @@ FROZEN_PROVIDER_EXPORTS = {
     "TradingCalendarProvider",
 }
 
-FROZEN_ENDPOINTS = {
+PUBLIC_ENDPOINTS = {
     "reference": ("instrument", "trading_calendar"),
     "market": (
         "breadth",
@@ -115,7 +115,7 @@ FROZEN_ENDPOINTS = {
 
 # A suffix of ``?`` means a parameter with a default. Keyword-only runtime
 # controls are checked separately so the inventory stays readable.
-FROZEN_SIGNATURES = {
+PUBLIC_SIGNATURES = {
     "reference.instrument": "instrument_id? request? provider* use_cache*",
     "reference.trading_calendar": "start_date? end_date? market? request? provider* use_cache*",
     "market.breadth": "request? provider* use_cache*",
@@ -173,7 +173,7 @@ def _client_with_fake_collector():
             return FetchResult(
                 data=None,
                 dataset=dataset,
-                provider=provider or "freeze.fake",
+                provider=provider or "public-test.fake",
                 captured_at=CAPTURED_AT,
             )
 
@@ -200,27 +200,27 @@ def _signature_shape(method) -> str:
     return " ".join(shape)
 
 
-def test_top_level_exports_are_frozen_without_removing_existing_compatibility_exports():
-    assert set(finchx.__all__) == FROZEN_TOP_LEVEL_EXPORTS
+def test_top_level_exports_match_the_public_contract_without_removing_compatibility_exports():
+    assert set(finchx.__all__) == PUBLIC_TOP_LEVEL_EXPORTS
 
 
-def test_namespace_and_endpoint_inventory_is_frozen_against_real_client_code():
+def test_namespace_and_endpoint_inventory_matches_real_client_code():
     actual = {
         namespace: tuple(
             endpoint.method
             for endpoint in CLIENT_ENDPOINTS
             if endpoint.namespace == namespace
         )
-        for namespace in FROZEN_ENDPOINTS
+        for namespace in PUBLIC_ENDPOINTS
     }
 
-    assert actual == FROZEN_ENDPOINTS
+    assert actual == PUBLIC_ENDPOINTS
     assert len(actual) == 9
     assert sum(len(methods) for methods in actual.values()) == 42
     assert len(CLIENT_ENDPOINTS) == 42
 
 
-def test_final_registry_inventory_and_client_routes_are_frozen():
+def test_registry_inventory_and_client_routes_match_the_public_contract():
     registered_datasets = {dataset.name for dataset in PROVIDER_REGISTRY.list_datasets()}
     client_datasets = {endpoint.dataset.name for endpoint in CLIENT_ENDPOINTS}
     registered_pairs = sum(
@@ -228,7 +228,7 @@ def test_final_registry_inventory_and_client_routes_are_frozen():
         for dataset in PROVIDER_REGISTRY.list_datasets()
     )
 
-    assert set(PROVIDER_EXPORTS) == FROZEN_PROVIDER_EXPORTS
+    assert set(PROVIDER_EXPORTS) == PUBLIC_PROVIDER_EXPORTS
     assert len(PROVIDER_EXPORTS) == 36
     assert len(PROVIDER_REGISTRY.list_providers()) == 29
     assert len(registered_datasets) == 42
@@ -240,7 +240,7 @@ def test_final_registry_inventory_and_client_routes_are_frozen():
     )
 
 
-def test_computed_deviation_surface_is_frozen_outside_provider_inventory():
+def test_computed_deviation_surface_is_outside_provider_inventory():
     client, _ = _client_with_fake_collector()
     method = client.market.deviation
     signature = inspect.signature(method)
@@ -269,7 +269,7 @@ def test_computed_deviation_surface_is_frozen_outside_provider_inventory():
     }
 
 
-def test_all_frozen_endpoint_signatures_have_stable_parameters_and_return_types():
+def test_all_public_endpoint_signatures_have_stable_parameters_and_return_types():
     client, _ = _client_with_fake_collector()
 
     actual = {}
@@ -283,24 +283,24 @@ def test_all_frozen_endpoint_signatures_have_stable_parameters_and_return_types(
         assert signature.parameters["provider"].kind is inspect.Parameter.KEYWORD_ONLY
         assert signature.parameters["use_cache"].kind is inspect.Parameter.KEYWORD_ONLY
 
-    assert actual == FROZEN_SIGNATURES
+    assert actual == PUBLIC_SIGNATURES
     assert all("...args" not in shape and "...kwargs" not in shape for shape in actual.values())
 
 
-def test_all_frozen_endpoints_return_fetchresult_with_the_existing_contract():
+def test_all_public_endpoints_return_fetchresult_with_the_existing_contract():
     client, collector = _client_with_fake_collector()
 
     for endpoint in CLIENT_ENDPOINTS:
         method = getattr(getattr(client, endpoint.namespace), endpoint.method)
         result = method(
             request=endpoint.request_type.model_construct(),
-            provider="freeze.fake",
+            provider="public-test.fake",
             use_cache=True,
         )
 
         assert isinstance(result, FetchResult)
         assert result.dataset is endpoint.dataset
-        assert result.provider == "freeze.fake"
+        assert result.provider == "public-test.fake"
         assert result.captured_at == CAPTURED_AT
         assert result.attempts == ()
 
@@ -330,10 +330,10 @@ def test_advanced_api_imports_remain_available_and_distinct_from_primary_client(
     )
 
 
-def test_release_docs_and_example_use_frozen_endpoint_forms():
+def test_release_docs_and_example_use_public_endpoint_forms():
     root = Path(__file__).parents[1]
     readme = (root / "README.md").read_text()
-    public_api = (root / "docs" / "public-api.md").read_text()
+    api_reference = (root / "docs" / "DATA_API_REFERENCE.md").read_text()
     example = (root / "examples" / "client_api.py").read_text()
 
     assert "from finchx import FinchX" in readme
@@ -341,4 +341,4 @@ def test_release_docs_and_example_use_frozen_endpoint_forms():
     assert "result = client.market.quote()" in example
     assert 'client.market.quote(provider="tencent.finance.qq.market")' in example
     assert "MissingOptionalDependency" in example
-    assert "9 namespaces and 42 explicit endpoint methods" in public_api
+    assert "42 Provider-backed / Dataset-backed public endpoints" in api_reference

@@ -1,170 +1,210 @@
 # FinchX
 
-FinchX is an independent Python package for A-share market data, intended for open-source development.
+FinchX is an independent Python library for accessing and normalizing A-share market data from registered third-party providers.
 
-## Status
+## What is FinchX?
 
-FinchX version 1.0.0 is a local public release candidate. The v1 Client/API
-surface is frozen and has not been published to PyPI. The package provides
-explicit namespaces for the current public Dataset inventory, while routing,
-retry/fallback, cache, storage, and diagnostics remain owned by the lower-level
-Collector runtime.
+The primary entry point is a small typed client:
 
-## License and third-party data
+```python
+from finchx import FinchX
 
-FinchX's own code and project materials are licensed under the Apache License
-2.0; see [LICENSE](LICENSE). Third-party market data accessed through FinchX
-remains subject to the applicable provider terms. FinchX does not grant rights
-to redistribute provider datasets, and users are responsible for confirming
-the terms that apply to their use of any upstream source or sample data.
+fx = FinchX()
+```
+
+FinchX exposes nine namespaces, a stable `FetchResult` envelope, normalized Dataset payloads, provider provenance, bounded runtime routing, and an explicit computed deviation capability.
+
+## Features
+
+- Market quotes, rankings, klines, intraday series, order books, fund flow, pools and sentiment.
+- Reference identity and trading calendars.
+- Fundamental, financial, ownership, executive and corporate-action data.
+- Individual-stock news and disclosure references.
+- Source-ranked stock keywords/concepts from the implemented EastMoney contract.
+- Deterministic close-based stock-versus-benchmark deviation for supported A-share equities.
 
 ## Installation
 
-FinchX has not been published to PyPI. From a FinchX source checkout, install
-the package with:
+FinchX is currently a source-install draft and is not published on PyPI.
 
 ```bash
 python -m pip install .
 ```
 
-For development, use editable installation:
+For local development:
 
 ```bash
-python -m pip install -e ".[dev,calendar]"
+python -m pip install -e ".[dev]"
 ```
 
-To install a locally built wheel, pass its path to pip:
+Once published on PyPI:
 
 ```bash
-python -m pip install /path/to/finchx-1.0.0-py3-none-any.whl
+pip install finchx
 ```
 
-## Requirements
+FinchX requires Python 3.10 or newer and the base runtime depends on Pydantic 2.
 
-Python >=3.10. Python 3.10–3.13 are declared compatible; a complete multi-version
-matrix is still pending. The base install contains the core runtime dependency;
-optional capabilities are available through extras when installing from source:
+## Quickstart
 
-```bash
-python -m pip install ".[calendar]"
-python -m pip install ".[jygs]"
-```
-
-`calendar` enables the `pandas_market_calendars` trading-calendar fallback.
-`jygs` enables the authenticated Jiyangongshe browser provider. Neither is
-required for `from finchx import FinchX` or `FinchX()`.
-
-## Canonical quickstart
+### Current quote universe
 
 ```python
 from finchx import FinchX
 
 fx = FinchX()
 result = fx.market.quote()
-print(result.data)
+
+for record in result.data:
+    print(record.data["instrumentId"], record.data["price"])
 print(result.provider, result.captured_at)
 ```
 
-The fetch call may access the configured data source. Constructing `FinchX()`
-itself does not access the network, create a default SQLite file, start a
-browser, or require optional dependencies.
-
-Every public Client endpoint returns a `FetchResult`. Common fields are
-`data`, `dataset`, `provider`, `captured_at`, `warnings`, `provenance`,
-`attempts`, `fallback_used`, and `cache_hit`.
-
-The `market` namespace also provides the computed deviation Foundation. It
-returns close-based 10-day/30-day results for supported SSE and SZSE equities,
-with `qfq_stock__raw_index` price basis and explicit benchmark provenance:
+### Historical OHLCV
 
 ```python
+from datetime import date
+from finchx import FinchX
 from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
+from finchx.datasets import KlineAdjustment
 
 instrument = InstrumentId(
-    code="600519", market=Market.CN_A, kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
+    code="600519", market=Market.CN_A,
+    kind=InstrumentKind.EQUITY, exchange=Exchange.SSE,
 )
-result = fx.market.deviation(instrument, windows=(10, 30))
+result = FinchX().market.ohlcv(
+    instrument,
+    date(2026, 9, 1),
+    date(2026, 9, 18),
+    adjustment=KlineAdjustment.QFQ,
+)
+for record in result.data:
+    print(record.data["barDate"], record.data["close"])
 ```
 
-This computed capability is outside the Provider-backed 42-endpoint inventory;
-see [`docs/a-share-deviation-rulebook.md`](docs/a-share-deviation-rulebook.md).
+### News and disclosures
 
-## Explicit Provider selection
+```python
+news = fx.news.search(instrument, page_size=10)
+disclosures = fx.disclosure.search(instrument, page_size=10)
+print(news.data[0].title if news.data else "no news")
+print(disclosures.data[0].title if disclosures.data else "no disclosures")
+```
 
-Use `provider=` when a request must be pinned to one registered Provider:
+### Financial data
+
+```python
+from finchx.datasets import FinancialSummaryRequest
+
+result = fx.fundamental.financial_summary(
+    FinancialSummaryRequest(instrumentId=instrument)
+)
+print(result.data.data["periods"])
+```
+
+### Stock keywords
+
+`market.stock_keyword` returns structured keywords/concepts supplied by the source. It does not perform NLP keyword extraction and does not invent a heat score.
+
+```python
+from finchx.datasets import MarketStockKeywordRequest
+
+result = fx.market.stock_keyword(
+    MarketStockKeywordRequest(instrumentId=instrument)
+)
+for keyword in result.data.data["keywords"]:
+    print(keyword["keywordName"], keyword["hitCount"])
+```
+
+### Computed deviation
+
+```python
+result = fx.market.deviation(instrument, windows=(10, 30))
+for window in result.data.windows:
+    print(window.window_days, window.deviation)
+```
+
+This is a deterministic close-based calculation over FinchX trading-calendar and Kline inputs. It is not an official exchange announcement or an intraday estimate. Version 1 supports SSE `60xxxx` and `68xxxx`, and SZSE `00xxxx` and `30xxxx` equities; BSE is unsupported for this capability.
+
+## Core concepts
+
+### Instrument identity
+
+Most instrument endpoints accept a complete `InstrumentId` rather than a bare code. It contains `code`, `market`, `kind`, and, where needed, an explicit `exchange`. The public A-share market value is `Market.CN_A`; instrument kinds are `equity`, `index`, and `etf`; exchanges are `sse`, `szse`, and `bse`.
+
+### FetchResult
+
+Every Client endpoint returns a `FetchResult`. Its public fields include `data`, `dataset`, `dataset_id`, `provider`, `provider_id`, `captured_at`, `warnings`, `provenance`, `attempts`, `fallback_used`, and `cache_hit`. `dataset_id` and `provider_id` are convenience properties for `dataset.name` and `provider`. Most provider-backed endpoints put standardized `StandardRecord` objects in `data`; search endpoints return typed document-reference tuples; the computed deviation endpoint returns `DeviationData` directly. The full contract is in [DATA_API_REFERENCE.md](docs/DATA_API_REFERENCE.md).
+
+### Choosing a Provider
+
+Use `provider=` to pin a request to one registered Provider id:
 
 ```python
 result = fx.market.quote(provider="tencent.finance.qq.market")
 ```
 
-This is a strict pin: if that Provider fails, FinchX does not silently fall
-back to another Provider. Without an explicit Provider, the lower-level
-Collector may apply its bounded retry/fallback policy.
+This is a strict pin: if the named Provider fails, FinchX does not silently select another Provider. Without an explicit pin, the configured runtime policy chooses among the implemented Providers. The documentation lists implemented Providers; it does not promise a primary/fallback order.
 
-## Namespace overview
+### Cache
 
-| Namespace | Scope |
+Caching is controlled by the Collector configuration. With a configured enabled cache policy, `use_cache=None` follows that policy and `use_cache=False` bypasses the cache. An explicit Provider pin bypasses cached results. `FinchX()` itself does not create a cache or a default storage file.
+
+## Available data
+
+| Namespace | Provides |
 | --- | --- |
-| `reference` | instrument identity and trading calendars |
-| `market` | quotes, rankings, pools, flows, intraday data, klines and hot keyword/concept relationships |
-| `fundamental` | company and industry fundamentals |
-| `financial` | financial statements |
-| `news` | individual-stock news references |
-| `disclosure` | individual-stock disclosure references |
-| `ownership` | capital and holder snapshots |
-| `company` | executive snapshots and share changes |
-| `corporate_action` | dividends and repurchases |
+| `reference` | Instrument identity and trading calendars |
+| `market` | Quotes, rankings, klines, intraday, flows, pools, sectors, keywords and sentiment |
+| `fundamental` | Company profiles, financial summaries, revenue and industry comparisons |
+| `financial` | Financial statements |
+| `news` | Individual-stock news references |
+| `disclosure` | Individual-stock disclosure references |
+| `ownership` | Capital and holder snapshots |
+| `company` | Executive snapshots and share changes |
+| `corporate_action` | Dividends and repurchases |
 
-The complete frozen 9-namespace / 42-endpoint inventory is in
-[`docs/public-api.md`](docs/public-api.md) and the detailed request-model table
-is in [`docs/client-api-inventory.md`](docs/client-api-inventory.md).
+The complete 42 Provider-backed / Dataset-backed public endpoints plus the computed `market.deviation` capability are documented in [DATA_API_REFERENCE.md](docs/DATA_API_REFERENCE.md).
 
 ## Optional dependencies
 
-Install only the extra needed by the capability:
+The base install remains importable without optional packages.
 
 ```bash
 python -m pip install ".[calendar]"
 python -m pip install ".[jygs]"
 ```
 
-`calendar` is needed for the `pandas_market_calendars` trading-calendar
-fallback, especially when selecting `provider="pandas_market_calendars"`.
-`jygs` is needed for the authenticated Jiyangongshe browser Provider. The
-`dev` extra contains test and schema-validation tooling.
+Once published on PyPI, the equivalent forms are `pip install "finchx[calendar]"` and `pip install "finchx[jygs]"`.
 
-If an optional dependency is missing, base imports and `FinchX()` still work.
-The selected capability raises `MissingOptionalDependency` and identifies the
-missing dependency; install the corresponding extra and retry.
+- `calendar` installs `pandas_market_calendars` for the `pandas_market_calendars` trading-calendar Provider.
+- `jygs` installs Playwright for the authenticated `jiuyangongshe.daily_replay` Provider. That Provider also requires a `JYGS_SESSION` value and a usable browser installation.
 
-## Common errors
+Selecting a capability whose optional dependency is absent raises `MissingOptionalDependency` and identifies the dependency.
 
-- `AuthenticationError`: the data source requires credentials or an
-  authenticated session.
-- `SchemaDrift`: the external response no longer matches the expected source
-  structure.
-- `InvalidRequest`: the supplied arguments or Dataset request semantics are
-  invalid.
-- `MissingOptionalDependency`: the selected capability needs an uninstalled
-  optional dependency.
+## Error behavior
 
-## API layers
+Common public error categories include:
 
-The primary API is `from finchx import FinchX`. Advanced callers can use
-`Collector`, `FetchResult`, `RoutingPolicy`, `CachePolicy`, and `FetchAttempt`
-from `finchx.collector` / `finchx.collectors`, storage contracts from
-`finchx.storage`, and process-local diagnostic monitors from `finchx.health`,
-`finchx.quality`, and `finchx.observability`.
+- `InvalidRequest`: request values or Dataset semantics are invalid.
+- `AuthenticationError`: the source requires credentials or an authenticated session.
+- `MissingOptionalDependency`: the selected Provider needs an uninstalled extra.
+- `SchemaDrift`: the upstream response no longer matches the Provider contract.
+- `AllProvidersFailed`: every Provider allowed by the configured runtime policy failed.
+- `NoData`: the Provider completed but did not produce usable data.
 
-Provider adapters, routing handlers, namespace implementation classes, private
-helpers, and names beginning with `_` are implementation details rather than
-the primary compatibility surface.
+## Data sources and third-party notice
 
-## Compatibility
+FinchX normalizes data returned by registered third-party sources. It does not promise an update frequency, real-time availability, or a particular upstream service level. FinchX does not redistribute third-party market datasets. Users are responsible for complying with the terms and policies of the respective data providers.
 
-The current v1.0 public Client surface, endpoint names, principal signatures,
-and `FetchResult` return contract are protected as a compatibility contract.
-A future breaking change requires an explicit versioning decision. FinchX 1.0.0
-is a release candidate; PyPI publication, the v1.0 tag, and a GitHub Release
-have not been created.
+## Python support
+
+Python 3.10, 3.11, 3.12 and 3.13 are declared compatible by the package metadata. Provider availability and upstream behavior may vary independently of Python version.
+
+## License
+
+FinchX is licensed under Apache-2.0. Third-party data and provider terms are not covered by the FinchX license.
+
+## Full API reference
+
+See [DATA_API_REFERENCE.md](docs/DATA_API_REFERENCE.md) for the complete Dataset dictionary, exact method signatures, request fields, return fields, Provider mappings, optional dependencies and examples.

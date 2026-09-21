@@ -58,6 +58,24 @@ def _synthetic_month(year: int, month: int, *, overrides=None) -> bytes:
     return json.dumps({"data": rows}).encode("utf-8")
 
 
+def _fixture_variant(mutator) -> bytes:
+    document = json.loads(_fixture("valid_month.json"))
+    mutator(document)
+    return json.dumps(document).encode("utf-8")
+
+
+def _remove_last_day(document) -> None:
+    document["data"].pop()
+
+
+def _duplicate_first_day(document) -> None:
+    document["data"][1] = document["data"][0]
+
+
+def _set_invalid_flag(document) -> None:
+    document["data"][0]["jybz"] = "x"
+
+
 class _FixtureTransport:
     def __init__(self, responses):
         self.responses = responses
@@ -255,11 +273,11 @@ def test_response_order_is_normalized_to_ascending_date():
     [
         (b"{", "invalid JSON"),
         (b"[]", "invalid envelope"),
-        (_fixture("malformed_envelope.json"), "missing calendar list"),
+        (b'{"payload":[]}', "missing calendar list"),
         (b'{"data":[]}', "missing date"),
-        (_fixture("incomplete_month.json"), "missing date"),
-        (_fixture("duplicate_date.json"), "duplicate date"),
-        (_fixture("invalid_flag.json"), "invalid trading flag"),
+        (_fixture_variant(_remove_last_day), "missing date"),
+        (_fixture_variant(_duplicate_first_day), "duplicate date"),
+        (_fixture_variant(_set_invalid_flag), "invalid trading flag"),
     ],
 )
 def test_malformed_or_incomplete_official_responses_fail_with_specific_provider_errors(
