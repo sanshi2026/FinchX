@@ -1,0 +1,12 @@
+{
+  "dataset": "market.quote",
+  "schemaVersion": "1.0",
+  "recordId": "finchx-synthetic-missing-001",
+  "entityId": {"code": "TEST-000001", "market": "cn_a", "kind": "equity"},
+  "capturedAt": "2026-01-02T09:30:01+08:00",
+  "source": {"providerId": "synthetic"},
+  "status": "missing",
+  "quality": {},
+  "provenance": {"recordClass": "standardized"},
+  "data": {"reason": "Synthetic example: the requested value was absent."}
+}

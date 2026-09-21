@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/quality.schema.json",
+  "title": "FinchX Quality",
+  "type": "object",
+  "properties": {
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": ["warning", "validation_concern", "stale", "partial", "estimated"]
+          },
+          "detail": {
+            "anyOf": [{"type": "string"}, {"type": "null"}],
+            "default": null
+          }
+        },
+        "required": ["kind"],
+        "additionalProperties": false
+      },
+      "default": []
+    }
+  },
+  "additionalProperties": false
+}

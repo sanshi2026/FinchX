@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/ownership-capital-snapshot.schema.json",
+  "title": "Ownership Capital Snapshot Dataset Payload v1",
+  "type": "object",
+  "properties": {
+    "symbol": {"type": "string", "minLength": 1},
+    "totalShares": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Shares"}, {"type": "null"}]},
+    "floatShares": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Shares"}, {"type": "null"}]}
+  },
+  "required": ["symbol"],
+  "additionalProperties": false
+}

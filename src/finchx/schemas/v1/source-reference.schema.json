@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/source-reference.schema.json",
+  "title": "FinchX Upstream Source Reference",
+  "type": "object",
+  "properties": {
+    "providerId": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$"
+    },
+    "sourceRecordId": {
+      "anyOf": [{"type": "string"}, {"type": "null"}],
+      "default": null
+    },
+    "sourceUrl": {
+      "anyOf": [{"type": "string", "format": "uri"}, {"type": "null"}],
+      "default": null
+    }
+  },
+  "required": ["providerId"],
+  "additionalProperties": false
+}

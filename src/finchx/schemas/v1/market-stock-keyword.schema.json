@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/market-stock-keyword.schema.json",
+  "title": "Market Stock Keyword Dataset Payload v1",
+  "type": "object",
+  "$defs": {
+    "StockKeywordEntry": {
+      "type": "object",
+      "properties": {
+        "keywordName": {"type": "string", "minLength": 1, "pattern": ".*\\S.*"},
+        "providerNamespace": {"type": "string", "const": "eastmoney_stockrank"},
+        "providerKeywordId": {"type": "string", "minLength": 1, "pattern": ".*\\S.*"},
+        "hitCount": {"type": "integer", "minimum": 0},
+        "calculatedAt": {"type": "string", "format": "date-time"}
+      },
+      "required": ["keywordName", "providerNamespace", "providerKeywordId", "hitCount", "calculatedAt"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "instrumentId": {"$ref": "https://schemas.finchx.invalid/v1/instrument-identity.schema.json"},
+    "keywords": {"type": "array", "items": {"$ref": "#/$defs/StockKeywordEntry"}}
+  },
+  "required": ["instrumentId", "keywords"],
+  "additionalProperties": false
+}

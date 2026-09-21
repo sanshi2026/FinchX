@@ -1,0 +1,219 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/market-strong-pool.schema.json",
+  "title": "MarketStrongPoolData",
+  "$defs": {
+    "Exchange": {
+      "enum": [
+        "sse",
+        "szse",
+        "bse"
+      ],
+      "title": "Exchange",
+      "type": "string"
+    },
+    "InstrumentId": {
+      "additionalProperties": false,
+      "description": "Identity for an instrument whose code, market, and kind are already known.",
+      "properties": {
+        "code": {
+          "minLength": 1,
+          "pattern": ".*\\S.*",
+          "title": "Code",
+          "type": "string"
+        },
+        "market": {
+          "$ref": "#/$defs/Market"
+        },
+        "kind": {
+          "$ref": "#/$defs/InstrumentKind"
+        },
+        "exchange": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Exchange"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "code",
+        "market",
+        "kind"
+      ],
+      "title": "InstrumentId",
+      "type": "object"
+    },
+    "InstrumentKind": {
+      "enum": [
+        "equity",
+        "index",
+        "etf"
+      ],
+      "title": "InstrumentKind",
+      "type": "string"
+    },
+    "Market": {
+      "enum": [
+        "cn_a"
+      ],
+      "title": "Market",
+      "type": "string"
+    },
+    "MarketStrongPoolStats": {
+      "additionalProperties": false,
+      "properties": {
+        "lookbackDays": {
+          "minimum": 0,
+          "title": "Lookbackdays",
+          "type": "integer"
+        },
+        "limitUpCount": {
+          "minimum": 0,
+          "title": "Limitupcount",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "lookbackDays",
+        "limitUpCount"
+      ],
+      "title": "MarketStrongPoolStats",
+      "type": "object"
+    },
+    "StrongPoolSelectionReason": {
+      "enum": [
+        "sixty_day_high",
+        "recent_multiple_limit_ups",
+        "sixty_day_high_and_recent_multiple_limit_ups"
+      ],
+      "title": "StrongPoolSelectionReason",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "instrumentId": {
+      "$ref": "#/$defs/InstrumentId"
+    },
+    "tradeDate": {
+      "format": "date",
+      "title": "Tradedate",
+      "type": "string"
+    },
+    "name": {
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+    },
+    "price": {
+      "description": "Latest price in CNY per share.",
+      "examples": [
+        "12.34"
+      ],
+      "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+      "title": "Price",
+      "type": "string"
+    },
+    "limitUpPrice": {
+      "description": "Current limit-up price in CNY per share.",
+      "examples": [
+        "12.34"
+      ],
+      "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+      "title": "Limitupprice",
+      "type": "string"
+    },
+    "changeRate": {
+      "description": "Ratio fraction; 20% is 0.20.",
+      "examples": [
+        "0.0424"
+      ],
+      "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+      "title": "Changerate",
+      "type": "string"
+    },
+    "amount": {
+      "description": "Current-session traded amount in CNY.",
+      "examples": [
+        "123456.78"
+      ],
+      "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+      "title": "Amount",
+      "type": "string"
+    },
+    "floatMarketCapitalization": {
+      "description": "Monetary amount in CNY.",
+      "examples": [
+        "123456.78"
+      ],
+      "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+      "title": "Floatmarketcapitalization",
+      "type": "string"
+    },
+    "marketCapitalization": {
+      "description": "Monetary amount in CNY.",
+      "examples": [
+        "123456.78"
+      ],
+      "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+      "title": "Marketcapitalization",
+      "type": "string"
+    },
+    "turnoverRate": {
+      "description": "Ratio fraction.",
+      "examples": [
+        "0.0424"
+      ],
+      "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+      "title": "Turnoverrate",
+      "type": "string"
+    },
+    "isSixtyDayHigh": {
+      "title": "Issixtydayhigh",
+      "type": "boolean"
+    },
+    "selectionReason": {
+      "$ref": "#/$defs/StrongPoolSelectionReason"
+    },
+    "volumeRatio": {
+      "description": "Source volume ratio as a dimensionless multiple.",
+      "examples": [
+        "2.35"
+      ],
+      "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+      "title": "Volumeratio",
+      "type": "string"
+    },
+    "industry": {
+      "minLength": 1,
+      "title": "Industry",
+      "type": "string"
+    },
+    "limitUpStats": {
+      "$ref": "#/$defs/MarketStrongPoolStats"
+    }
+  },
+  "required": [
+    "instrumentId",
+    "tradeDate",
+    "name",
+    "price",
+    "limitUpPrice",
+    "changeRate",
+    "amount",
+    "floatMarketCapitalization",
+    "marketCapitalization",
+    "turnoverRate",
+    "isSixtyDayHigh",
+    "selectionReason",
+    "volumeRatio",
+    "industry",
+    "limitUpStats"
+  ],
+  "type": "object"
+}

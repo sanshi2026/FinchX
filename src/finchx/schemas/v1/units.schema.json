@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/units.schema.json",
+  "title": "FinchX Standard Units",
+  "$defs": {
+    "Currency": {
+      "type": "string",
+      "enum": [
+        "CNY"
+      ],
+      "description": "A-share monetary values are denominated in Chinese yuan."
+    },
+    "Price": {
+      "type": "string",
+      "format": "decimal",
+      "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+      "description": "Price per share in CNY.",
+      "examples": [
+        "12.34"
+      ]
+    },
+    "Amount": {
+      "type": "string",
+      "format": "decimal",
+      "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+      "description": "Monetary amount in CNY.",
+      "examples": [
+        "123456.78"
+      ]
+    },
+    "Percentage": {
+      "type": "string",
+      "format": "decimal",
+      "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+      "description": "A ratio fraction, not percentage points: 4.24% is 0.0424.",
+      "examples": [
+        "0.0424"
+      ]
+    },
+    "Ratio": {
+      "type": "string",
+      "format": "decimal",
+      "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+      "description": "A dimensionless ratio expressed in times; 2.35 means 2.35x.",
+      "examples": [
+        "2.35"
+      ]
+    },
+    "ValuationMultiple": {
+      "type": "string",
+      "format": "decimal",
+      "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+      "description": "A valuation multiple expressed in times. Finite negative values are allowed.",
+      "examples": [
+        "-5.25"
+      ]
+    },
+    "ShareQuantity": {
+      "type": "string",
+      "format": "decimal",
+      "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+      "description": "An exact share quantity that may contain a fractional average or per-ten-share value.",
+      "examples": [
+        "2.50"
+      ]
+    },
+    "Shares": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "A non-negative whole number of shares.",
+      "examples": [
+        100
+      ]
+    }
+  }
+}

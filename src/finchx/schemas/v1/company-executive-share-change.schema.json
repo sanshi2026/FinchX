@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/company-executive-share-change.schema.json",
+  "title": "Company Executive Share Change Dataset Payload v1",
+  "type": "object",
+  "properties": {
+    "symbol": {"type": "string", "minLength": 1},
+    "changes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "eventDate": {"anyOf": [{"type": "string", "format": "date"}, {"type": "null"}]},
+          "personName": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+          "shareChange": {"anyOf": [{"type": "integer"}, {"type": "null"}]},
+          "averagePrice": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Price"}, {"type": "null"}]}
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["symbol", "changes"],
+  "additionalProperties": false
+}

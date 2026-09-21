@@ -1,0 +1,27 @@
+# macOS
+.DS_Store
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# Local configuration and data
+.env
+*.env
+*.sqlite
+*.sqlite3
+*.db
+*.db-*
+
+# IDE and editor state
+.idea/
+.vscode/

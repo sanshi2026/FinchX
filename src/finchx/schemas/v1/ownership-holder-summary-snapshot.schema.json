@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/ownership-holder-summary-snapshot.schema.json",
+  "title": "Ownership Holder Summary Snapshot Dataset Payload v1",
+  "type": "object",
+  "properties": {
+    "symbol": {"type": "string", "minLength": 1},
+    "shareholderCount": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Shares"}, {"type": "null"}]},
+    "averageSharesPerHolder": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/ShareQuantity"}, {"type": "null"}]},
+    "shareholderCountChange": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Percentage"}, {"type": "null"}]},
+    "top10FloatHolderRatio": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Percentage"}, {"type": "null"}]},
+    "top10HolderRatio": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Percentage"}, {"type": "null"}]}
+  },
+  "required": ["symbol"],
+  "additionalProperties": false
+}

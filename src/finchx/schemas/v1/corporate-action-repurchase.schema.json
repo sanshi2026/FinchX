@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/corporate-action-repurchase.schema.json",
+  "title": "Corporate Action Repurchase Dataset Payload v1",
+  "type": "object",
+  "properties": {
+    "symbol": {"type": "string", "minLength": 1},
+    "repurchases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "repurchaseDate": {"anyOf": [{"type": "string", "format": "date"}, {"type": "null"}]},
+          "quantity": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Shares"}, {"type": "null"}]},
+          "averagePrice": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Price"}, {"type": "null"}]},
+          "currency": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Currency"}, {"type": "null"}]},
+          "fundAmount": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Amount"}, {"type": "null"}]},
+          "market": {"anyOf": [{"type": "string"}, {"type": "null"}]}
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["symbol", "repurchases"],
+  "additionalProperties": false
+}

@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/market-klines.schema.json",
+  "title": "FinchX Market Klines Dataset Payload v1",
+  "type": "object",
+  "properties": {
+    "instrumentId": {
+      "$ref": "https://schemas.finchx.invalid/v1/instrument-identity.schema.json"
+    },
+    "barDate": {
+      "type": "string",
+      "format": "date",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+      "description": "Inclusive natural trading-date label; it is not a timestamp."
+    },
+    "open": {
+      "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Price"
+    },
+    "high": {
+      "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Price"
+    },
+    "low": {
+      "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Price"
+    },
+    "close": {
+      "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Price"
+    },
+    "volume": {
+      "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Shares",
+      "description": "Provider-specific source volume converted to whole shares."
+    },
+    "amount": {
+      "anyOf": [
+        {
+          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Amount"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Traded amount in CNY; null means unavailable, never zero or estimated."
+    },
+    "adjustment": {
+      "type": "string",
+      "enum": ["none", "qfq", "hfq", "not_applicable"]
+    }
+  },
+  "required": [
+    "instrumentId",
+    "barDate",
+    "open",
+    "high",
+    "low",
+    "close",
+    "volume",
+    "adjustment"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,237 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/market-consecutive-limit-up-snapshot.schema.json",
+  "$defs": {
+    "Exchange": {
+      "enum": [
+        "sse",
+        "szse",
+        "bse"
+      ],
+      "title": "Exchange",
+      "type": "string"
+    },
+    "InstrumentId": {
+      "additionalProperties": false,
+      "description": "Identity for an instrument whose code, market, and kind are already known.",
+      "properties": {
+        "code": {
+          "minLength": 1,
+          "pattern": ".*\\S.*",
+          "title": "Code",
+          "type": "string"
+        },
+        "market": {
+          "$ref": "#/$defs/Market"
+        },
+        "kind": {
+          "$ref": "#/$defs/InstrumentKind"
+        },
+        "exchange": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Exchange"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "code",
+        "market",
+        "kind"
+      ],
+      "title": "InstrumentId",
+      "type": "object"
+    },
+    "InstrumentKind": {
+      "enum": [
+        "equity",
+        "index",
+        "etf"
+      ],
+      "title": "InstrumentKind",
+      "type": "string"
+    },
+    "Market": {
+      "enum": [
+        "cn_a"
+      ],
+      "title": "Market",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "instrumentId": {
+      "$ref": "#/$defs/InstrumentId"
+    },
+    "name": {
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+    },
+    "tradeDate": {
+      "format": "date",
+      "title": "Tradedate",
+      "type": "string"
+    },
+    "lastPrice": {
+      "description": "Price per share; currency is CNY.",
+      "examples": [
+        "12.34"
+      ],
+      "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+      "title": "Lastprice",
+      "type": "string"
+    },
+    "change": {
+      "description": "Signed price change in CNY per share.",
+      "examples": [
+        "12.34"
+      ],
+      "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+      "title": "Change",
+      "type": "string"
+    },
+    "changeRatio": {
+      "description": "Ratio fraction; 10% is 0.10.",
+      "examples": [
+        "0.0424"
+      ],
+      "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+      "title": "Changeratio",
+      "type": "string"
+    },
+    "turnoverRatio": {
+      "description": "Ratio fraction; 12% is 0.12.",
+      "examples": [
+        "0.0424"
+      ],
+      "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+      "title": "Turnoverratio",
+      "type": "string"
+    },
+    "amount": {
+      "description": "Monetary amount in CNY.",
+      "examples": [
+        "123456.78"
+      ],
+      "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+      "title": "Amount",
+      "type": "string"
+    },
+    "limitUpTime": {
+      "pattern": "^(?:[01][0-9]|2[0-3]):[0-5][0-9]$",
+      "title": "Limituptime",
+      "type": "string"
+    },
+    "state": {
+      "minLength": 1,
+      "title": "State",
+      "type": "string"
+    },
+    "isConsecutiveLimitUp": {
+      "title": "Isconsecutivelimitup",
+      "type": "boolean"
+    },
+    "consecutiveLimitUpCount": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Consecutivelimitupcount"
+    },
+    "previousConsecutiveLimitUpCount": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Previousconsecutivelimitupcount"
+    },
+    "themeId": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Themeid"
+    },
+    "themeName": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Themename"
+    },
+    "floatShares": {
+      "description": "A non-negative whole number of shares.",
+      "examples": [
+        100
+      ],
+      "minimum": 0,
+      "title": "Floatshares",
+      "type": "integer"
+    },
+    "totalShares": {
+      "description": "A non-negative whole number of shares.",
+      "examples": [
+        100
+      ],
+      "minimum": 0,
+      "title": "Totalshares",
+      "type": "integer"
+    },
+    "marketCap": {
+      "description": "Total market capitalization in CNY.",
+      "examples": [
+        "123456.78"
+      ],
+      "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+      "title": "Marketcap",
+      "type": "string"
+    }
+  },
+  "required": [
+    "instrumentId",
+    "name",
+    "tradeDate",
+    "lastPrice",
+    "change",
+    "changeRatio",
+    "turnoverRatio",
+    "amount",
+    "limitUpTime",
+    "state",
+    "isConsecutiveLimitUp",
+    "floatShares",
+    "totalShares",
+    "marketCap"
+  ],
+  "title": "MarketConsecutiveLimitUpData",
+  "type": "object"
+}

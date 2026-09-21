@@ -1,0 +1,339 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/market-ranking.schema.json",
+  "title": "FinchX Market Ranking Dataset Payload v1",
+  "type": "object",
+  "$defs": {
+    "TurnoverRankingMetric": {
+      "type": "object",
+      "properties": {
+        "criterion": {
+          "const": "turnover"
+        },
+        "value": {
+          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Amount"
+        }
+      },
+      "required": [
+        "criterion",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    "ChangePercentRankingMetric": {
+      "type": "object",
+      "properties": {
+        "criterion": {
+          "const": "change_percent"
+        },
+        "value": {
+          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Percentage"
+        }
+      },
+      "required": [
+        "criterion",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    "VolumeRankingMetric": {
+      "type": "object",
+      "properties": {
+        "criterion": {
+          "const": "volume"
+        },
+        "value": {
+          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Shares"
+        }
+      },
+      "required": [
+        "criterion",
+        "value"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "instrumentId": {
+      "$ref": "https://schemas.finchx.invalid/v1/instrument-identity.schema.json"
+    },
+    "name": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "pattern": ".*\\S.*"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "price": {
+      "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Price"
+    },
+    "priceChange": {
+      "anyOf": [
+        {
+          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Price"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Signed absolute price change in CNY per share."
+    },
+    "changeRate": {
+      "anyOf": [
+        {
+          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Percentage"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "changeRate5d": {
+      "anyOf": [
+        {
+          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Percentage"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Source-designated 5d price change, stored as a ratio fraction."
+    },
+    "changeRate10d": {
+      "anyOf": [
+        {
+          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Percentage"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Source-designated 10d price change, stored as a ratio fraction."
+    },
+    "changeRate20d": {
+      "anyOf": [
+        {
+          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Percentage"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Source-designated 20d price change, stored as a ratio fraction."
+    },
+    "changeRate60d": {
+      "anyOf": [
+        {
+          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Percentage"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Source-designated 60d price change, stored as a ratio fraction."
+    },
+    "changeRate52w": {
+      "anyOf": [
+        {
+          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Percentage"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Price change over the source-designated 52-week period, as a ratio fraction."
+    },
+    "changeRateYtd": {
+      "anyOf": [
+        {
+          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Percentage"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Year-to-date price change, stored as a ratio fraction."
+    },
+    "amplitude": {
+      "anyOf": [
+        {
+          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Percentage"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Intraday price amplitude, stored as a ratio fraction."
+    },
+    "volumeRatio": {
+      "anyOf": [
+        {
+          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Ratio"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Non-negative volume ratio in times; 2.35 represents 2.35x.",
+      "pattern": "^(?:0|[1-9]\\d*)(?:\\.\\d+)?$"
+    },
+    "volume": {
+      "anyOf": [
+        {
+          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Shares"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "amount": {
+      "anyOf": [
+        {
+          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Amount"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "turnoverRate": {
+      "anyOf": [
+        {
+          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Percentage"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "marketCap": {
+      "anyOf": [
+        {
+          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Amount"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "floatMarketCap": {
+      "anyOf": [
+        {
+          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Amount"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "peTtm": {
+      "anyOf": [
+        {
+          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/ValuationMultiple"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "mainNetInflow": {
+      "anyOf": [
+        {
+          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Amount"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Provider-reported main net inflow in CNY; source methodology may vary."
+    },
+    "mainInflow": {
+      "anyOf": [
+        {
+          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Amount"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Provider-reported main inflow in CNY; source methodology may vary."
+    },
+    "mainOutflow": {
+      "anyOf": [
+        {
+          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Amount"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Provider-reported main outflow in CNY; source methodology may vary."
+    },
+    "mainInflow5d": {
+      "anyOf": [
+        {
+          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Amount"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Provider-reported main inflow in CNY for the source-designated 5d period; the period basis follows the provider."
+    },
+    "mainOutflow5d": {
+      "anyOf": [
+        {
+          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Amount"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Provider-reported main outflow in CNY for the source-designated 5d period; the period basis follows the provider."
+    },
+    "universe": {
+      "const": "cn_a_share"
+    },
+    "direction": {
+      "enum": [
+        "ascending",
+        "descending"
+      ]
+    },
+    "position": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "metric": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/TurnoverRankingMetric"
+        },
+        {
+          "$ref": "#/$defs/ChangePercentRankingMetric"
+        },
+        {
+          "$ref": "#/$defs/VolumeRankingMetric"
+        }
+      ],
+      "discriminator": {
+        "propertyName": "criterion"
+      }
+    }
+  },
+  "required": [
+    "instrumentId",
+    "price",
+    "universe",
+    "direction",
+    "position",
+    "metric"
+  ],
+  "additionalProperties": false
+}

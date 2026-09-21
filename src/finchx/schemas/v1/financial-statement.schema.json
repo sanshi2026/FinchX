@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/financial-statement.schema.json",
+  "title": "FinchX financial.statement Dataset Payload v1",
+  "type": "object",
+  "additionalProperties": false,
+  "$defs": {
+    "FinancialStatementLineItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "lineItemId": {"type": "string", "minLength": 1},
+        "sourceName": {"type": "string", "minLength": 1},
+        "sourceUnit": {"type": "string", "minLength": 1},
+        "sourceValue": {"anyOf": [{"type": "string"}, {"type": "boolean"}, {"type": "integer"}, {"type": "number"}, {"type": "null"}]},
+        "value": {"anyOf": [{"type": "string", "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$"}, {"type": "null"}]},
+        "currency": {"anyOf": [{"enum": ["CNY"]}, {"type": "null"}]},
+        "missingReason": {"anyOf": [{"enum": ["null", "false", "empty_string", "special_marker"]}, {"type": "null"}]}
+      },
+      "required": ["lineItemId", "sourceName", "sourceUnit", "sourceValue"]
+    },
+    "FinancialStatementPeriod": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "periodEnd": {"type": "string", "format": "date"},
+        "lineItems": {"type": "array", "items": {"$ref": "#/$defs/FinancialStatementLineItem"}}
+      },
+      "required": ["periodEnd", "lineItems"]
+    }
+  },
+  "properties": {
+    "instrumentId": {},
+    "symbol": {"type": "string", "minLength": 1},
+    "statementType": {"enum": ["balance_sheet", "income_statement", "cash_flow_statement"]},
+    "periods": {"type": "array", "items": {"$ref": "#/$defs/FinancialStatementPeriod"}}
+  },
+  "required": ["instrumentId", "symbol", "statementType", "periods"]
+}

@@ -1,0 +1,32 @@
+{
+  "dataset": "instrument",
+  "schemaVersion": "1.0",
+  "recordId": "finchx-synthetic-instrument-001",
+  "entityId": {
+    "code": "TEST-000001",
+    "market": "cn_a",
+    "kind": "equity",
+    "exchange": "sse"
+  },
+  "eventAt": "2026-01-02T09:30:00+08:00",
+  "capturedAt": "2026-01-02T09:30:01+08:00",
+  "asOf": "2026-01-02T09:30:00+08:00",
+  "source": {
+    "providerId": "synthetic"
+  },
+  "status": "live",
+  "quality": {
+    "issues": [
+      {
+        "kind": "warning",
+        "detail": "Synthetic contract example only."
+      }
+    ]
+  },
+  "provenance": {
+    "recordClass": "standardized"
+  },
+  "data": {
+    "name": "Synthetic Example Instrument"
+  }
+}

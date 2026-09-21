@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/disclosure-document.schema.json",
+  "title": "FinchX Disclosure Document Dataset Payload v1",
+  "type": "object",
+  "additionalProperties": false,
+  "$defs": {
+    "Category": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "code": {"type": "string", "minLength": 1},
+        "name": {"type": "string", "minLength": 1},
+        "source": {"type": "string", "default": "eastmoney"}
+      },
+      "required": ["code", "name"]
+    },
+    "Attachment": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sequence": {"anyOf": [{"type": "integer", "minimum": 1}, {"type": "null"}]},
+        "size": {"anyOf": [{"type": "integer", "minimum": 0}, {"type": "null"}]},
+        "attachmentType": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+        "url": {"type": "string", "format": "uri", "minLength": 1},
+        "webUrl": {"anyOf": [{"type": "string", "format": "uri", "minLength": 1}, {"type": "null"}]}
+      },
+      "required": ["url"]
+    }
+  },
+  "properties": {
+    "documentId": {"type": "string", "minLength": 1},
+    "sourceDocumentId": {"type": "string", "minLength": 1},
+    "title": {"type": "string", "minLength": 1},
+    "contentText": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+    "noticeDate": {"type": "string", "format": "date"},
+    "publishedAt": {"anyOf": [{"type": "string", "format": "date-time"}, {"type": "null"}]},
+    "sourceRecordedAt": {"anyOf": [{"type": "string", "format": "date-time"}, {"type": "null"}]},
+    "categories": {"type": "array", "items": {"$ref": "#/$defs/Category"}},
+    "relatedInstruments": {
+      "type": "array",
+      "items": {"$ref": "https://schemas.finchx.invalid/v1/instrument-identity.schema.json"}
+    },
+    "contentAvailable": {"type": "boolean"},
+    "pdfAvailable": {"type": "boolean"},
+    "originalDocumentUrl": {"type": "string", "format": "uri", "minLength": 1},
+    "attachments": {"type": "array", "items": {"$ref": "#/$defs/Attachment"}},
+    "sourceType": {"anyOf": [{"type": "string"}, {"type": "null"}]}
+  },
+  "required": ["documentId", "sourceDocumentId", "title", "noticeDate", "categories", "relatedInstruments", "contentAvailable", "pdfAvailable", "originalDocumentUrl", "attachments"]
+}

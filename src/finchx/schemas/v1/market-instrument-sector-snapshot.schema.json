@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/market-instrument-sector-snapshot.schema.json",
+  "title": "Market Instrument Sector Snapshot Dataset Payload v1",
+  "type": "object",
+  "$defs": {
+    "SectorEntry": {
+      "type": "object",
+      "properties": {
+        "sectorType": {"type": "string", "enum": ["area", "industry", "concept"]},
+        "sectorName": {"type": "string", "minLength": 1, "pattern": ".*\\S.*"},
+        "providerNamespace": {"type": "string", "const": "tencent_plate"},
+        "providerSectorId": {"type": "string", "minLength": 1, "pattern": ".*\\S.*"},
+        "level": {"anyOf": [{"type": "integer", "minimum": 1}, {"type": "null"}]},
+        "tag": {"anyOf": [{"type": "string", "minLength": 1, "pattern": ".*\\S.*"}, {"type": "null"}]},
+        "changePct": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Percentage"}, {"type": "null"}]}
+      },
+      "required": ["sectorType", "sectorName", "providerNamespace", "providerSectorId"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "instrumentId": {"$ref": "https://schemas.finchx.invalid/v1/instrument-identity.schema.json"},
+    "sectors": {"type": "array", "items": {"$ref": "#/$defs/SectorEntry"}}
+  },
+  "required": ["instrumentId", "sectors"],
+  "additionalProperties": false
+}

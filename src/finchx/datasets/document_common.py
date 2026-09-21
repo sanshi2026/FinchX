@@ -1,0 +1,168 @@
+"""Shared request validation for source-backed document datasets."""
+
+from __future__ import annotations
+
+from datetime import date, datetime, time, timedelta, timezone
+from typing import Literal
+
+from pydantic import Field, field_validator, model_validator
+
+from finchx.contracts.models import ContractModel
+from finchx.entities import (
+    Exchange,
+    InstrumentId,
+    InstrumentKind,
+    Market,
+    parse_symbol,
+)
+
+
+DocumentSort = Literal["published_desc", "published_asc"]
+_SUPPORTED_EQUITY_PREFIXES = {
+    Exchange.SSE: ("60", "68"),
+    Exchange.SZSE: ("00", "30"),
+}
+
+
+def validate_document_instrument(instrument: InstrumentId) -> InstrumentId:
+    """Validate an SSE/SZSE equity identity used by document sources."""
+
+    if not isinstance(instrument, InstrumentId):
+        raise ValueError("instrument must be an InstrumentId")
+    if instrument.market is not Market.CN_A or instrument.kind is not InstrumentKind.EQUITY:
+        raise ValueError("document datasets support CN_A equities only")
+    prefixes = _SUPPORTED_EQUITY_PREFIXES.get(instrument.exchange)
+    if prefixes is None:
+        raise ValueError("document datasets require an explicit SSE or SZSE equity")
+    if (
+        len(instrument.code) != 6
+        or not instrument.code.isascii()
+        or not instrument.code.isdigit()
+        or not instrument.code.startswith(prefixes)
+    ):
+        raise ValueError("equity code does not match its explicit SSE/SZSE identity")
+    return instrument
+
+
+def normalize_document_instrument(value: InstrumentId | str) -> InstrumentId:
+    """Normalize a canonical symbol or a verified six-digit A-share code.
+
+    The bare-code convenience is intentionally limited to the unambiguous
+    SSE/SZSE equity prefixes used by the EastMoney stock endpoints.  It does
+    not perform an existence lookup or infer an index/ETF identity.
+    """
+
+    if isinstance(value, InstrumentId):
+        return validate_document_instrument(value)
+    if not isinstance(value, str) or not value:
+        raise ValueError("instrument must be an InstrumentId or non-empty symbol")
+    if ":" in value:
+        return validate_document_instrument(parse_symbol(value))
+    if len(value) != 6 or not value.isascii() or not value.isdigit():
+        raise ValueError("bare document instrument must be a six-digit ASCII equity code")
+    if value.startswith(("60", "68")):
+        exchange = Exchange.SSE
+    elif value.startswith(("00", "30")):
+        exchange = Exchange.SZSE
+    else:
+        raise ValueError("bare code has no verified SSE/SZSE document routing")
+    return validate_document_instrument(
+        InstrumentId(
+            code=value,
+            market=Market.CN_A,
+            kind=InstrumentKind.EQUITY,
+            exchange=exchange,
+        )
+    )
+
+
+class DocumentSearchRequest(ContractModel):
+    """Common public search controls shared by news and disclosures."""
+
+    instrument_id: InstrumentId = Field(alias="instrumentId")
+    page: int = Field(default=1, strict=True, ge=1)
+    page_size: int = Field(default=20, alias="pageSize", strict=True, ge=1, le=200)
+    max_results: int | None = Field(default=None, alias="maxResults", strict=True, ge=1)
+
+    @field_validator("instrument_id")
+    @classmethod
+    def validate_instrument(cls, value: InstrumentId) -> InstrumentId:
+        return validate_document_instrument(value)
+
+    @model_validator(mode="after")
+    def validate_paging_combination(self) -> DocumentSearchRequest:
+        if self.max_results is not None and self.page != 1:
+            raise ValueError("maxResults requires page=1; page and maxResults cannot be combined ambiguously")
+        return self
+
+
+class TimedDocumentSearchRequest(DocumentSearchRequest):
+    """Common time controls for document sources with a proven timestamp."""
+
+    since: date | datetime | None = None
+    until: date | datetime | None = None
+    sort: DocumentSort = "published_desc"
+
+    @model_validator(mode="after")
+    def validate_time_range(self) -> TimedDocumentSearchRequest:
+        if self.since is not None and self.until is not None:
+            if _bound_datetime(self.since) > _bound_datetime(self.until):
+                raise ValueError("since must not be later than until")
+        return self
+
+
+_SOURCE_TIMEZONE = timezone(timedelta(hours=8))
+
+
+def _bound_datetime(value: date | datetime) -> datetime:
+    if isinstance(value, datetime):
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("since/until datetimes must include a timezone offset")
+        return value
+    return datetime.combine(value, time.min, tzinfo=_SOURCE_TIMEZONE)
+
+
+def matches_datetime_range(
+    value: datetime | None,
+    *,
+    since: date | datetime | None,
+    until: date | datetime | None,
+) -> bool:
+    if value is None:
+        return False if since is not None or until is not None else True
+    if since is not None and value < _bound_datetime(since):
+        return False
+    if until is not None:
+        # Date-only until values are inclusive through that source-local day.
+        upper = _bound_datetime(until)
+        if isinstance(until, date) and not isinstance(until, datetime):
+            upper = datetime.combine(until, time.max, tzinfo=upper.tzinfo)
+        if value > upper:
+            return False
+    return True
+
+
+def matches_date_range(
+    value: date | None,
+    *,
+    since: date | datetime | None,
+    until: date | datetime | None,
+) -> bool:
+    if value is None:
+        return False if since is not None or until is not None else True
+    if since is not None and value < _bound_datetime(since).date():
+        return False
+    if until is not None and value > _bound_datetime(until).date():
+        return False
+    return True
+
+
+__all__ = [
+    "DocumentSearchRequest",
+    "DocumentSort",
+    "TimedDocumentSearchRequest",
+    "matches_date_range",
+    "matches_datetime_range",
+    "normalize_document_instrument",
+    "validate_document_instrument",
+]

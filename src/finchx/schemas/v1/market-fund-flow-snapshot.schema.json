@@ -1,0 +1,249 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/market-fund-flow-snapshot.schema.json",
+  "title": "Market Fund Flow Snapshot Dataset Payload v1",
+  "type": "object",
+  "properties": {
+    "instrumentId": {
+      "$ref": "https://schemas.finchx.invalid/v1/instrument-identity.schema.json"
+    },
+    "tradeDate": {
+      "type": "string",
+      "format": "date",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+      "description": "Trading date reported by Tencent, not FinchX capture time."
+    },
+    "mainNetInflow": {
+      "allOf": [
+        {
+          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Amount"
+        },
+        {
+          "type": "string",
+          "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$"
+        }
+      ],
+      "description": "Signed main net inflow in CNY."
+    },
+    "mainInflow": {
+      "allOf": [
+        {
+          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Amount"
+        },
+        {
+          "type": "string",
+          "pattern": "^(?:0|[1-9]\\d*(?:\\.\\d+)?|0\\.\\d+)$"
+        }
+      ],
+      "description": "Non-negative gross main inflow in CNY."
+    },
+    "mainOutflow": {
+      "allOf": [
+        {
+          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Amount"
+        },
+        {
+          "type": "string",
+          "pattern": "^(?:0|[1-9]\\d*(?:\\.\\d+)?|0\\.\\d+)$"
+        }
+      ],
+      "description": "Non-negative gross main outflow in CNY."
+    },
+    "mainInflowRate": {
+      "allOf": [
+        {
+          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Percentage"
+        },
+        {
+          "type": "string",
+          "pattern": "^(?:0(?:\\.\\d+)?|1(?:\\.0+)?)$"
+        }
+      ],
+      "description": "Ratio fraction; 15% is 0.15."
+    },
+    "mainOutflowRate": {
+      "allOf": [
+        {
+          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Percentage"
+        },
+        {
+          "type": "string",
+          "pattern": "^(?:0(?:\\.\\d+)?|1(?:\\.0+)?)$"
+        }
+      ],
+      "description": "Ratio fraction; 19% is 0.19."
+    },
+    "retailInflow": {
+      "allOf": [
+        {
+          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Amount"
+        },
+        {
+          "type": "string",
+          "pattern": "^(?:0|[1-9]\\d*(?:\\.\\d+)?|0\\.\\d+)$"
+        }
+      ],
+      "description": "Non-negative gross retail inflow in CNY."
+    },
+    "retailOutflow": {
+      "allOf": [
+        {
+          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Amount"
+        },
+        {
+          "type": "string",
+          "pattern": "^(?:0|[1-9]\\d*(?:\\.\\d+)?|0\\.\\d+)$"
+        }
+      ],
+      "description": "Non-negative gross retail outflow in CNY."
+    },
+    "retailInflowRate": {
+      "allOf": [
+        {
+          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Percentage"
+        },
+        {
+          "type": "string",
+          "pattern": "^(?:0(?:\\.\\d+)?|1(?:\\.0+)?)$"
+        }
+      ],
+      "description": "Ratio fraction; 35% is 0.35."
+    },
+    "retailOutflowRate": {
+      "allOf": [
+        {
+          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Percentage"
+        },
+        {
+          "type": "string",
+          "pattern": "^(?:0(?:\\.\\d+)?|1(?:\\.0+)?)$"
+        }
+      ],
+      "description": "Ratio fraction; 31% is 0.31."
+    },
+    "superLargeNetInflow": {
+      "allOf": [
+        {
+          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Amount"
+        },
+        {
+          "type": "string",
+          "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$"
+        }
+      ],
+      "description": "Signed super-large order net inflow in CNY."
+    },
+    "largeNetInflow": {
+      "allOf": [
+        {
+          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Amount"
+        },
+        {
+          "type": "string",
+          "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$"
+        }
+      ],
+      "description": "Signed large order net inflow in CNY."
+    },
+    "mediumNetInflow": {
+      "allOf": [
+        {
+          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Amount"
+        },
+        {
+          "type": "string",
+          "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$"
+        }
+      ],
+      "description": "Signed medium order net inflow in CNY."
+    },
+    "smallNetInflow": {
+      "allOf": [
+        {
+          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Amount"
+        },
+        {
+          "type": "string",
+          "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$"
+        }
+      ],
+      "description": "Signed small order net inflow in CNY."
+    }
+  },
+  "required": [
+    "instrumentId",
+    "tradeDate",
+    "mainNetInflow",
+    "mainInflow",
+    "mainOutflow",
+    "mainInflowRate",
+    "mainOutflowRate",
+    "retailInflow",
+    "retailOutflow",
+    "retailInflowRate",
+    "retailOutflowRate",
+    "superLargeNetInflow",
+    "largeNetInflow",
+    "mediumNetInflow",
+    "smallNetInflow"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "anyOf": [
+        {
+          "properties": {
+            "instrumentId": {
+              "properties": {
+                "market": {
+                  "const": "cn_a"
+                },
+                "exchange": {
+                  "const": "sse"
+                },
+                "kind": {
+                  "const": "equity"
+                },
+                "code": {
+                  "pattern": "^(60|68)[0-9]{4}$"
+                }
+              },
+              "required": [
+                "market",
+                "exchange",
+                "kind",
+                "code"
+              ]
+            }
+          }
+        },
+        {
+          "properties": {
+            "instrumentId": {
+              "properties": {
+                "market": {
+                  "const": "cn_a"
+                },
+                "exchange": {
+                  "const": "szse"
+                },
+                "kind": {
+                  "const": "equity"
+                },
+                "code": {
+                  "pattern": "^(00|30)[0-9]{4}$"
+                }
+              },
+              "required": [
+                "market",
+                "exchange",
+                "kind",
+                "code"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
