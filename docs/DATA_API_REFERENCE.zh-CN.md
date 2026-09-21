@@ -45,7 +45,7 @@ Provider-backed 记录使用 `StandardRecord` 外层结构。其公开字段包�
 
 ### Provider 选择
 
-`provider=` 是严格指定。提供 Provider 后只使用该 Provider id，失败时不会静默改用其他 Provider。未指定时，运行时策略控制重试和 Provider 选择。本文档只列出已实现的 Provider，不分配 primary 或 fallback 角色。
+提供 `provider=` 时会严格指定 Provider。提供 Provider 后只使用该 Provider id，失败时不会静默改用其他 Provider。未指定时，运行时策略控制重试和 Provider 选择。本文档只列出已实现的 Provider，不分配 primary 或 fallback 角色。
 
 Provider id 是稳定的 Registry 身份标识，例如 `tencent.finance.qq.klines` 或 `eastmoney.stockrank`。标记为 `single_source` 的 Dataset 使用特定数据源的公开契约；标记为 `multi_provider` 的 Dataset 可以接纳实现同一标准化契约的 Provider。
 
@@ -157,8 +157,8 @@ Provider id 是稳定的 Registry 身份标识，例如 `tencent.finance.qq.klin
 
 查询一个标的的规范身份和显示名称；如果省略标的，则返回选定的 A 股范围。
 
-**Dataset:** `instrument`
-**Schema version:** `1.0`
+**Dataset：** `instrument`
+**Schema 版本：** `1.0`
 **已实现的 Provider：** `tencent.finance.qq.market`
 **路由语义：** `multi_provider`。Registry 将此 Dataset 标记为 `multi_provider`；列出的 Provider 集合就是本版本实际实现的集合。
 
@@ -172,39 +172,39 @@ fx.reference.instrument(instrument_id: 'InstrumentId | None' = None, *, request:
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| instrument_id | InstrumentId \| None | No | None | 目标标的的完整 InstrumentId。 |
-| request | InstrumentRequest \| None | No | None | 类型化请求模型。不能与便捷业务参数同时使用。 |
-| provider | str \| None | No | None | 严格指定 Provider id。只使用指定的 Provider。（仅限 keyword） |
-| use_cache | bool \| None | No | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限 keyword） |
+| instrument_id | InstrumentId \| None | 否 | None | 目标标的的完整 InstrumentId。 |
+| request | InstrumentRequest \| None | 否 | None | 类型化请求模型。不能与便捷业务参数同时使用。 |
+| provider | str \| None | 否 | None | 严格指定 Provider id。只使用指定的 Provider。（仅限关键字参数） |
+| use_cache | bool \| None | 否 | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限关键字参数） |
 
-类型化请求模型为 `InstrumentRequest`. 其字段如下：
+类型化请求模型为 `InstrumentRequest`。其字段如下：
 
 | 请求字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| instrumentId | InstrumentId | 是 | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
 
 #### 返回值
 
-公开方法的类型标注为 `FetchResult[InstrumentData]`. FetchResult.data: tuple[StandardRecord, ...]. 每个 StandardRecord 内的 `data` 数据载荷是 `InstrumentData` schema 如下.
+公开方法的类型标注为 `FetchResult[InstrumentData]`。FetchResult.data：tuple[StandardRecord, ...]。每个 StandardRecord 内的 `data` 数据载荷是 `InstrumentData` schema 如下。
 
 #### 返回数据字段
 
 | 字段 | 类型 | 可为空 | 说明 |
 | --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | 完整的标的身份：code、market、kind 和可选的 exchange。 |
-| name | str | No | 经 Provider 标准化的显示名称。 |
+| instrumentId | InstrumentId | 否 | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| name | str | 否 | 经 Provider 标准化的显示名称。 |
 
 #### 嵌套记录类型
 
 上述字段使用以下对象类型。Enum 值会直接显示在类型列中。
 
 **`InstrumentId`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | 交易所特定的标的代码。 |
-| market | Market | Yes | — | FinchX 市场标识。 |
-| kind | InstrumentKind | Yes | — | 标的类型。 |
-| exchange | Exchange \| None | No | None | Dataset 需要时使用的交易所身份。 |
+| code | str | 是 | — | 交易所特定的标的代码。 |
+| market | Market | 是 | — | FinchX 市场标识。 |
+| kind | InstrumentKind | 是 | — | 标的类型。 |
+| exchange | Exchange \| None | 否 | None | Dataset 需要时使用的交易所身份。 |
 
 
 #### 示例
@@ -239,8 +239,8 @@ instrument = fx.reference.instrument(instrument_id)
 
 返回请求范围内每个自然日的一行记录，并提供规范的交易日标志。
 
-**Dataset:** `trading_calendar`
-**Schema version:** `1.0`
+**Dataset：** `trading_calendar`
+**Schema 版本：** `1.0`
 **已实现的 Provider：** `szse.official.calendar`, `pandas_market_calendars`
 **路由语义：** `multi_provider`。Registry 将此 Dataset 标记为 `multi_provider`；列出的 Provider 集合就是本版本实际实现的集合。
 
@@ -254,31 +254,31 @@ fx.reference.trading_calendar(start_date: 'date | None' = None, end_date: 'date 
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| start_date | date \| None | No | None | 包含起始日期。 |
-| end_date | date \| None | No | None | 包含结束日期。 |
-| market | Market | No | <Market.CN_A: 'cn_a'> | Market 枚举；公开交易日历契约默认使用 Market.CN_A。 |
-| request | TradingCalendarRequest \| None | No | None | 类型化请求模型。不能与便捷业务参数同时使用。 |
-| provider | str \| None | No | None | 严格指定 Provider id。只使用指定的 Provider。（仅限 keyword） |
-| use_cache | bool \| None | No | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限 keyword） |
+| start_date | date \| None | 否 | None | 包含起始日期。 |
+| end_date | date \| None | 否 | None | 包含结束日期。 |
+| market | Market | 否 | <Market.CN_A: 'cn_a'> | Market 枚举；公开交易日历契约默认使用 Market.CN_A。 |
+| request | TradingCalendarRequest \| None | 否 | None | 类型化请求模型。不能与便捷业务参数同时使用。 |
+| provider | str \| None | 否 | None | 严格指定 Provider id。只使用指定的 Provider。（仅限关键字参数） |
+| use_cache | bool \| None | 否 | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限关键字参数） |
 
-类型化请求模型为 `TradingCalendarRequest`. 其字段如下：
+类型化请求模型为 `TradingCalendarRequest`。其字段如下：
 
 | 请求字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| market | Literal['cn_a'] | Yes | — | FinchX 市场标识。 |
-| startDate | date | Yes | — | 请求范围或选定窗口的包含起始日期。 |
-| endDate | date | Yes | — | 请求范围或选定窗口的包含结束日期。 |
+| market | Literal['cn_a'] | 是 | — | FinchX 市场标识。 |
+| startDate | date | 是 | — | 请求范围或选定窗口的包含起始日期。 |
+| endDate | date | 是 | — | 请求范围或选定窗口的包含结束日期。 |
 
 #### 返回值
 
-公开方法的类型标注为 `FetchResult[TradingCalendarData]`. FetchResult.data: tuple[StandardRecord, ...]. 每个 StandardRecord 内的 `data` 数据载荷是 `TradingCalendarData` schema 如下.
+公开方法的类型标注为 `FetchResult[TradingCalendarData]`。FetchResult.data：tuple[StandardRecord, ...]。每个 StandardRecord 内的 `data` 数据载荷是 `TradingCalendarData` schema 如下。
 
 #### 返回数据字段
 
 | 字段 | 类型 | 可为空 | 说明 |
 | --- | --- | --- | --- |
-| date | date | No | 该行表示的自然日。 |
-| isTradingDay | bool | No | 标准化的交易日标志字段。 |
+| date | date | 否 | 该行表示的自然日。 |
+| isTradingDay | bool | 否 | 标准化的交易日标志字段。 |
 
 
 
@@ -310,7 +310,7 @@ result = fx.reference.trading_calendar(date(2026, 9, 1), date(2026, 9, 30))
 
 当前 Registry 实现的 Provider 为：`szse.official.calendar`, `pandas_market_calendars`。除非提供 `provider=`，否则 Provider 选择由运行时策略控制。Registry 将此 Dataset 标记为 `multi_provider`；列出的 Provider 集合就是本版本实际实现的集合。
 
-**可选依赖：** 安装 pandas_market_calendars 对应的 source extra。从源码 checkout 安装时使用 `python -m pip install ".[calendar]"`；发布到 PyPI 后使用对应的 `finchx[calendar]` extra。
+**可选依赖：** 安装 pandas_market_calendars 对应的源码 extra。从源码目录安装时使用 `python -m pip install ".[calendar]"`；发布到 PyPI 后使用对应的 `finchx[calendar]` extra。
 
 ## `market`
 
@@ -320,8 +320,8 @@ result = fx.reference.trading_calendar(date(2026, 9, 1), date(2026, 9, 30))
 
 返回东方财富市场广度快照，包括上涨、下跌以及涨停/跌停数量。
 
-**Dataset:** `market.breadth`
-**Schema version:** `1.0`
+**Dataset：** `market.breadth`
+**Schema 版本：** `1.0`
 **已实现的 Provider：** `eastmoney.push2ex.breadth`
 **路由语义：** `single_source`。Registry 将此 Dataset 标记为 `single_source`；列出的 Provider 是已实现的特定数据源契约。
 
@@ -335,42 +335,42 @@ fx.market.breadth(request: 'MarketBreadthRequest | None' = None, *, provider: 's
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | MarketBreadthRequest \| None | No | None | 类型化请求模型。不能与便捷业务参数同时使用。 |
-| provider | str \| None | No | None | 严格指定 Provider id。只使用指定的 Provider。（仅限 keyword） |
-| use_cache | bool \| None | No | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限 keyword） |
+| request | MarketBreadthRequest \| None | 否 | None | 类型化请求模型。不能与便捷业务参数同时使用。 |
+| provider | str \| None | 否 | None | 严格指定 Provider id。只使用指定的 Provider。（仅限关键字参数） |
+| use_cache | bool \| None | 否 | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限关键字参数） |
 
-类型化请求模型为 `MarketBreadthRequest`. 其字段如下：
+类型化请求模型为 `MarketBreadthRequest`。其字段如下：
 
 该请求模型没有字段；可以不传 request 对象，直接调用接口使用默认请求行为。
 
 #### 返回值
 
-公开方法的类型标注为 `FetchResult[MarketBreadthData]`. FetchResult.data: StandardRecord. 每个 StandardRecord 内的 `data` 数据载荷是 `MarketBreadthData` schema 如下.
+公开方法的类型标注为 `FetchResult[MarketBreadthData]`。FetchResult.data：StandardRecord。每个 StandardRecord 内的 `data` 数据载荷是 `MarketBreadthData` schema 如下。
 
 #### 返回数据字段
 
 | 字段 | 类型 | 可为空 | 说明 |
 | --- | --- | --- | --- |
-| tradeDate | date | No | 数据源交易日期标签；它不是 FinchX 的获取时间。 |
-| advancing | int | No | 广度快照中的上涨标的数量或数值。 |
-| declining | int | No | 广度快照中的下跌标的数量或数值。 |
-| unchanged | int | No | 广度快照中的平盘标的数量或数值。 |
-| total | int | No | 快照表示的标的总数。 |
-| limitUpCount | int | No | 涨停标的数量。 |
-| limitDownCount | int | No | 数量 limit-down instruments. |
-| upOver10PercentCount | int | No | Count 的 instruments up more than 10%. |
-| downOver10PercentCount | int | No | Count 的 instruments down more than 10%. |
-| distribution | list[MarketBreadthDistributionEntry] | No | Breadth distribution buckets supplied by EastMoney. |
+| tradeDate | date | 否 | 数据源交易日期标签；它不是 FinchX 的获取时间。 |
+| advancing | int | 否 | 广度快照中的上涨标的数量或数值。 |
+| declining | int | 否 | 广度快照中的下跌标的数量或数值。 |
+| unchanged | int | 否 | 广度快照中的平盘标的数量或数值。 |
+| total | int | 否 | 快照表示的标的总数。 |
+| limitUpCount | int | 否 | 涨停标的数量。 |
+| limitDownCount | int | 否 | 跌停标的数量。 |
+| upOver10PercentCount | int | 否 | 涨幅超过 10% 的标的数量。 |
+| downOver10PercentCount | int | 否 | 跌幅超过 10% 的标的数量。 |
+| distribution | list[MarketBreadthDistributionEntry] | 否 | 东方财富提供的广度分布分组。 |
 
 #### 嵌套记录类型
 
 上述字段使用以下对象类型。Enum 值会直接显示在类型列中。
 
 **`MarketBreadthDistributionEntry`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| bucket | MarketBreadthBucket | Yes | — | 标准化的 bucket 字段. |
-| count | int | Yes | — | 数量 listed stocks in this 收益率 bucket. |
+| bucket | MarketBreadthBucket | 是 | — | 标准化的分组字段。 |
+| count | int | 是 | — | 该收益分组中的上市股票数量。 |
 
 
 #### 示例
@@ -407,8 +407,8 @@ result = fx.market.breadth(request)
 
 返回在请求交易日打开涨停的股票，以及数据源定义的开板统计。
 
-**Dataset:** `market.broken_limit_pool`
-**Schema version:** `1.0`
+**Dataset：** `market.broken_limit_pool`
+**Schema 版本：** `1.0`
 **已实现的 Provider：** `eastmoney.push2ex.broken_limit_pool`
 **路由语义：** `single_source`。Registry 将此 Dataset 标记为 `single_source`；列出的 Provider 是已实现的特定数据源契约。
 
@@ -422,57 +422,57 @@ fx.market.broken_limit_pool(request: 'MarketBrokenLimitPoolRequest', *, provider
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | MarketBrokenLimitPoolRequest | Yes | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
-| provider | str \| None | No | None | 严格指定 Provider id。只使用指定的 Provider。（仅限 keyword） |
-| use_cache | bool \| None | No | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限 keyword） |
+| request | MarketBrokenLimitPoolRequest | 是 | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
+| provider | str \| None | 否 | None | 严格指定 Provider id。只使用指定的 Provider。（仅限关键字参数） |
+| use_cache | bool \| None | 否 | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限关键字参数） |
 
-类型化请求模型为 `MarketBrokenLimitPoolRequest`. 其字段如下：
+类型化请求模型为 `MarketBrokenLimitPoolRequest`。其字段如下：
 
 | 请求字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| tradeDate | date | Yes | — | 数据源交易日期标签；它不是 FinchX 的获取时间。 |
+| tradeDate | date | 是 | — | 数据源交易日期标签；它不是 FinchX 的获取时间。 |
 
 #### 返回值
 
-公开方法的类型标注为 `FetchResult[MarketBrokenLimitPoolData]`. FetchResult.data: tuple[StandardRecord, ...]. 每个 StandardRecord 内的 `data` 数据载荷是 `MarketBrokenLimitPoolData` schema 如下.
+公开方法的类型标注为 `FetchResult[MarketBrokenLimitPoolData]`。FetchResult.data：tuple[StandardRecord, ...]。每个 StandardRecord 内的 `data` 数据载荷是 `MarketBrokenLimitPoolData` schema 如下。
 
 #### 返回数据字段
 
 | 字段 | 类型 | 可为空 | 说明 |
 | --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | 完整的标的身份：code、market、kind 和可选的 exchange。 |
-| tradeDate | date | No | 数据源交易日期标签；它不是 FinchX 的获取时间。 |
-| name | str | No | 经 Provider 标准化的显示名称。 |
-| price | Decimal | No | 最新或观测到的价格，单位为每股人民币；指数序列除外。 |
-| limitUpPrice | Decimal | No | 当前交易时段的涨停价，单位为每股人民币。 |
-| changeRate | Decimal | No | 变动比率；10% 表示为 0.10。 |
-| amount | Decimal | No | 成交金额，单位为人民币。 |
-| floatMarketCapitalization | Decimal | No | 流通市值，单位为人民币。 |
-| marketCapitalization | Decimal | No | 总市值，单位为人民币。 |
-| turnoverRate | Decimal | No | 换手率；百分比以小数表示。 |
-| amplitude | Decimal | No | 盘中价格振幅，以比率小数表示。 |
-| firstLimitUpTime | str \| None | Yes | 数据源当地时间格式的首次涨停时间。 |
-| limitUpBreakCount | int | No | 数据源观测到的开板次数。 |
-| industry | str | No | 数据源提供的行业标签。 |
-| limitUpStats | MarketBrokenLimitPoolStats | No | 数据源定义的涨停历史统计。 |
+| instrumentId | InstrumentId | 否 | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| tradeDate | date | 否 | 数据源交易日期标签；它不是 FinchX 的获取时间。 |
+| name | str | 否 | 经 Provider 标准化的显示名称。 |
+| price | Decimal | 否 | 最新或观测到的价格，单位为每股人民币；指数序列除外。 |
+| limitUpPrice | Decimal | 否 | 当前交易时段的涨停价，单位为每股人民币。 |
+| changeRate | Decimal | 否 | 变动比率；10% 表示为 0.10。 |
+| amount | Decimal | 否 | 成交金额，单位为人民币。 |
+| floatMarketCapitalization | Decimal | 否 | 流通市值，单位为人民币。 |
+| marketCapitalization | Decimal | 否 | 总市值，单位为人民币。 |
+| turnoverRate | Decimal | 否 | 换手率；百分比以小数表示。 |
+| amplitude | Decimal | 否 | 盘中价格振幅，以比率小数表示。 |
+| firstLimitUpTime | str \| None | 是 | 数据源当地时间格式的首次涨停时间。 |
+| limitUpBreakCount | int | 否 | 数据源观测到的开板次数。 |
+| industry | str | 否 | 数据源提供的行业标签。 |
+| limitUpStats | MarketBrokenLimitPoolStats | 否 | 数据源定义的涨停历史统计。 |
 
 #### 嵌套记录类型
 
 上述字段使用以下对象类型。Enum 值会直接显示在类型列中。
 
 **`InstrumentId`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | 交易所特定的标的代码。 |
-| market | Market | Yes | — | FinchX 市场标识。 |
-| kind | InstrumentKind | Yes | — | 标的类型。 |
-| exchange | Exchange \| None | No | None | Dataset 需要时使用的交易所身份。 |
+| code | str | 是 | — | 交易所特定的标的代码。 |
+| market | Market | 是 | — | FinchX 市场标识。 |
+| kind | InstrumentKind | 是 | — | 标的类型。 |
+| exchange | Exchange \| None | 否 | None | Dataset 需要时使用的交易所身份。 |
 
 **`MarketBrokenLimitPoolStats`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| lookbackDays | int | Yes | — | 标准化的回看天数字段。 |
-| limitUpCount | int | Yes | — | 涨停标的数量。 |
+| lookbackDays | int | 是 | — | 标准化的回看天数字段。 |
+| limitUpCount | int | 是 | — | 涨停标的数量。 |
 
 
 #### 示例
@@ -509,8 +509,8 @@ result = fx.market.broken_limit_pool(request)
 
 返回 Aigupiao 连续涨停股票快照及其相关主题字段。
 
-**Dataset:** `market.consecutive_limit_up_snapshot`
-**Schema version:** `1.0`
+**Dataset：** `market.consecutive_limit_up_snapshot`
+**Schema 版本：** `1.0`
 **已实现的 Provider：** `aigupiao.series_limit_up`
 **路由语义：** `single_source`。Registry 将此 Dataset 标记为 `single_source`；列出的 Provider 是已实现的特定数据源契约。
 
@@ -524,52 +524,52 @@ fx.market.consecutive_limit_up(request: 'MarketConsecutiveLimitUpRequest | None'
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | MarketConsecutiveLimitUpRequest \| None | No | None | 类型化请求模型。不能与便捷业务参数同时使用。 |
-| provider | str \| None | No | None | 严格指定 Provider id。只使用指定的 Provider。（仅限 keyword） |
-| use_cache | bool \| None | No | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限 keyword） |
+| request | MarketConsecutiveLimitUpRequest \| None | 否 | None | 类型化请求模型。不能与便捷业务参数同时使用。 |
+| provider | str \| None | 否 | None | 严格指定 Provider id。只使用指定的 Provider。（仅限关键字参数） |
+| use_cache | bool \| None | 否 | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限关键字参数） |
 
-类型化请求模型为 `MarketConsecutiveLimitUpRequest`. 其字段如下：
+类型化请求模型为 `MarketConsecutiveLimitUpRequest`。其字段如下：
 
 该请求模型没有字段；可以不传 request 对象，直接调用接口使用默认请求行为。
 
 #### 返回值
 
-公开方法的类型标注为 `FetchResult[MarketConsecutiveLimitUpData]`. FetchResult.data: tuple[StandardRecord, ...]. 每个 StandardRecord 内的 `data` 数据载荷是 `MarketConsecutiveLimitUpData` schema 如下.
+公开方法的类型标注为 `FetchResult[MarketConsecutiveLimitUpData]`。FetchResult.data：tuple[StandardRecord, ...]。每个 StandardRecord 内的 `data` 数据载荷是 `MarketConsecutiveLimitUpData` schema 如下。
 
 #### 返回数据字段
 
 | 字段 | 类型 | 可为空 | 说明 |
 | --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | 完整的标的身份：code、market、kind 和可选的 exchange。 |
-| name | str | No | 经 Provider 标准化的显示名称。 |
-| tradeDate | date | No | 数据源交易日期标签；它不是 FinchX 的获取时间。 |
-| lastPrice | Decimal | No | 最新的 价格 单位为人民币 每股. |
-| change | Decimal | No | Signed 价格 变动 单位为人民币 每股. |
-| changeRatio | Decimal | No | 变动比率；10% 表示为 0.10。 |
-| turnoverRatio | Decimal | No | 比率小数；12% 表示为 0.12。 |
-| amount | Decimal | No | 成交金额，单位为人民币。 |
-| limitUpTime | str | No | 标准化的涨停时间字段。 |
-| state | str | No | 数据源定义的 state label. |
-| isConsecutiveLimitUp | bool | No | 数据源是否将该行标记为连续涨停。 |
-| consecutiveLimitUpCount | int \| None | Yes | 标准化的 consecutive limit up 数量 字段. |
-| previousConsecutiveLimitUpCount | int \| None | Yes | 数据源报告的此前连续涨停次数。 |
-| themeId | int \| None | Yes | 数据源主题标识。 |
-| themeName | str \| None | Yes | 数据源主题名称。 |
-| floatShares | int | No | 流通股本。 |
-| totalShares | int | No | 总股本。 |
-| marketCap | Decimal | No | 总市值，单位为人民币。 |
+| instrumentId | InstrumentId | 否 | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| name | str | 否 | 经 Provider 标准化的显示名称。 |
+| tradeDate | date | 否 | 数据源交易日期标签；它不是 FinchX 的获取时间。 |
+| lastPrice | Decimal | 否 | 最新价格，单位为人民币/股。 |
+| change | Decimal | 否 | 带符号的价格变动，单位为人民币/股。 |
+| changeRatio | Decimal | 否 | 变动比率；10% 表示为 0.10。 |
+| turnoverRatio | Decimal | 否 | 比率小数；12% 表示为 0.12。 |
+| amount | Decimal | 否 | 成交金额，单位为人民币。 |
+| limitUpTime | str | 否 | 标准化的涨停时间字段。 |
+| state | str | 否 | 数据源定义的状态标签。 |
+| isConsecutiveLimitUp | bool | 否 | 数据源是否将该行标记为连续涨停。 |
+| consecutiveLimitUpCount | int \| None | 是 | 标准化的连续涨停次数。 |
+| previousConsecutiveLimitUpCount | int \| None | 是 | 数据源报告的此前连续涨停次数。 |
+| themeId | int \| None | 是 | 数据源主题标识。 |
+| themeName | str \| None | 是 | 数据源主题名称。 |
+| floatShares | int | 否 | 流通股本。 |
+| totalShares | int | 否 | 总股本。 |
+| marketCap | Decimal | 否 | 总市值，单位为人民币。 |
 
 #### 嵌套记录类型
 
 上述字段使用以下对象类型。Enum 值会直接显示在类型列中。
 
 **`InstrumentId`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | 交易所特定的标的代码。 |
-| market | Market | Yes | — | FinchX 市场标识。 |
-| kind | InstrumentKind | Yes | — | 标的类型。 |
-| exchange | Exchange \| None | No | None | Dataset 需要时使用的交易所身份。 |
+| code | str | 是 | — | 交易所特定的标的代码。 |
+| market | Market | 是 | — | FinchX 市场标识。 |
+| kind | InstrumentKind | 是 | — | 标的类型。 |
+| exchange | Exchange \| None | 否 | None | Dataset 需要时使用的交易所身份。 |
 
 
 #### 示例
@@ -606,8 +606,8 @@ result = fx.market.consecutive_limit_up(request)
 
 返回请求日期的 Jiyangongshe 主题和股票观测日复盘。
 
-**Dataset:** `market.daily_replay`
-**Schema version:** `1.0`
+**Dataset：** `market.daily_replay`
+**Schema 版本：** `1.0`
 **已实现的 Provider：** `jiuyangongshe.daily_replay`
 **路由语义：** `single_source`。Registry 将此 Dataset 标记为 `single_source`；列出的 Provider 是已实现的特定数据源契约。
 
@@ -621,61 +621,61 @@ fx.market.daily_replay(request: 'MarketDailyReplayRequest', *, provider: 'str | 
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | MarketDailyReplayRequest | Yes | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
-| provider | str \| None | No | None | 严格指定 Provider id。只使用指定的 Provider。（仅限 keyword） |
-| use_cache | bool \| None | No | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限 keyword） |
+| request | MarketDailyReplayRequest | 是 | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
+| provider | str \| None | 否 | None | 严格指定 Provider id。只使用指定的 Provider。（仅限关键字参数） |
+| use_cache | bool \| None | 否 | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限关键字参数） |
 
-类型化请求模型为 `MarketDailyReplayRequest`. 其字段如下：
+类型化请求模型为 `MarketDailyReplayRequest`。其字段如下：
 
 | 请求字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| requestedDate | date | Yes | — | 从 daily-replay 数据源请求的日期。 |
+| requestedDate | date | 是 | — | 从 daily-replay 数据源请求的日期。 |
 
 #### 返回值
 
-公开方法的类型标注为 `FetchResult[MarketDailyReplayData]`. FetchResult.data: StandardRecord. 每个 StandardRecord 内的 `data` 数据载荷是 `MarketDailyReplayData` schema 如下.
+公开方法的类型标注为 `FetchResult[MarketDailyReplayData]`。FetchResult.data：StandardRecord。每个 StandardRecord 内的 `data` 数据载荷是 `MarketDailyReplayData` schema 如下。
 
 #### 返回数据字段
 
 | 字段 | 类型 | 可为空 | 说明 |
 | --- | --- | --- | --- |
-| requestedDate | date | No | 从 daily-replay 数据源请求的日期。 |
-| tradeDate | date | No | 数据源交易日期标签；它不是 FinchX 的获取时间。 |
-| themes | list[ReplayTheme] | No | 日复盘主题及其股票观测值。 |
+| requestedDate | date | 否 | 从 daily-replay 数据源请求的日期。 |
+| tradeDate | date | 否 | 数据源交易日期标签；它不是 FinchX 的获取时间。 |
+| themes | list[ReplayTheme] | 否 | 日复盘主题及其股票观测值。 |
 
 #### 嵌套记录类型
 
 上述字段使用以下对象类型。Enum 值会直接显示在类型列中。
 
 **`InstrumentId`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | 交易所特定的标的代码。 |
-| market | Market | Yes | — | FinchX 市场标识。 |
-| kind | InstrumentKind | Yes | — | 标的类型。 |
-| exchange | Exchange \| None | No | None | Dataset 需要时使用的交易所身份。 |
+| code | str | 是 | — | 交易所特定的标的代码。 |
+| market | Market | 是 | — | FinchX 市场标识。 |
+| kind | InstrumentKind | 是 | — | 标的类型。 |
+| exchange | Exchange \| None | 否 | None | Dataset 需要时使用的交易所身份。 |
 
 **`ReplayStock`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
-| name | str | Yes | — | 经 Provider 标准化的显示名称。 |
-| limitUpTime | str \| None | No | None | 标准化的涨停时间字段。 |
-| streakText | str \| None | No | None | 标准化的 streak text 字段. |
-| price | Decimal \| None | No | None | 最新或观测到的价格，单位为每股人民币；指数序列除外。 |
-| changeRatio | Decimal \| None | No | None | 变动比率；10% 表示为 0.10。 |
-| day | int \| None | No | None | 标准化的 day 字段. |
-| edition | int \| None | No | None | 标准化的 edition 字段. |
-| expound | str \| None | No | None | 标准化的 expound 字段. |
+| instrumentId | InstrumentId | 是 | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| name | str | 是 | — | 经 Provider 标准化的显示名称。 |
+| limitUpTime | str \| None | 否 | None | 标准化的涨停时间字段。 |
+| streakText | str \| None | 否 | None | 标准化的连续涨停描述。 |
+| price | Decimal \| None | 否 | None | 最新或观测到的价格，单位为每股人民币；指数序列除外。 |
+| changeRatio | Decimal \| None | 否 | None | 变动比率；10% 表示为 0.10。 |
+| day | int \| None | 否 | None | 标准化的天数字段。 |
+| edition | int \| None | 否 | None | 标准化的版本字段。 |
+| expound | str \| None | 否 | None | 标准化的说明字段。 |
 
 **`ReplayTheme`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| themeName | str | Yes | — | 数据源主题名称。 |
-| reason | str \| None | No | None | 标准化的 reason 字段. |
-| stockCount | int | Yes | — | 标准化的 stock 数量 字段. |
-| sourceThemeId | str \| None | No | None | 标准化的 数据源 theme id 字段. |
-| stocks | list[ReplayStock] | No | — | 与主题或复盘行关联的股票。 |
+| themeName | str | 是 | — | 数据源主题名称。 |
+| reason | str \| None | 否 | None | 标准化的原因字段。 |
+| stockCount | int | 是 | — | 标准化的股票数量字段。 |
+| sourceThemeId | str \| None | 否 | None | 标准化的数据源主题 id 字段。 |
+| stocks | list[ReplayStock] | 否 | — | 与主题或复盘行关联的股票。 |
 
 
 #### 示例
@@ -708,7 +708,7 @@ result = fx.market.daily_replay(request)
 
 当前 Registry 实现的 Provider 为：`jiuyangongshe.daily_replay`。除非提供 `provider=`，否则 Provider 选择由运行时策略控制。Registry 将此 Dataset 标记为 `single_source`；列出的 Provider 是已实现的特定数据源契约。
 
-**可选依赖：** 安装 playwright 对应的 source extra。从源码 checkout 安装时使用 `python -m pip install ".[jygs]"`；发布到 PyPI 后使用对应的 `finchx[jygs]` extra。
+**可选依赖：** 安装 playwright 对应的源码 extra。从源码目录安装时使用 `python -m pip install ".[jygs]"`；发布到 PyPI 后使用对应的 `finchx[jygs]` extra。
 
 **身份验证：** 选定的 Provider 需要已认证的 session。对于 Jiyangongshe Provider，请设置 `JYGS_SESSION` 并安装 `jygs` extra。
 
@@ -716,8 +716,8 @@ result = fx.market.daily_replay(request)
 
 返回一条龙虎榜记录的买卖席位详情。
 
-**Dataset:** `market.dragon_tiger_detail`
-**Schema version:** `1.0`
+**Dataset：** `market.dragon_tiger_detail`
+**Schema 版本：** `1.0`
 **已实现的 Provider：** `aigupiao.dragon_tiger`
 **路由语义：** `single_source`。Registry 将此 Dataset 标记为 `single_source`；列出的 Provider 是已实现的特定数据源契约。
 
@@ -731,64 +731,64 @@ fx.market.dragon_tiger_detail(request: 'MarketDragonTigerDetailRequest', *, prov
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | MarketDragonTigerDetailRequest | Yes | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
-| provider | str \| None | No | None | 严格指定 Provider id。只使用指定的 Provider。（仅限 keyword） |
-| use_cache | bool \| None | No | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限 keyword） |
+| request | MarketDragonTigerDetailRequest | 是 | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
+| provider | str \| None | 否 | None | 严格指定 Provider id。只使用指定的 Provider。（仅限关键字参数） |
+| use_cache | bool \| None | 否 | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限关键字参数） |
 
-类型化请求模型为 `MarketDragonTigerDetailRequest`. 其字段如下：
+类型化请求模型为 `MarketDragonTigerDetailRequest`。其字段如下：
 
 | 请求字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
-| tradeDate | date | Yes | — | 数据源交易日期标签；它不是 FinchX 的获取时间。 |
-| tradeId | str | Yes | — | 标准化的交易 id 字段。 |
+| instrumentId | InstrumentId | 是 | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| tradeDate | date | 是 | — | 数据源交易日期标签；它不是 FinchX 的获取时间。 |
+| tradeId | str | 是 | — | 标准化的交易 id 字段。 |
 
 #### 返回值
 
-公开方法的类型标注为 `FetchResult[MarketDragonTigerDetailData]`. FetchResult.data: StandardRecord. 每个 StandardRecord 内的 `data` 数据载荷是 `MarketDragonTigerDetailData` schema 如下.
+公开方法的类型标注为 `FetchResult[MarketDragonTigerDetailData]`。FetchResult.data：StandardRecord。每个 StandardRecord 内的 `data` 数据载荷是 `MarketDragonTigerDetailData` schema 如下。
 
 #### 返回数据字段
 
 | 字段 | 类型 | 可为空 | 说明 |
 | --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | 完整的标的身份：code、market、kind 和可选的 exchange。 |
-| name | str | No | 经 Provider 标准化的显示名称。 |
-| tradeDate | date | No | 数据源交易日期标签；它不是 FinchX 的获取时间。 |
-| tradeId | str | No | 标准化的交易 id 字段。 |
-| closePrice | Decimal | No | 每股价格；货币为人民币。 |
-| changeRatio | Decimal | No | 变动比率；10% 表示为 0.10。 |
-| amount | Decimal | No | 成交金额，单位为人民币。 |
-| totalBuy | Decimal | No | 金额，单位为人民币。 |
-| totalSell | Decimal | No | 金额，单位为人民币。 |
-| totalNet | Decimal | No | 金额，单位为人民币。 |
-| explanation | str | No | 标准化的说明字段。 |
-| commentKind | str \| None | Yes | 标准化的 comment kind 字段. |
-| commentObjectId | str \| None | Yes | 标准化的 comment object id 字段. |
-| buySeats | list[DragonTigerSeat] | No | 标准化的 buy seats 字段. |
-| sellSeats | list[DragonTigerSeat] | No | 标准化的 sell seats 字段. |
+| instrumentId | InstrumentId | 否 | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| name | str | 否 | 经 Provider 标准化的显示名称。 |
+| tradeDate | date | 否 | 数据源交易日期标签；它不是 FinchX 的获取时间。 |
+| tradeId | str | 否 | 标准化的交易 id 字段。 |
+| closePrice | Decimal | 否 | 每股价格；货币为人民币。 |
+| changeRatio | Decimal | 否 | 变动比率；10% 表示为 0.10。 |
+| amount | Decimal | 否 | 成交金额，单位为人民币。 |
+| totalBuy | Decimal | 否 | 金额，单位为人民币。 |
+| totalSell | Decimal | 否 | 金额，单位为人民币。 |
+| totalNet | Decimal | 否 | 金额，单位为人民币。 |
+| explanation | str | 否 | 标准化的说明字段。 |
+| commentKind | str \| None | 是 | 标准化的评论类型字段。 |
+| commentObjectId | str \| None | 是 | 标准化的评论对象 id 字段。 |
+| buySeats | list[DragonTigerSeat] | 否 | 标准化的买方席位字段。 |
+| sellSeats | list[DragonTigerSeat] | 否 | 标准化的卖方席位字段。 |
 
 #### 嵌套记录类型
 
 上述字段使用以下对象类型。Enum 值会直接显示在类型列中。
 
 **`DragonTigerSeat`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| rank | int | Yes | — | 根据数据源数组顺序推导。 |
-| seatName | str | Yes | — | 标准化的 seat name 字段. |
-| sourceSeatCode | str \| None | No | None | 标准化的 数据源 seat code 字段. |
-| hasDetails | bool \| None | No | None | 标准化的 has details 字段. |
-| buyAmount | Decimal | Yes | — | 金额，单位为人民币。 |
-| sellAmount | Decimal | Yes | — | 金额，单位为人民币。 |
-| netAmount | Decimal | Yes | — | 金额，单位为人民币。 |
+| rank | int | 是 | — | 根据数据源数组顺序推导。 |
+| seatName | str | 是 | — | 标准化的席位名称字段。 |
+| sourceSeatCode | str \| None | 否 | None | 标准化的数据源席位代码字段。 |
+| hasDetails | bool \| None | 否 | None | 标准化的详情存在标志字段。 |
+| buyAmount | Decimal | 是 | — | 金额，单位为人民币。 |
+| sellAmount | Decimal | 是 | — | 金额，单位为人民币。 |
+| netAmount | Decimal | 是 | — | 金额，单位为人民币。 |
 
 **`InstrumentId`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | 交易所特定的标的代码。 |
-| market | Market | Yes | — | FinchX 市场标识。 |
-| kind | InstrumentKind | Yes | — | 标的类型。 |
-| exchange | Exchange \| None | No | None | Dataset 需要时使用的交易所身份。 |
+| code | str | 是 | — | 交易所特定的标的代码。 |
+| market | Market | 是 | — | FinchX 市场标识。 |
+| kind | InstrumentKind | 是 | — | 标的类型。 |
+| exchange | Exchange \| None | 否 | None | Dataset 需要时使用的交易所身份。 |
 
 
 #### 示例
@@ -827,8 +827,8 @@ result = fx.market.dragon_tiger_detail(request)
 
 返回指定交易日的 Aigupiao 龙虎榜列表。
 
-**Dataset:** `market.dragon_tiger_list`
-**Schema version:** `1.0`
+**Dataset：** `market.dragon_tiger_list`
+**Schema 版本：** `1.0`
 **已实现的 Provider：** `aigupiao.dragon_tiger`
 **路由语义：** `single_source`。Registry 将此 Dataset 标记为 `single_source`；列出的 Provider 是已实现的特定数据源契约。
 
@@ -842,49 +842,49 @@ fx.market.dragon_tiger_list(request: 'MarketDragonTigerListRequest', *, provider
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | MarketDragonTigerListRequest | Yes | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
-| provider | str \| None | No | None | 严格指定 Provider id。只使用指定的 Provider。（仅限 keyword） |
-| use_cache | bool \| None | No | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限 keyword） |
+| request | MarketDragonTigerListRequest | 是 | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
+| provider | str \| None | 否 | None | 严格指定 Provider id。只使用指定的 Provider。（仅限关键字参数） |
+| use_cache | bool \| None | 否 | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限关键字参数） |
 
-类型化请求模型为 `MarketDragonTigerListRequest`. 其字段如下：
+类型化请求模型为 `MarketDragonTigerListRequest`。其字段如下：
 
 | 请求字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| tradeDate | date | Yes | — | 数据源交易日期标签；它不是 FinchX 的获取时间。 |
+| tradeDate | date | 是 | — | 数据源交易日期标签；它不是 FinchX 的获取时间。 |
 
 #### 返回值
 
-公开方法的类型标注为 `FetchResult[MarketDragonTigerListData]`. FetchResult.data: tuple[StandardRecord, ...]. 每个 StandardRecord 内的 `data` 数据载荷是 `MarketDragonTigerListData` schema 如下.
+公开方法的类型标注为 `FetchResult[MarketDragonTigerListData]`。FetchResult.data：tuple[StandardRecord, ...]。每个 StandardRecord 内的 `data` 数据载荷是 `MarketDragonTigerListData` schema 如下。
 
 #### 返回数据字段
 
 | 字段 | 类型 | 可为空 | 说明 |
 | --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | 完整的标的身份：code、market、kind 和可选的 exchange。 |
-| name | str | No | 经 Provider 标准化的显示名称。 |
-| tradeDate | date | No | 数据源交易日期标签；它不是 FinchX 的获取时间。 |
-| tradeId | str | No | 标准化的交易 id 字段。 |
-| closePrice | Decimal | No | 每股价格；货币为人民币。 |
-| changeRatio | Decimal | No | 变动比率；10% 表示为 0.10。 |
-| amount | Decimal | No | 成交金额，单位为人民币。 |
-| totalBuy | Decimal | No | 金额，单位为人民币。 |
-| totalNet | Decimal | No | 金额，单位为人民币。 |
-| explanation | str | No | 标准化的说明字段。 |
-| threeDayFlag | str \| None | Yes | 标准化的 three day flag 字段. |
-| themeId | int \| None | Yes | 数据源主题标识。 |
-| themeName | str \| None | Yes | 数据源主题名称。 |
+| instrumentId | InstrumentId | 否 | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| name | str | 否 | 经 Provider 标准化的显示名称。 |
+| tradeDate | date | 否 | 数据源交易日期标签；它不是 FinchX 的获取时间。 |
+| tradeId | str | 否 | 标准化的交易 id 字段。 |
+| closePrice | Decimal | 否 | 每股价格；货币为人民币。 |
+| changeRatio | Decimal | 否 | 变动比率；10% 表示为 0.10。 |
+| amount | Decimal | 否 | 成交金额，单位为人民币。 |
+| totalBuy | Decimal | 否 | 金额，单位为人民币。 |
+| totalNet | Decimal | 否 | 金额，单位为人民币。 |
+| explanation | str | 否 | 标准化的说明字段。 |
+| threeDayFlag | str \| None | 是 | 标准化的三日标志字段。 |
+| themeId | int \| None | 是 | 数据源主题标识。 |
+| themeName | str \| None | 是 | 数据源主题名称。 |
 
 #### 嵌套记录类型
 
 上述字段使用以下对象类型。Enum 值会直接显示在类型列中。
 
 **`InstrumentId`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | 交易所特定的标的代码。 |
-| market | Market | Yes | — | FinchX 市场标识。 |
-| kind | InstrumentKind | Yes | — | 标的类型。 |
-| exchange | Exchange \| None | No | None | Dataset 需要时使用的交易所身份。 |
+| code | str | 是 | — | 交易所特定的标的代码。 |
+| market | Market | 是 | — | FinchX 市场标识。 |
+| kind | InstrumentKind | 是 | — | 标的类型。 |
+| exchange | Exchange \| None | 否 | None | Dataset 需要时使用的交易所身份。 |
 
 
 #### 示例
@@ -921,8 +921,8 @@ result = fx.market.dragon_tiger_list(request)
 
 返回一个标的和交易时段的股票盘中观测值。
 
-**Dataset:** `market.equity_intraday`
-**Schema version:** `1.0`
+**Dataset：** `market.equity_intraday`
+**Schema 版本：** `1.0`
 **已实现的 Provider：** `tencent.finance.qq.intraday`
 **路由语义：** `multi_provider`。Registry 将此 Dataset 标记为 `multi_provider`；列出的 Provider 集合就是本版本实际实现的集合。
 
@@ -936,44 +936,44 @@ fx.market.equity_intraday(request: 'EquityIntradayRequest', *, provider: 'str | 
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | EquityIntradayRequest | Yes | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
-| provider | str \| None | No | None | 严格指定 Provider id。只使用指定的 Provider。（仅限 keyword） |
-| use_cache | bool \| None | No | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限 keyword） |
+| request | EquityIntradayRequest | 是 | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
+| provider | str \| None | 否 | None | 严格指定 Provider id。只使用指定的 Provider。（仅限关键字参数） |
+| use_cache | bool \| None | 否 | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限关键字参数） |
 
-类型化请求模型为 `EquityIntradayRequest`. 其字段如下：
+类型化请求模型为 `EquityIntradayRequest`。其字段如下：
 
 | 请求字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| instrumentId | InstrumentId | 是 | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
 
 #### 返回值
 
-公开方法的类型标注为 `FetchResult[EquityIntradayData]`. FetchResult.data: tuple[StandardRecord, ...]. 每个 StandardRecord 内的 `data` 数据载荷是 `EquityIntradayData` schema 如下.
+公开方法的类型标注为 `FetchResult[EquityIntradayData]`。FetchResult.data：tuple[StandardRecord, ...]。每个 StandardRecord 内的 `data` 数据载荷是 `EquityIntradayData` schema 如下。
 
 #### 返回数据字段
 
 | 字段 | 类型 | 可为空 | 说明 |
 | --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | 完整的标的身份：code、market、kind 和可选的 exchange。 |
-| tradeDate | date | No | 数据源交易日期标签；它不是 FinchX 的获取时间。 |
-| time | str | No | 观测值对应的数据源当地时间，通常为 HH：MM。 |
-| price | str | No | 最新或观测到的价格，单位为每股人民币；指数序列除外。 |
-| volume | int | No | 成交量，以整股数表示。 |
-| amount | str | No | 成交金额，单位为人民币。 |
-| cumulativeVolume | int | No | 本交易时段累计成交量，以整股数表示。 |
-| cumulativeAmount | str | No | 累计成交金额，单位为人民币。 |
+| instrumentId | InstrumentId | 否 | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| tradeDate | date | 否 | 数据源交易日期标签；它不是 FinchX 的获取时间。 |
+| time | str | 否 | 观测值对应的数据源当地时间，通常为 HH：MM。 |
+| price | str | 否 | 最新或观测到的价格，单位为每股人民币；指数序列除外。 |
+| volume | int | 否 | 成交量，以整股数表示。 |
+| amount | str | 否 | 成交金额，单位为人民币。 |
+| cumulativeVolume | int | 否 | 本交易时段累计成交量，以整股数表示。 |
+| cumulativeAmount | str | 否 | 累计成交金额，单位为人民币。 |
 
 #### 嵌套记录类型
 
 上述字段使用以下对象类型。Enum 值会直接显示在类型列中。
 
 **`InstrumentId`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | 交易所特定的标的代码。 |
-| market | Market | Yes | — | FinchX 市场标识。 |
-| kind | InstrumentKind | Yes | — | 标的类型。 |
-| exchange | Exchange \| None | No | None | Dataset 需要时使用的交易所身份。 |
+| code | str | 是 | — | 交易所特定的标的代码。 |
+| market | Market | 是 | — | FinchX 市场标识。 |
+| kind | InstrumentKind | 是 | — | 标的类型。 |
+| exchange | Exchange \| None | 否 | None | Dataset 需要时使用的交易所身份。 |
 
 
 #### 示例
@@ -1010,8 +1010,8 @@ result = fx.market.equity_intraday(request)
 
 返回一个标的的数据源五日股票盘中序列。
 
-**Dataset:** `market.equity_intraday_5d`
-**Schema version:** `1.0`
+**Dataset：** `market.equity_intraday_5d`
+**Schema 版本：** `1.0`
 **已实现的 Provider：** `tencent.finance.qq.intraday`
 **路由语义：** `multi_provider`。Registry 将此 Dataset 标记为 `multi_provider`；列出的 Provider 集合就是本版本实际实现的集合。
 
@@ -1025,44 +1025,44 @@ fx.market.equity_intraday_5d(request: 'EquityIntraday5dRequest', *, provider: 's
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | EquityIntraday5dRequest | Yes | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
-| provider | str \| None | No | None | 严格指定 Provider id。只使用指定的 Provider。（仅限 keyword） |
-| use_cache | bool \| None | No | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限 keyword） |
+| request | EquityIntraday5dRequest | 是 | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
+| provider | str \| None | 否 | None | 严格指定 Provider id。只使用指定的 Provider。（仅限关键字参数） |
+| use_cache | bool \| None | 否 | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限关键字参数） |
 
-类型化请求模型为 `EquityIntraday5dRequest`. 其字段如下：
+类型化请求模型为 `EquityIntraday5dRequest`。其字段如下：
 
 | 请求字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| instrumentId | InstrumentId | 是 | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
 
 #### 返回值
 
-公开方法的类型标注为 `FetchResult[EquityIntradayData]`. FetchResult.data: tuple[StandardRecord, ...]. 每个 StandardRecord 内的 `data` 数据载荷是 `EquityIntradayData` schema 如下.
+公开方法的类型标注为 `FetchResult[EquityIntradayData]`。FetchResult.data：tuple[StandardRecord, ...]。每个 StandardRecord 内的 `data` 数据载荷是 `EquityIntradayData` schema 如下。
 
 #### 返回数据字段
 
 | 字段 | 类型 | 可为空 | 说明 |
 | --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | 完整的标的身份：code、market、kind 和可选的 exchange。 |
-| tradeDate | date | No | 数据源交易日期标签；它不是 FinchX 的获取时间。 |
-| time | str | No | 观测值对应的数据源当地时间，通常为 HH：MM。 |
-| price | str | No | 最新或观测到的价格，单位为每股人民币；指数序列除外。 |
-| volume | int | No | 成交量，以整股数表示。 |
-| amount | str | No | 成交金额，单位为人民币。 |
-| cumulativeVolume | int | No | 本交易时段累计成交量，以整股数表示。 |
-| cumulativeAmount | str | No | 累计成交金额，单位为人民币。 |
+| instrumentId | InstrumentId | 否 | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| tradeDate | date | 否 | 数据源交易日期标签；它不是 FinchX 的获取时间。 |
+| time | str | 否 | 观测值对应的数据源当地时间，通常为 HH：MM。 |
+| price | str | 否 | 最新或观测到的价格，单位为每股人民币；指数序列除外。 |
+| volume | int | 否 | 成交量，以整股数表示。 |
+| amount | str | 否 | 成交金额，单位为人民币。 |
+| cumulativeVolume | int | 否 | 本交易时段累计成交量，以整股数表示。 |
+| cumulativeAmount | str | 否 | 累计成交金额，单位为人民币。 |
 
 #### 嵌套记录类型
 
 上述字段使用以下对象类型。Enum 值会直接显示在类型列中。
 
 **`InstrumentId`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | 交易所特定的标的代码。 |
-| market | Market | Yes | — | FinchX 市场标识。 |
-| kind | InstrumentKind | Yes | — | 标的类型。 |
-| exchange | Exchange \| None | No | None | Dataset 需要时使用的交易所身份。 |
+| code | str | 是 | — | 交易所特定的标的代码。 |
+| market | Market | 是 | — | FinchX 市场标识。 |
+| kind | InstrumentKind | 是 | — | 标的类型。 |
+| exchange | Exchange \| None | 否 | None | Dataset 需要时使用的交易所身份。 |
 
 
 #### 示例
@@ -1099,8 +1099,8 @@ result = fx.market.equity_intraday_5d(request)
 
 返回一个标的的每日主力资金净流入观测值。
 
-**Dataset:** `market.fund_flow_daily`
-**Schema version:** `1.0`
+**Dataset：** `market.fund_flow_daily`
+**Schema 版本：** `1.0`
 **已实现的 Provider：** `tencent.finance.qq.fund_flow`
 **路由语义：** `multi_provider`。Registry 将此 Dataset 标记为 `multi_provider`；列出的 Provider 集合就是本版本实际实现的集合。
 
@@ -1114,40 +1114,40 @@ fx.market.fund_flow_daily(request: 'MarketFundFlowRequest', *, provider: 'str | 
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | MarketFundFlowRequest | Yes | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
-| provider | str \| None | No | None | 严格指定 Provider id。只使用指定的 Provider。（仅限 keyword） |
-| use_cache | bool \| None | No | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限 keyword） |
+| request | MarketFundFlowRequest | 是 | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
+| provider | str \| None | 否 | None | 严格指定 Provider id。只使用指定的 Provider。（仅限关键字参数） |
+| use_cache | bool \| None | 否 | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限关键字参数） |
 
-类型化请求模型为 `MarketFundFlowRequest`. 其字段如下：
+类型化请求模型为 `MarketFundFlowRequest`。其字段如下：
 
 | 请求字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| instrumentId | InstrumentId | 是 | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
 
 #### 返回值
 
-公开方法的类型标注为 `FetchResult[MarketFundFlowDailyData]`. FetchResult.data: tuple[StandardRecord, ...]. 每个 StandardRecord 内的 `data` 数据载荷是 `MarketFundFlowDailyData` schema 如下.
+公开方法的类型标注为 `FetchResult[MarketFundFlowDailyData]`。FetchResult.data：tuple[StandardRecord, ...]。每个 StandardRecord 内的 `data` 数据载荷是 `MarketFundFlowDailyData` schema 如下。
 
 #### 返回数据字段
 
 | 字段 | 类型 | 可为空 | 说明 |
 | --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | 完整的标的身份：code、market、kind 和可选的 exchange。 |
-| tradeDate | date | No | 数据源交易日期标签；它不是 FinchX 的获取时间。 |
-| mainNetInflow | Decimal | No | 主力资金净流入，单位为人民币。 |
-| close | Decimal | No | 收盘价格；按标的类型计为每股人民币或指数点。 |
+| instrumentId | InstrumentId | 否 | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| tradeDate | date | 否 | 数据源交易日期标签；它不是 FinchX 的获取时间。 |
+| mainNetInflow | Decimal | 否 | 主力资金净流入，单位为人民币。 |
+| close | Decimal | 否 | 收盘价格；按标的类型计为每股人民币或指数点。 |
 
 #### 嵌套记录类型
 
 上述字段使用以下对象类型。Enum 值会直接显示在类型列中。
 
 **`InstrumentId`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | 交易所特定的标的代码。 |
-| market | Market | Yes | — | FinchX 市场标识。 |
-| kind | InstrumentKind | Yes | — | 标的类型。 |
-| exchange | Exchange \| None | No | None | Dataset 需要时使用的交易所身份。 |
+| code | str | 是 | — | 交易所特定的标的代码。 |
+| market | Market | 是 | — | FinchX 市场标识。 |
+| kind | InstrumentKind | 是 | — | 标的类型。 |
+| exchange | Exchange \| None | 否 | None | Dataset 需要时使用的交易所身份。 |
 
 
 #### 示例
@@ -1184,8 +1184,8 @@ result = fx.market.fund_flow_daily(request)
 
 返回一个标的的累计盘中资金流观测值。
 
-**Dataset:** `market.fund_flow_intraday`
-**Schema version:** `1.0`
+**Dataset：** `market.fund_flow_intraday`
+**Schema 版本：** `1.0`
 **已实现的 Provider：** `tencent.finance.qq.fund_flow`
 **路由语义：** `multi_provider`。Registry 将此 Dataset 标记为 `multi_provider`；列出的 Provider 集合就是本版本实际实现的集合。
 
@@ -1199,48 +1199,48 @@ fx.market.fund_flow_intraday(request: 'MarketFundFlowRequest', *, provider: 'str
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | MarketFundFlowRequest | Yes | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
-| provider | str \| None | No | None | 严格指定 Provider id。只使用指定的 Provider。（仅限 keyword） |
-| use_cache | bool \| None | No | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限 keyword） |
+| request | MarketFundFlowRequest | 是 | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
+| provider | str \| None | 否 | None | 严格指定 Provider id。只使用指定的 Provider。（仅限关键字参数） |
+| use_cache | bool \| None | 否 | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限关键字参数） |
 
-类型化请求模型为 `MarketFundFlowRequest`. 其字段如下：
+类型化请求模型为 `MarketFundFlowRequest`。其字段如下：
 
 | 请求字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| instrumentId | InstrumentId | 是 | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
 
 #### 返回值
 
-公开方法的类型标注为 `FetchResult[MarketFundFlowIntradayData]`. FetchResult.data: tuple[StandardRecord, ...]. 每个 StandardRecord 内的 `data` 数据载荷是 `MarketFundFlowIntradayData` schema 如下.
+公开方法的类型标注为 `FetchResult[MarketFundFlowIntradayData]`。FetchResult.data：tuple[StandardRecord, ...]。每个 StandardRecord 内的 `data` 数据载荷是 `MarketFundFlowIntradayData` schema 如下。
 
 #### 返回数据字段
 
 | 字段 | 类型 | 可为空 | 说明 |
 | --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | 完整的标的身份：code、market、kind 和可选的 exchange。 |
-| tradeDate | date | No | 数据源交易日期标签；它不是 FinchX 的获取时间。 |
-| time | str | No | 观测值对应的数据源当地时间，通常为 HH：MM。 |
-| price | Decimal | No | 最新或观测到的价格，单位为每股人民币；指数序列除外。 |
-| cumulativeMainNetInflow | Decimal | No | Cumulative main-fund net inflow 单位为人民币. |
-| cumulativeRetailNetInflow | Decimal | No | Cumulative retail-fund net inflow 单位为人民币. |
-| cumulativeSuperLargeNetInflow | Decimal | No | Cumulative super-large-order net inflow 单位为人民币. |
-| cumulativeLargeNetInflow | Decimal | No | Cumulative large-order net inflow 单位为人民币. |
-| cumulativeMediumNetInflow | Decimal | No | Cumulative medium-order net inflow 单位为人民币. |
-| cumulativeSmallNetInflow | Decimal | No | Cumulative small-order net inflow 单位为人民币. |
-| cumulativeMainInflow | Decimal | No | Cumulative main-fund inflow 单位为人民币. |
-| cumulativeMainOutflow | Decimal | No | Cumulative main-fund outflow 单位为人民币. |
+| instrumentId | InstrumentId | 否 | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| tradeDate | date | 否 | 数据源交易日期标签；它不是 FinchX 的获取时间。 |
+| time | str | 否 | 观测值对应的数据源当地时间，通常为 HH：MM。 |
+| price | Decimal | 否 | 最新或观测到的价格，单位为每股人民币；指数序列除外。 |
+| cumulativeMainNetInflow | Decimal | 否 | 累计主力资金净流入，单位为人民币。 |
+| cumulativeRetailNetInflow | Decimal | 否 | 累计散户资金净流入，单位为人民币。 |
+| cumulativeSuperLargeNetInflow | Decimal | 否 | 累计超大单净流入，单位为人民币。 |
+| cumulativeLargeNetInflow | Decimal | 否 | 累计大单净流入，单位为人民币。 |
+| cumulativeMediumNetInflow | Decimal | 否 | 累计中单净流入，单位为人民币。 |
+| cumulativeSmallNetInflow | Decimal | 否 | 累计小单净流入，单位为人民币。 |
+| cumulativeMainInflow | Decimal | 否 | 累计主力资金流入，单位为人民币。 |
+| cumulativeMainOutflow | Decimal | 否 | 累计主力资金流出，单位为人民币。 |
 
 #### 嵌套记录类型
 
 上述字段使用以下对象类型。Enum 值会直接显示在类型列中。
 
 **`InstrumentId`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | 交易所特定的标的代码。 |
-| market | Market | Yes | — | FinchX 市场标识。 |
-| kind | InstrumentKind | Yes | — | 标的类型。 |
-| exchange | Exchange \| None | No | None | Dataset 需要时使用的交易所身份。 |
+| code | str | 是 | — | 交易所特定的标的代码。 |
+| market | Market | 是 | — | FinchX 市场标识。 |
+| kind | InstrumentKind | 是 | — | 标的类型。 |
+| exchange | Exchange \| None | 否 | None | Dataset 需要时使用的交易所身份。 |
 
 
 #### 示例
@@ -1277,8 +1277,8 @@ result = fx.market.fund_flow_intraday(request)
 
 返回当前资金流快照及分类级别的流入/流出金额。
 
-**Dataset:** `market.fund_flow_snapshot`
-**Schema version:** `1.0`
+**Dataset：** `market.fund_flow_snapshot`
+**Schema 版本：** `1.0`
 **已实现的 Provider：** `tencent.finance.qq.fund_flow`
 **路由语义：** `multi_provider`。Registry 将此 Dataset 标记为 `multi_provider`；列出的 Provider 集合就是本版本实际实现的集合。
 
@@ -1292,51 +1292,51 @@ fx.market.fund_flow_snapshot(request: 'MarketFundFlowRequest', *, provider: 'str
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | MarketFundFlowRequest | Yes | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
-| provider | str \| None | No | None | 严格指定 Provider id。只使用指定的 Provider。（仅限 keyword） |
-| use_cache | bool \| None | No | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限 keyword） |
+| request | MarketFundFlowRequest | 是 | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
+| provider | str \| None | 否 | None | 严格指定 Provider id。只使用指定的 Provider。（仅限关键字参数） |
+| use_cache | bool \| None | 否 | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限关键字参数） |
 
-类型化请求模型为 `MarketFundFlowRequest`. 其字段如下：
+类型化请求模型为 `MarketFundFlowRequest`。其字段如下：
 
 | 请求字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| instrumentId | InstrumentId | 是 | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
 
 #### 返回值
 
-公开方法的类型标注为 `FetchResult[MarketFundFlowSnapshotData]`. FetchResult.data: StandardRecord. 每个 StandardRecord 内的 `data` 数据载荷是 `MarketFundFlowSnapshotData` schema 如下.
+公开方法的类型标注为 `FetchResult[MarketFundFlowSnapshotData]`。FetchResult.data：StandardRecord。每个 StandardRecord 内的 `data` 数据载荷是 `MarketFundFlowSnapshotData` schema 如下。
 
 #### 返回数据字段
 
 | 字段 | 类型 | 可为空 | 说明 |
 | --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | 完整的标的身份：code、market、kind 和可选的 exchange。 |
-| tradeDate | date | No | 数据源交易日期标签；它不是 FinchX 的获取时间。 |
-| mainNetInflow | Decimal | No | 主力资金净流入，单位为人民币。 |
-| mainInflow | Decimal | No | 主力资金流入，单位为人民币。 |
-| mainOutflow | Decimal | No | 主力资金流出，单位为人民币。 |
-| mainInflowRate | Decimal | No | Main-fund inflow 比率. |
-| mainOutflowRate | Decimal | No | Main-fund outflow 比率. |
-| retailInflow | Decimal | No | Retail-fund inflow 单位为人民币. |
-| retailOutflow | Decimal | No | Retail-fund outflow 单位为人民币. |
-| retailInflowRate | Decimal | No | Retail-fund inflow 比率. |
-| retailOutflowRate | Decimal | No | Retail-fund outflow 比率. |
-| superLargeNetInflow | Decimal | No | Super-large-order net inflow 单位为人民币. |
-| largeNetInflow | Decimal | No | Large-order net inflow 单位为人民币. |
-| mediumNetInflow | Decimal | No | Medium-order net inflow 单位为人民币. |
-| smallNetInflow | Decimal | No | Small-order net inflow 单位为人民币. |
+| instrumentId | InstrumentId | 否 | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| tradeDate | date | 否 | 数据源交易日期标签；它不是 FinchX 的获取时间。 |
+| mainNetInflow | Decimal | 否 | 主力资金净流入，单位为人民币。 |
+| mainInflow | Decimal | 否 | 主力资金流入，单位为人民币。 |
+| mainOutflow | Decimal | 否 | 主力资金流出，单位为人民币。 |
+| mainInflowRate | Decimal | 否 | 主力资金流入比率。 |
+| mainOutflowRate | Decimal | 否 | 主力资金流出比率。 |
+| retailInflow | Decimal | 否 | 散户资金流入，单位为人民币。 |
+| retailOutflow | Decimal | 否 | 散户资金流出，单位为人民币。 |
+| retailInflowRate | Decimal | 否 | 散户资金流入比率。 |
+| retailOutflowRate | Decimal | 否 | 散户资金流出比率。 |
+| superLargeNetInflow | Decimal | 否 | 超大单净流入，单位为人民币。 |
+| largeNetInflow | Decimal | 否 | 大单净流入，单位为人民币。 |
+| mediumNetInflow | Decimal | 否 | 中单净流入，单位为人民币。 |
+| smallNetInflow | Decimal | 否 | 小单净流入，单位为人民币。 |
 
 #### 嵌套记录类型
 
 上述字段使用以下对象类型。Enum 值会直接显示在类型列中。
 
 **`InstrumentId`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | 交易所特定的标的代码。 |
-| market | Market | Yes | — | FinchX 市场标识。 |
-| kind | InstrumentKind | Yes | — | 标的类型。 |
-| exchange | Exchange \| None | No | None | Dataset 需要时使用的交易所身份。 |
+| code | str | 是 | — | 交易所特定的标的代码。 |
+| market | Market | 是 | — | FinchX 市场标识。 |
+| kind | InstrumentKind | 是 | — | 标的类型。 |
+| exchange | Exchange \| None | 否 | None | Dataset 需要时使用的交易所身份。 |
 
 
 #### 示例
@@ -1373,8 +1373,8 @@ result = fx.market.fund_flow_snapshot(request)
 
 返回一个指数标的和交易时段的盘中指数观测值。
 
-**Dataset:** `market.index_intraday`
-**Schema version:** `1.0`
+**Dataset：** `market.index_intraday`
+**Schema 版本：** `1.0`
 **已实现的 Provider：** `tencent.finance.qq.intraday`
 **路由语义：** `multi_provider`。Registry 将此 Dataset 标记为 `multi_provider`；列出的 Provider 集合就是本版本实际实现的集合。
 
@@ -1388,44 +1388,44 @@ fx.market.index_intraday(request: 'IndexIntradayRequest', *, provider: 'str | No
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | IndexIntradayRequest | Yes | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
-| provider | str \| None | No | None | 严格指定 Provider id。只使用指定的 Provider。（仅限 keyword） |
-| use_cache | bool \| None | No | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限 keyword） |
+| request | IndexIntradayRequest | 是 | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
+| provider | str \| None | 否 | None | 严格指定 Provider id。只使用指定的 Provider。（仅限关键字参数） |
+| use_cache | bool \| None | 否 | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限关键字参数） |
 
-类型化请求模型为 `IndexIntradayRequest`. 其字段如下：
+类型化请求模型为 `IndexIntradayRequest`。其字段如下：
 
 | 请求字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| instrumentId | InstrumentId | 是 | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
 
 #### 返回值
 
-公开方法的类型标注为 `FetchResult[IndexIntradayData]`. FetchResult.data: tuple[StandardRecord, ...]. 每个 StandardRecord 内的 `data` 数据载荷是 `IndexIntradayData` schema 如下.
+公开方法的类型标注为 `FetchResult[IndexIntradayData]`。FetchResult.data：tuple[StandardRecord, ...]。每个 StandardRecord 内的 `data` 数据载荷是 `IndexIntradayData` schema 如下。
 
 #### 返回数据字段
 
 | 字段 | 类型 | 可为空 | 说明 |
 | --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | 完整的标的身份：code、market、kind 和可选的 exchange。 |
-| tradeDate | date | No | 数据源交易日期标签；它不是 FinchX 的获取时间。 |
-| time | str | No | 观测值对应的数据源当地时间，通常为 HH：MM。 |
-| price | str | No | 最新或观测到的价格，单位为每股人民币；指数序列除外。 |
-| volume | int | No | 成交量，以整股数表示。 |
-| amount | str | No | 成交金额，单位为人民币。 |
-| cumulativeVolume | int | No | 本交易时段累计成交量，以整股数表示。 |
-| cumulativeAmount | str | No | 累计成交金额，单位为人民币。 |
+| instrumentId | InstrumentId | 否 | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| tradeDate | date | 否 | 数据源交易日期标签；它不是 FinchX 的获取时间。 |
+| time | str | 否 | 观测值对应的数据源当地时间，通常为 HH：MM。 |
+| price | str | 否 | 最新或观测到的价格，单位为每股人民币；指数序列除外。 |
+| volume | int | 否 | 成交量，以整股数表示。 |
+| amount | str | 否 | 成交金额，单位为人民币。 |
+| cumulativeVolume | int | 否 | 本交易时段累计成交量，以整股数表示。 |
+| cumulativeAmount | str | 否 | 累计成交金额，单位为人民币。 |
 
 #### 嵌套记录类型
 
 上述字段使用以下对象类型。Enum 值会直接显示在类型列中。
 
 **`InstrumentId`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | 交易所特定的标的代码。 |
-| market | Market | Yes | — | FinchX 市场标识。 |
-| kind | InstrumentKind | Yes | — | 标的类型。 |
-| exchange | Exchange \| None | No | None | Dataset 需要时使用的交易所身份。 |
+| code | str | 是 | — | 交易所特定的标的代码。 |
+| market | Market | 是 | — | FinchX 市场标识。 |
+| kind | InstrumentKind | 是 | — | 标的类型。 |
+| exchange | Exchange \| None | 否 | None | Dataset 需要时使用的交易所身份。 |
 
 
 #### 示例
@@ -1462,8 +1462,8 @@ result = fx.market.index_intraday(request)
 
 返回一个指数标的的数据源五日盘中指数序列。
 
-**Dataset:** `market.index_intraday_5d`
-**Schema version:** `1.0`
+**Dataset：** `market.index_intraday_5d`
+**Schema 版本：** `1.0`
 **已实现的 Provider：** `tencent.finance.qq.intraday`
 **路由语义：** `multi_provider`。Registry 将此 Dataset 标记为 `multi_provider`；列出的 Provider 集合就是本版本实际实现的集合。
 
@@ -1477,44 +1477,44 @@ fx.market.index_intraday_5d(request: 'IndexIntraday5dRequest', *, provider: 'str
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | IndexIntraday5dRequest | Yes | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
-| provider | str \| None | No | None | 严格指定 Provider id。只使用指定的 Provider。（仅限 keyword） |
-| use_cache | bool \| None | No | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限 keyword） |
+| request | IndexIntraday5dRequest | 是 | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
+| provider | str \| None | 否 | None | 严格指定 Provider id。只使用指定的 Provider。（仅限关键字参数） |
+| use_cache | bool \| None | 否 | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限关键字参数） |
 
-类型化请求模型为 `IndexIntraday5dRequest`. 其字段如下：
+类型化请求模型为 `IndexIntraday5dRequest`。其字段如下：
 
 | 请求字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| instrumentId | InstrumentId | 是 | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
 
 #### 返回值
 
-公开方法的类型标注为 `FetchResult[IndexIntradayData]`. FetchResult.data: tuple[StandardRecord, ...]. 每个 StandardRecord 内的 `data` 数据载荷是 `IndexIntradayData` schema 如下.
+公开方法的类型标注为 `FetchResult[IndexIntradayData]`。FetchResult.data：tuple[StandardRecord, ...]。每个 StandardRecord 内的 `data` 数据载荷是 `IndexIntradayData` schema 如下。
 
 #### 返回数据字段
 
 | 字段 | 类型 | 可为空 | 说明 |
 | --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | 完整的标的身份：code、market、kind 和可选的 exchange。 |
-| tradeDate | date | No | 数据源交易日期标签；它不是 FinchX 的获取时间。 |
-| time | str | No | 观测值对应的数据源当地时间，通常为 HH：MM。 |
-| price | str | No | 最新或观测到的价格，单位为每股人民币；指数序列除外。 |
-| volume | int | No | 成交量，以整股数表示。 |
-| amount | str | No | 成交金额，单位为人民币。 |
-| cumulativeVolume | int | No | 本交易时段累计成交量，以整股数表示。 |
-| cumulativeAmount | str | No | 累计成交金额，单位为人民币。 |
+| instrumentId | InstrumentId | 否 | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| tradeDate | date | 否 | 数据源交易日期标签；它不是 FinchX 的获取时间。 |
+| time | str | 否 | 观测值对应的数据源当地时间，通常为 HH：MM。 |
+| price | str | 否 | 最新或观测到的价格，单位为每股人民币；指数序列除外。 |
+| volume | int | 否 | 成交量，以整股数表示。 |
+| amount | str | 否 | 成交金额，单位为人民币。 |
+| cumulativeVolume | int | 否 | 本交易时段累计成交量，以整股数表示。 |
+| cumulativeAmount | str | 否 | 累计成交金额，单位为人民币。 |
 
 #### 嵌套记录类型
 
 上述字段使用以下对象类型。Enum 值会直接显示在类型列中。
 
 **`InstrumentId`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | 交易所特定的标的代码。 |
-| market | Market | Yes | — | FinchX 市场标识。 |
-| kind | InstrumentKind | Yes | — | 标的类型。 |
-| exchange | Exchange \| None | No | None | Dataset 需要时使用的交易所身份。 |
+| code | str | 是 | — | 交易所特定的标的代码。 |
+| market | Market | 是 | — | FinchX 市场标识。 |
+| kind | InstrumentKind | 是 | — | 标的类型。 |
+| exchange | Exchange \| None | 否 | None | Dataset 需要时使用的交易所身份。 |
 
 
 #### 示例
@@ -1551,8 +1551,8 @@ result = fx.market.index_intraday_5d(request)
 
 使用腾讯行业契约，将一个标的与其行业汇总值及更广泛市场进行比较。
 
-**Dataset:** `market.industry_comparison`
-**Schema version:** `1.0`
+**Dataset：** `market.industry_comparison`
+**Schema 版本：** `1.0`
 **已实现的 Provider：** `tencent.finance.qq.industry`
 **路由语义：** `single_source`。Registry 将此 Dataset 标记为 `single_source`；列出的 Provider 是已实现的特定数据源契约。
 
@@ -1566,78 +1566,78 @@ fx.market.industry_comparison(request: 'MarketIndustryComparisonRequest', *, pro
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | MarketIndustryComparisonRequest | Yes | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
-| provider | str \| None | No | None | 严格指定 Provider id。只使用指定的 Provider。（仅限 keyword） |
-| use_cache | bool \| None | No | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限 keyword） |
+| request | MarketIndustryComparisonRequest | 是 | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
+| provider | str \| None | 否 | None | 严格指定 Provider id。只使用指定的 Provider。（仅限关键字参数） |
+| use_cache | bool \| None | 否 | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限关键字参数） |
 
-类型化请求模型为 `MarketIndustryComparisonRequest`. 其字段如下：
+类型化请求模型为 `MarketIndustryComparisonRequest`。其字段如下：
 
 | 请求字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| instrumentId | InstrumentId | 是 | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
 
 #### 返回值
 
-公开方法的类型标注为 `FetchResult[MarketIndustryComparisonData]`. FetchResult.data: StandardRecord. 每个 StandardRecord 内的 `data` 数据载荷是 `MarketIndustryComparisonData` schema 如下.
+公开方法的类型标注为 `FetchResult[MarketIndustryComparisonData]`。FetchResult.data：StandardRecord。每个 StandardRecord 内的 `data` 数据载荷是 `MarketIndustryComparisonData` schema 如下。
 
 #### 返回数据字段
 
 | 字段 | 类型 | 可为空 | 说明 |
 | --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | 完整的标的身份：code、market、kind 和可选的 exchange。 |
-| industry | IndustryIdentity | No | 数据源提供的行业标签。 |
-| instrumentValues | IndustryComparisonValues | No | Instrument 值 使用的 in 该 comparison. |
-| industryRanks | IndustryComparisonRanks | No | Industry-relative ranks supplied by 该 数据源. |
-| industryAggregate | IndustryAggregate | No | Industry aggregate 值 supplied by 该 数据源. |
-| marketAggregate | MarketAggregate | No | Broad-market aggregate 值 supplied by 该 数据源. |
+| instrumentId | InstrumentId | 否 | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| industry | IndustryIdentity | 否 | 数据源提供的行业标签。 |
+| instrumentValues | IndustryComparisonValues | 否 | 该比较使用的标的数值。 |
+| industryRanks | IndustryComparisonRanks | 否 | 数据源提供的行业相对排名。 |
+| industryAggregate | IndustryAggregate | 否 | 数据源提供的行业汇总值。 |
+| marketAggregate | MarketAggregate | 否 | 数据源提供的广泛市场汇总值。 |
 
 #### 嵌套记录类型
 
 上述字段使用以下对象类型。Enum 值会直接显示在类型列中。
 
 **`IndustryAggregate`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| priceEarnings | Decimal \| None | No | None | 标准化的市盈率字段。 |
-| earningsPerShare | Decimal \| None | No | None | 腾讯 mgsy，单位为每股人民币；此处不提供报告期语义。 |
-| marketCapitalization | Decimal \| None | No | None | 总市值，单位为人民币。 |
-| count | int \| None | No | None | 标准化的 数量 字段. |
+| priceEarnings | Decimal \| None | 否 | None | 标准化的市盈率字段。 |
+| earningsPerShare | Decimal \| None | 否 | None | 腾讯 mgsy，单位为每股人民币；此处不提供报告期语义。 |
+| marketCapitalization | Decimal \| None | 否 | None | 总市值，单位为人民币。 |
+| count | int \| None | 否 | None | 标准化的数量字段。 |
 
 **`IndustryComparisonRanks`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| priceEarningsRank | int \| None | No | None | 标准化的 价格 earnings rank 字段. |
-| earningsPerShareRank | int \| None | No | None | 标准化的 earnings 每股 rank 字段. |
-| marketCapitalizationRank | int \| None | No | None | 标准化的 market capitalization rank 字段. |
+| priceEarningsRank | int \| None | 否 | None | 标准化的市盈率排名字段。 |
+| earningsPerShareRank | int \| None | 否 | None | 标准化的每股收益排名字段。 |
+| marketCapitalizationRank | int \| None | 否 | None | 标准化的市值排名字段。 |
 
 **`IndustryComparisonValues`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| priceEarnings | Decimal \| None | No | None | 标准化的市盈率字段。 |
-| earningsPerShare | Decimal \| None | No | None | 腾讯 mgsy，单位为每股人民币；此处不提供报告期语义。 |
-| marketCapitalization | Decimal \| None | No | None | 总市值，单位为人民币。 |
+| priceEarnings | Decimal \| None | 否 | None | 标准化的市盈率字段。 |
+| earningsPerShare | Decimal \| None | 否 | None | 腾讯 mgsy，单位为每股人民币；此处不提供报告期语义。 |
+| marketCapitalization | Decimal \| None | 否 | None | 总市值，单位为人民币。 |
 
 **`IndustryIdentity`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| providerNamespace | 'tencent_hypm' | Yes | — | 保留为公开身份的数据源特定 namespace。 |
-| providerIndustryId | str | Yes | — | 标准化的 Provider industry id 字段. |
-| name | str | Yes | — | 经 Provider 标准化的显示名称。 |
+| providerNamespace | 'tencent_hypm' | 是 | — | 保留为公开身份的数据源特定 namespace。 |
+| providerIndustryId | str | 是 | — | 标准化的 Provider 行业 id 字段。 |
+| name | str | 是 | — | 经 Provider 标准化的显示名称。 |
 
 **`InstrumentId`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | 交易所特定的标的代码。 |
-| market | Market | Yes | — | FinchX 市场标识。 |
-| kind | InstrumentKind | Yes | — | 标的类型。 |
-| exchange | Exchange \| None | No | None | Dataset 需要时使用的交易所身份。 |
+| code | str | 是 | — | 交易所特定的标的代码。 |
+| market | Market | 是 | — | FinchX 市场标识。 |
+| kind | InstrumentKind | 是 | — | 标的类型。 |
+| exchange | Exchange \| None | 否 | None | Dataset 需要时使用的交易所身份。 |
 
 **`MarketAggregate`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| priceEarnings | Decimal \| None | No | None | 标准化的市盈率字段。 |
-| earningsPerShare | Decimal \| None | No | None | 腾讯 mgsy，单位为每股人民币；此处不提供报告期语义。 |
-| marketCapitalization | Decimal \| None | No | None | 总市值，单位为人民币。 |
+| priceEarnings | Decimal \| None | 否 | None | 标准化的市盈率字段。 |
+| earningsPerShare | Decimal \| None | 否 | None | 腾讯 mgsy，单位为每股人民币；此处不提供报告期语义。 |
+| marketCapitalization | Decimal \| None | 否 | None | 总市值，单位为人民币。 |
 
 
 #### 示例
@@ -1674,8 +1674,8 @@ result = fx.market.industry_comparison(request)
 
 返回附加到一个标的上的腾讯地域、行业和概念标签。
 
-**Dataset:** `market.instrument_sector_snapshot`
-**Schema version:** `1.0`
+**Dataset：** `market.instrument_sector_snapshot`
+**Schema 版本：** `1.0`
 **已实现的 Provider：** `tencent.finance.qq.sector`
 **路由语义：** `single_source`。Registry 将此 Dataset 标记为 `single_source`；列出的 Provider 是已实现的特定数据源契约。
 
@@ -1689,49 +1689,49 @@ fx.market.instrument_sector_snapshot(request: 'MarketInstrumentSectorSnapshotReq
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | MarketInstrumentSectorSnapshotRequest | Yes | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
-| provider | str \| None | No | None | 严格指定 Provider id。只使用指定的 Provider。（仅限 keyword） |
-| use_cache | bool \| None | No | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限 keyword） |
+| request | MarketInstrumentSectorSnapshotRequest | 是 | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
+| provider | str \| None | 否 | None | 严格指定 Provider id。只使用指定的 Provider。（仅限关键字参数） |
+| use_cache | bool \| None | 否 | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限关键字参数） |
 
-类型化请求模型为 `MarketInstrumentSectorSnapshotRequest`. 其字段如下：
+类型化请求模型为 `MarketInstrumentSectorSnapshotRequest`。其字段如下：
 
 | 请求字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| instrumentId | InstrumentId | 是 | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
 
 #### 返回值
 
-公开方法的类型标注为 `FetchResult[MarketInstrumentSectorSnapshotData]`. FetchResult.data: StandardRecord. 每个 StandardRecord 内的 `data` 数据载荷是 `MarketInstrumentSectorSnapshotData` schema 如下.
+公开方法的类型标注为 `FetchResult[MarketInstrumentSectorSnapshotData]`。FetchResult.data：StandardRecord。每个 StandardRecord 内的 `data` 数据载荷是 `MarketInstrumentSectorSnapshotData` schema 如下。
 
 #### 返回数据字段
 
 | 字段 | 类型 | 可为空 | 说明 |
 | --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | 完整的标的身份：code、market、kind 和可选的 exchange。 |
-| sectors | list[InstrumentSectorEntry] | No | Sector-tag entries attached to 该 instrument. |
+| instrumentId | InstrumentId | 否 | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| sectors | list[InstrumentSectorEntry] | 否 | 附加到该标的的板块标签条目。 |
 
 #### 嵌套记录类型
 
 上述字段使用以下对象类型。Enum 值会直接显示在类型列中。
 
 **`InstrumentId`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | 交易所特定的标的代码。 |
-| market | Market | Yes | — | FinchX 市场标识。 |
-| kind | InstrumentKind | Yes | — | 标的类型。 |
-| exchange | Exchange \| None | No | None | Dataset 需要时使用的交易所身份。 |
+| code | str | 是 | — | 交易所特定的标的代码。 |
+| market | Market | 是 | — | FinchX 市场标识。 |
+| kind | InstrumentKind | 是 | — | 标的类型。 |
+| exchange | Exchange \| None | 否 | None | Dataset 需要时使用的交易所身份。 |
 
 **`InstrumentSectorEntry`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| sectorType | Literal['area', 'industry', 'concept'] | Yes | — | Sector tag type： area, industry 或 concept. |
-| sectorName | str | Yes | — | Provider sector name. |
-| providerNamespace | 'tencent_plate' | Yes | — | 保留为公开身份的数据源特定 namespace。 |
-| providerSectorId | str | Yes | — | 数据源特定的 sector 标识. |
-| level | int \| None | No | None | 盘口档位编号或板块层级，取决于具体模型。 |
-| tag | str \| None | No | None | 可选的 数据源 tag. |
-| changePct | Decimal \| None | No | None | Tencent zdf converted 来自 percentage points to a 比率 fraction. |
+| sectorType | Literal['area', 'industry', 'concept'] | 是 | — | 板块标签类型：area、industry 或 concept。 |
+| sectorName | str | 是 | — | Provider 提供的板块名称。 |
+| providerNamespace | 'tencent_plate' | 是 | — | 保留为公开身份的数据源特定 namespace。 |
+| providerSectorId | str | 是 | — | 数据源特定的板块标识。 |
+| level | int \| None | 否 | None | 盘口档位编号或板块层级，取决于具体模型。 |
+| tag | str \| None | 否 | None | 可选的数据源标签。 |
+| changePct | Decimal \| None | 否 | None | 腾讯 zdf 从百分点转换得到的比率小数。 |
 
 
 #### 示例
@@ -1768,8 +1768,8 @@ result = fx.market.instrument_sector_snapshot(request)
 
 返回一个股票的数据源热门关键词/概念快照；这是结构化的数据源排名数据，不是 NLP 抽取结果。
 
-**Dataset:** `market.stock_keyword`
-**Schema version:** `1.0`
+**Dataset：** `market.stock_keyword`
+**Schema 版本：** `1.0`
 **已实现的 Provider：** `eastmoney.stockrank`
 **路由语义：** `single_source`。Registry 将此 Dataset 标记为 `single_source`；列出的 Provider 是已实现的特定数据源契约。
 
@@ -1783,47 +1783,47 @@ fx.market.stock_keyword(request: 'MarketStockKeywordRequest', *, provider: 'str 
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | MarketStockKeywordRequest | Yes | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
-| provider | str \| None | No | None | 严格指定 Provider id。只使用指定的 Provider。（仅限 keyword） |
-| use_cache | bool \| None | No | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限 keyword） |
+| request | MarketStockKeywordRequest | 是 | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
+| provider | str \| None | 否 | None | 严格指定 Provider id。只使用指定的 Provider。（仅限关键字参数） |
+| use_cache | bool \| None | 否 | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限关键字参数） |
 
-类型化请求模型为 `MarketStockKeywordRequest`. 其字段如下：
+类型化请求模型为 `MarketStockKeywordRequest`。其字段如下：
 
 | 请求字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| instrumentId | InstrumentId | 是 | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
 
 #### 返回值
 
-公开方法的类型标注为 `FetchResult[MarketStockKeywordData]`. FetchResult.data: StandardRecord. 每个 StandardRecord 内的 `data` 数据载荷是 `MarketStockKeywordData` schema 如下.
+公开方法的类型标注为 `FetchResult[MarketStockKeywordData]`。FetchResult.data：StandardRecord。每个 StandardRecord 内的 `data` 数据载荷是 `MarketStockKeywordData` schema 如下。
 
 #### 返回数据字段
 
 | 字段 | 类型 | 可为空 | 说明 |
 | --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | 完整的标的身份：code、market、kind 和可选的 exchange。 |
-| keywords | list[StockKeywordEntry] | No | 数据源排名的热门关键词/概念条目。 |
+| instrumentId | InstrumentId | 否 | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| keywords | list[StockKeywordEntry] | 否 | 数据源排名的热门关键词/概念条目。 |
 
 #### 嵌套记录类型
 
 上述字段使用以下对象类型。Enum 值会直接显示在类型列中。
 
 **`InstrumentId`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | 交易所特定的标的代码。 |
-| market | Market | Yes | — | FinchX 市场标识。 |
-| kind | InstrumentKind | Yes | — | 标的类型。 |
-| exchange | Exchange \| None | No | None | Dataset 需要时使用的交易所身份。 |
+| code | str | 是 | — | 交易所特定的标的代码。 |
+| market | Market | 是 | — | FinchX 市场标识。 |
+| kind | InstrumentKind | 是 | — | 标的类型。 |
+| exchange | Exchange \| None | 否 | None | Dataset 需要时使用的交易所身份。 |
 
 **`StockKeywordEntry`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| keywordName | str | Yes | — | 数据源提供的关键词或概念名称。 |
-| providerNamespace | 'eastmoney_stockrank' | Yes | — | 保留为公开身份的数据源特定 namespace。 |
-| providerKeywordId | str | Yes | — | 数据源范围内的关键词/概念标识。 |
-| hitCount | int | Yes | — | 东方财富数据源命中数量；它不是推断出的 NLP 热度分数。 |
-| calculatedAt | datetime | Yes | — | 数据源报告的关键词观测计算时间。 |
+| keywordName | str | 是 | — | 数据源提供的关键词或概念名称。 |
+| providerNamespace | 'eastmoney_stockrank' | 是 | — | 保留为公开身份的数据源特定 namespace。 |
+| providerKeywordId | str | 是 | — | 数据源范围内的关键词/概念标识。 |
+| hitCount | int | 是 | — | 东方财富数据源命中数量；它不是推断出的 NLP 热度分数。 |
+| calculatedAt | datetime | 是 | — | 数据源报告的关键词观测计算时间。 |
 
 
 #### 示例
@@ -1862,8 +1862,8 @@ print(result.data.data["keywords"])
 
 返回指定交易日的东方财富跌停池。
 
-**Dataset:** `market.limit_down_pool`
-**Schema version:** `1.0`
+**Dataset：** `market.limit_down_pool`
+**Schema 版本：** `1.0`
 **已实现的 Provider：** `eastmoney.push2ex.limit_down_pool`
 **路由语义：** `single_source`。Registry 将此 Dataset 标记为 `single_source`；列出的 Provider 是已实现的特定数据源契约。
 
@@ -1877,52 +1877,52 @@ fx.market.limit_down_pool(request: 'MarketLimitDownPoolRequest', *, provider: 's
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | MarketLimitDownPoolRequest | Yes | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
-| provider | str \| None | No | None | 严格指定 Provider id。只使用指定的 Provider。（仅限 keyword） |
-| use_cache | bool \| None | No | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限 keyword） |
+| request | MarketLimitDownPoolRequest | 是 | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
+| provider | str \| None | 否 | None | 严格指定 Provider id。只使用指定的 Provider。（仅限关键字参数） |
+| use_cache | bool \| None | 否 | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限关键字参数） |
 
-类型化请求模型为 `MarketLimitDownPoolRequest`. 其字段如下：
+类型化请求模型为 `MarketLimitDownPoolRequest`。其字段如下：
 
 | 请求字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| tradeDate | date | Yes | — | 数据源交易日期标签；它不是 FinchX 的获取时间。 |
+| tradeDate | date | 是 | — | 数据源交易日期标签；它不是 FinchX 的获取时间。 |
 
 #### 返回值
 
-公开方法的类型标注为 `FetchResult[MarketLimitDownPoolData]`. FetchResult.data: tuple[StandardRecord, ...]. 每个 StandardRecord 内的 `data` 数据载荷是 `MarketLimitDownPoolData` schema 如下.
+公开方法的类型标注为 `FetchResult[MarketLimitDownPoolData]`。FetchResult.data：tuple[StandardRecord, ...]。每个 StandardRecord 内的 `data` 数据载荷是 `MarketLimitDownPoolData` schema 如下。
 
 #### 返回数据字段
 
 | 字段 | 类型 | 可为空 | 说明 |
 | --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | 完整的标的身份：code、market、kind 和可选的 exchange。 |
-| tradeDate | date | No | 数据源交易日期标签；它不是 FinchX 的获取时间。 |
-| name | str | No | 经 Provider 标准化的显示名称。 |
-| price | Decimal | No | 最新或观测到的价格，单位为每股人民币；指数序列除外。 |
-| changeRate | Decimal | No | 变动比率；10% 表示为 0.10。 |
-| amount | Decimal | No | 成交金额，单位为人民币。 |
-| floatMarketCapitalization | Decimal | No | 流通市值，单位为人民币。 |
-| marketCapitalization | Decimal | No | 总市值，单位为人民币。 |
-| priceEarningsRatio | Decimal \| None | Yes | 数据源报告的 dynamic 价格/earnings multiple. |
-| turnoverRate | Decimal | No | 换手率；百分比以小数表示。 |
-| limitDownQueueAmount | Decimal \| None | Yes | Amount queued at 该 limit-down 价格 单位为人民币. |
-| lastLimitDownTime | str \| None | Yes | Last limit-down 时间 in 该 数据源 market-local 时间 format. |
-| boardTradedAmount | Decimal \| None | Yes | Amount traded at 该 limit-down 价格 单位为人民币. |
-| consecutiveLimitDownDays | int | No | Consecutive limit-down 数量 reported by 该 数据源. |
-| limitDownOpenCount | int | No | 数量 limit-down openings recorded by 该 数据源. |
-| industry | str | No | 数据源提供的行业标签。 |
+| instrumentId | InstrumentId | 否 | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| tradeDate | date | 否 | 数据源交易日期标签；它不是 FinchX 的获取时间。 |
+| name | str | 否 | 经 Provider 标准化的显示名称。 |
+| price | Decimal | 否 | 最新或观测到的价格，单位为每股人民币；指数序列除外。 |
+| changeRate | Decimal | 否 | 变动比率；10% 表示为 0.10。 |
+| amount | Decimal | 否 | 成交金额，单位为人民币。 |
+| floatMarketCapitalization | Decimal | 否 | 流通市值，单位为人民币。 |
+| marketCapitalization | Decimal | 否 | 总市值，单位为人民币。 |
+| priceEarningsRatio | Decimal \| None | 是 | 数据源报告的动态市盈率倍数。 |
+| turnoverRate | Decimal | 否 | 换手率；百分比以小数表示。 |
+| limitDownQueueAmount | Decimal \| None | 是 | 跌停价上的排队金额，单位为人民币。 |
+| lastLimitDownTime | str \| None | 是 | 数据源当地时间格式的最后跌停时间。 |
+| boardTradedAmount | Decimal \| None | 是 | 跌停价成交金额，单位为人民币。 |
+| consecutiveLimitDownDays | int | 否 | 数据源报告的连续跌停次数。 |
+| limitDownOpenCount | int | 否 | 数据源记录的跌停开板次数。 |
+| industry | str | 否 | 数据源提供的行业标签。 |
 
 #### 嵌套记录类型
 
 上述字段使用以下对象类型。Enum 值会直接显示在类型列中。
 
 **`InstrumentId`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | 交易所特定的标的代码。 |
-| market | Market | Yes | — | FinchX 市场标识。 |
-| kind | InstrumentKind | Yes | — | 标的类型。 |
-| exchange | Exchange \| None | No | None | Dataset 需要时使用的交易所身份。 |
+| code | str | 是 | — | 交易所特定的标的代码。 |
+| market | Market | 是 | — | FinchX 市场标识。 |
+| kind | InstrumentKind | 是 | — | 标的类型。 |
+| exchange | Exchange \| None | 否 | None | Dataset 需要时使用的交易所身份。 |
 
 
 #### 示例
@@ -1959,8 +1959,8 @@ result = fx.market.limit_down_pool(request)
 
 返回指定交易日的东方财富涨停池。
 
-**Dataset:** `market.limit_up_pool`
-**Schema version:** `1.0`
+**Dataset：** `market.limit_up_pool`
+**Schema 版本：** `1.0`
 **已实现的 Provider：** `eastmoney.push2ex.limit_up_pool`
 **路由语义：** `single_source`。Registry 将此 Dataset 标记为 `single_source`；列出的 Provider 是已实现的特定数据源契约。
 
@@ -1974,58 +1974,58 @@ fx.market.limit_up_pool(request: 'MarketLimitUpPoolRequest', *, provider: 'str |
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | MarketLimitUpPoolRequest | Yes | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
-| provider | str \| None | No | None | 严格指定 Provider id。只使用指定的 Provider。（仅限 keyword） |
-| use_cache | bool \| None | No | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限 keyword） |
+| request | MarketLimitUpPoolRequest | 是 | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
+| provider | str \| None | 否 | None | 严格指定 Provider id。只使用指定的 Provider。（仅限关键字参数） |
+| use_cache | bool \| None | 否 | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限关键字参数） |
 
-类型化请求模型为 `MarketLimitUpPoolRequest`. 其字段如下：
+类型化请求模型为 `MarketLimitUpPoolRequest`。其字段如下：
 
 | 请求字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| tradeDate | date | Yes | — | 数据源交易日期标签；它不是 FinchX 的获取时间。 |
+| tradeDate | date | 是 | — | 数据源交易日期标签；它不是 FinchX 的获取时间。 |
 
 #### 返回值
 
-公开方法的类型标注为 `FetchResult[MarketLimitUpPoolData]`. FetchResult.data: tuple[StandardRecord, ...]. 每个 StandardRecord 内的 `data` 数据载荷是 `MarketLimitUpPoolData` schema 如下.
+公开方法的类型标注为 `FetchResult[MarketLimitUpPoolData]`。FetchResult.data：tuple[StandardRecord, ...]。每个 StandardRecord 内的 `data` 数据载荷是 `MarketLimitUpPoolData` schema 如下。
 
 #### 返回数据字段
 
 | 字段 | 类型 | 可为空 | 说明 |
 | --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | 完整的标的身份：code、market、kind 和可选的 exchange。 |
-| tradeDate | date | No | 数据源交易日期标签；它不是 FinchX 的获取时间。 |
-| name | str | No | 经 Provider 标准化的显示名称。 |
-| price | Decimal | No | 最新或观测到的价格，单位为每股人民币；指数序列除外。 |
-| changeRate | Decimal | No | 变动比率；10% 表示为 0.10。 |
-| amount | Decimal | No | 成交金额，单位为人民币。 |
-| floatMarketCapitalization | Decimal | No | 流通市值，单位为人民币。 |
-| marketCapitalization | Decimal | No | 总市值，单位为人民币。 |
-| turnoverRate | Decimal | No | 换手率；百分比以小数表示。 |
-| consecutiveLimitUpDays | int | No | Consecutive limit-up 数量 reported by 该 数据源. |
-| firstLimitUpTime | str \| None | Yes | 数据源当地时间格式的首次涨停时间。 |
-| lastLimitUpTime | str \| None | Yes | Last limit-up 时间 in 该 数据源 market-local 时间 format. |
-| limitUpQueueAmount | Decimal \| None | Yes | Amount queued at 该 limit-up 价格 单位为人民币. |
-| limitUpBreakCount | int | No | 数据源观测到的开板次数。 |
-| industry | str | No | 数据源提供的行业标签。 |
-| limitUpStats | MarketLimitUpStats | No | 数据源定义的涨停历史统计。 |
+| instrumentId | InstrumentId | 否 | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| tradeDate | date | 否 | 数据源交易日期标签；它不是 FinchX 的获取时间。 |
+| name | str | 否 | 经 Provider 标准化的显示名称。 |
+| price | Decimal | 否 | 最新或观测到的价格，单位为每股人民币；指数序列除外。 |
+| changeRate | Decimal | 否 | 变动比率；10% 表示为 0.10。 |
+| amount | Decimal | 否 | 成交金额，单位为人民币。 |
+| floatMarketCapitalization | Decimal | 否 | 流通市值，单位为人民币。 |
+| marketCapitalization | Decimal | 否 | 总市值，单位为人民币。 |
+| turnoverRate | Decimal | 否 | 换手率；百分比以小数表示。 |
+| consecutiveLimitUpDays | int | 否 | 数据源报告的连续涨停次数。 |
+| firstLimitUpTime | str \| None | 是 | 数据源当地时间格式的首次涨停时间。 |
+| lastLimitUpTime | str \| None | 是 | 数据源当地时间格式的最后涨停时间。 |
+| limitUpQueueAmount | Decimal \| None | 是 | 涨停价上的排队金额，单位为人民币。 |
+| limitUpBreakCount | int | 否 | 数据源观测到的开板次数。 |
+| industry | str | 否 | 数据源提供的行业标签。 |
+| limitUpStats | MarketLimitUpStats | 否 | 数据源定义的涨停历史统计。 |
 
 #### 嵌套记录类型
 
 上述字段使用以下对象类型。Enum 值会直接显示在类型列中。
 
 **`InstrumentId`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | 交易所特定的标的代码。 |
-| market | Market | Yes | — | FinchX 市场标识。 |
-| kind | InstrumentKind | Yes | — | 标的类型。 |
-| exchange | Exchange \| None | No | None | Dataset 需要时使用的交易所身份。 |
+| code | str | 是 | — | 交易所特定的标的代码。 |
+| market | Market | 是 | — | FinchX 市场标识。 |
+| kind | InstrumentKind | 是 | — | 标的类型。 |
+| exchange | Exchange \| None | 否 | None | Dataset 需要时使用的交易所身份。 |
 
 **`MarketLimitUpStats`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| lookbackDays | int | Yes | — | 标准化的回看天数字段。 |
-| limitUpCount | int | Yes | — | 涨停标的数量。 |
+| lookbackDays | int | 是 | — | 标准化的回看天数字段。 |
+| limitUpCount | int | 是 | — | 涨停标的数量。 |
 
 
 #### 示例
@@ -2062,8 +2062,8 @@ result = fx.market.limit_up_pool(request)
 
 返回一个标的在指定日期范围内的日 OHLCV K 线。
 
-**Dataset:** `market.klines`
-**Schema version:** `1.0`
+**Dataset：** `market.klines`
+**Schema 版本：** `1.0`
 **已实现的 Provider：** `tencent.finance.qq.klines`, `sohu.finance.klines`
 **路由语义：** `multi_provider`。Registry 将此 Dataset 标记为 `multi_provider`；列出的 Provider 集合就是本版本实际实现的集合。
 
@@ -2077,52 +2077,52 @@ fx.market.ohlcv(instrument_id: 'InstrumentId | None' = None, start_date: 'date |
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| instrument_id | InstrumentId \| None | No | None | 目标标的的完整 InstrumentId。 |
-| start_date | date \| None | No | None | 包含起始日期。 |
-| end_date | date \| None | No | None | 包含结束日期。 |
-| adjustment | KlineAdjustment \| None | No | None | 可选的 KlineAdjustment；除非计算型偏离值能力在内部选择 QFQ，否则默认值为 None。 |
-| request | KlinesRequest \| None | No | None | 类型化请求模型。不能与便捷业务参数同时使用。 |
-| provider | str \| None | No | None | 严格指定 Provider id。只使用指定的 Provider。（仅限 keyword） |
-| use_cache | bool \| None | No | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限 keyword） |
+| instrument_id | InstrumentId \| None | 否 | None | 目标标的的完整 InstrumentId。 |
+| start_date | date \| None | 否 | None | 包含起始日期。 |
+| end_date | date \| None | 否 | None | 包含结束日期。 |
+| adjustment | KlineAdjustment \| None | 否 | None | 可选的 KlineAdjustment；除非计算型偏离值能力在内部选择 QFQ，否则默认值为 None。 |
+| request | KlinesRequest \| None | 否 | None | 类型化请求模型。不能与便捷业务参数同时使用。 |
+| provider | str \| None | 否 | None | 严格指定 Provider id。只使用指定的 Provider。（仅限关键字参数） |
+| use_cache | bool \| None | 否 | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限关键字参数） |
 
-类型化请求模型为 `KlinesRequest`. 其字段如下：
+类型化请求模型为 `KlinesRequest`。其字段如下：
 
 | 请求字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
-| startDate | date | Yes | — | 请求范围或选定窗口的包含起始日期。 |
-| endDate | date | Yes | — | 请求范围或选定窗口的包含结束日期。 |
-| adjustment | Literal['none', 'qfq', 'hfq', 'not_applicable'] \| None | No | None | K 线序列使用的复权模式。 |
+| instrumentId | InstrumentId | 是 | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| startDate | date | 是 | — | 请求范围或选定窗口的包含起始日期。 |
+| endDate | date | 是 | — | 请求范围或选定窗口的包含结束日期。 |
+| adjustment | Literal['none', 'qfq', 'hfq', 'not_applicable'] \| None | 否 | None | K 线序列使用的复权模式。 |
 
 #### 返回值
 
-公开方法的类型标注为 `FetchResult[MarketKlineData]`. FetchResult.data: tuple[StandardRecord, ...]. 每个 StandardRecord 内的 `data` 数据载荷是 `MarketKlineData` schema 如下.
+公开方法的类型标注为 `FetchResult[MarketKlineData]`。FetchResult.data：tuple[StandardRecord, ...]。每个 StandardRecord 内的 `data` 数据载荷是 `MarketKlineData` schema 如下。
 
 #### 返回数据字段
 
 | 字段 | 类型 | 可为空 | 说明 |
 | --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | 完整的标的身份：code、market、kind 和可选的 exchange。 |
-| barDate | date | No | OHLCV K 线表示的交易日期。 |
-| open | Decimal | No | 交易时段开盘价，单位为每股人民币。 |
-| high | Decimal | No | 交易时段最高价，单位为每股人民币。 |
-| low | Decimal | No | 交易时段最低价，单位为每股人民币。 |
-| close | Decimal | No | 收盘价格；按标的类型计为每股人民币或指数点。 |
-| volume | int | No | 成交量，以整股数表示。 |
-| amount | Decimal \| None | Yes | 成交金额，单位为人民币。 |
-| adjustment | Literal['none', 'qfq', 'hfq', 'not_applicable'] | No | K 线序列使用的复权模式。 |
+| instrumentId | InstrumentId | 否 | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| barDate | date | 否 | OHLCV K 线表示的交易日期。 |
+| open | Decimal | 否 | 交易时段开盘价，单位为每股人民币。 |
+| high | Decimal | 否 | 交易时段最高价，单位为每股人民币。 |
+| low | Decimal | 否 | 交易时段最低价，单位为每股人民币。 |
+| close | Decimal | 否 | 收盘价格；按标的类型计为每股人民币或指数点。 |
+| volume | int | 否 | 成交量，以整股数表示。 |
+| amount | Decimal \| None | 是 | 成交金额，单位为人民币。 |
+| adjustment | Literal['none', 'qfq', 'hfq', 'not_applicable'] | 否 | K 线序列使用的复权模式。 |
 
 #### 嵌套记录类型
 
 上述字段使用以下对象类型。Enum 值会直接显示在类型列中。
 
 **`InstrumentId`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | 交易所特定的标的代码。 |
-| market | Market | Yes | — | FinchX 市场标识。 |
-| kind | InstrumentKind | Yes | — | 标的类型。 |
-| exchange | Exchange \| None | No | None | Dataset 需要时使用的交易所身份。 |
+| code | str | 是 | — | 交易所特定的标的代码。 |
+| market | Market | 是 | — | FinchX 市场标识。 |
+| kind | InstrumentKind | 是 | — | 标的类型。 |
+| exchange | Exchange \| None | 否 | None | Dataset 需要时使用的交易所身份。 |
 
 
 #### 示例
@@ -2159,8 +2159,8 @@ result = fx.market.ohlcv(
 
 返回一个标的当前的买价和卖价档位。
 
-**Dataset:** `market.orderbook`
-**Schema version:** `1.0`
+**Dataset：** `market.orderbook`
+**Schema 版本：** `1.0`
 **已实现的 Provider：** `tencent.finance.qq.quote`
 **路由语义：** `multi_provider`。Registry 将此 Dataset 标记为 `multi_provider`；列出的 Provider 集合就是本版本实际实现的集合。
 
@@ -2174,46 +2174,46 @@ fx.market.orderbook(request: 'MarketOrderbookRequest', *, provider: 'str | None'
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | MarketOrderbookRequest | Yes | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
-| provider | str \| None | No | None | 严格指定 Provider id。只使用指定的 Provider。（仅限 keyword） |
-| use_cache | bool \| None | No | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限 keyword） |
+| request | MarketOrderbookRequest | 是 | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
+| provider | str \| None | 否 | None | 严格指定 Provider id。只使用指定的 Provider。（仅限关键字参数） |
+| use_cache | bool \| None | 否 | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限关键字参数） |
 
-类型化请求模型为 `MarketOrderbookRequest`. 其字段如下：
+类型化请求模型为 `MarketOrderbookRequest`。其字段如下：
 
 | 请求字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| instrumentId | InstrumentId | 是 | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
 
 #### 返回值
 
-公开方法的类型标注为 `FetchResult[MarketOrderbookData]`. FetchResult.data: StandardRecord. 每个 StandardRecord 内的 `data` 数据载荷是 `MarketOrderbookData` schema 如下.
+公开方法的类型标注为 `FetchResult[MarketOrderbookData]`。FetchResult.data：StandardRecord。每个 StandardRecord 内的 `data` 数据载荷是 `MarketOrderbookData` schema 如下。
 
 #### 返回数据字段
 
 | 字段 | 类型 | 可为空 | 说明 |
 | --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | 完整的标的身份：code、market、kind 和可选的 exchange。 |
-| bids | list[OrderbookLevel] | No | Bid-side order-book levels. |
-| asks | list[OrderbookLevel] | No | Ask-side order-book levels. |
+| instrumentId | InstrumentId | 否 | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| bids | list[OrderbookLevel] | 否 | 买方盘口档位。 |
+| asks | list[OrderbookLevel] | 否 | 卖方盘口档位。 |
 
 #### 嵌套记录类型
 
 上述字段使用以下对象类型。Enum 值会直接显示在类型列中。
 
 **`InstrumentId`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | 交易所特定的标的代码。 |
-| market | Market | Yes | — | FinchX 市场标识。 |
-| kind | InstrumentKind | Yes | — | 标的类型。 |
-| exchange | Exchange \| None | No | None | Dataset 需要时使用的交易所身份。 |
+| code | str | 是 | — | 交易所特定的标的代码。 |
+| market | Market | 是 | — | FinchX 市场标识。 |
+| kind | InstrumentKind | 是 | — | 标的类型。 |
+| exchange | Exchange \| None | 否 | None | Dataset 需要时使用的交易所身份。 |
 
 **`OrderbookLevel`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| level | int | Yes | — | 盘口档位编号或板块层级，取决于具体模型。 |
-| price | Decimal | Yes | — | 最新或观测到的价格，单位为每股人民币；指数序列除外。 |
-| size | int | Yes | — | 非负整股数量。 |
+| level | int | 是 | — | 盘口档位编号或板块层级，取决于具体模型。 |
+| price | Decimal | 是 | — | 最新或观测到的价格，单位为每股人民币；指数序列除外。 |
+| size | int | 是 | — | 非负整股数量。 |
 
 
 #### 示例
@@ -2250,8 +2250,8 @@ result = fx.market.orderbook(request)
 
 以每个标的一条标准化记录的形式返回选定的 A 股行情范围。
 
-**Dataset:** `market.quote`
-**Schema version:** `1.0`
+**Dataset：** `market.quote`
+**Schema 版本：** `1.0`
 **已实现的 Provider：** `tencent.finance.qq.market`
 **路由语义：** `multi_provider`。Registry 将此 Dataset 标记为 `multi_provider`；列出的 Provider 集合就是本版本实际实现的集合。
 
@@ -2265,61 +2265,61 @@ fx.market.quote(*, universe: 'InstrumentUniverse' = <InstrumentUniverse.CN_A_SHA
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| universe | InstrumentUniverse | No | <InstrumentUniverse.CN_A_SHARE: 'cn_a_share'> | InstrumentUniverse selection； 该 public quote convenience method defaults to CN_A_SHARE. |
-| request | MarketQuoteUniverseRequest \| None | No | None | 类型化请求模型。不能与便捷业务参数同时使用。 |
-| provider | str \| None | No | None | 严格指定 Provider id。只使用指定的 Provider。（仅限 keyword） |
-| use_cache | bool \| None | No | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限 keyword） |
+| universe | InstrumentUniverse | 否 | <InstrumentUniverse.CN_A_SHARE: 'cn_a_share'> | InstrumentUniverse 选择；公开行情便捷方法默认使用 CN_A_SHARE。 |
+| request | MarketQuoteUniverseRequest \| None | 否 | None | 类型化请求模型。不能与便捷业务参数同时使用。 |
+| provider | str \| None | 否 | None | 严格指定 Provider id。只使用指定的 Provider。（仅限关键字参数） |
+| use_cache | bool \| None | 否 | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限关键字参数） |
 
-类型化请求模型为 `MarketQuoteUniverseRequest`. 其字段如下：
+类型化请求模型为 `MarketQuoteUniverseRequest`。其字段如下：
 
 | 请求字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| universe | Literal['cn_a_share'] | Yes | — | 要查询的标的范围。 |
+| universe | Literal['cn_a_share'] | 是 | — | 要查询的标的范围。 |
 
 #### 返回值
 
-公开方法的类型标注为 `FetchResult[MarketQuoteData]`. FetchResult.data: tuple[StandardRecord, ...]. 每个 StandardRecord 内的 `data` 数据载荷是 `MarketQuoteData` schema 如下.
+公开方法的类型标注为 `FetchResult[MarketQuoteData]`。FetchResult.data：tuple[StandardRecord, ...]。每个 StandardRecord 内的 `data` 数据载荷是 `MarketQuoteData` schema 如下。
 
 #### 返回数据字段
 
 | 字段 | 类型 | 可为空 | 说明 |
 | --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | 完整的标的身份：code、market、kind 和可选的 exchange。 |
-| name | str \| None | Yes | 经 Provider 标准化的显示名称。 |
-| price | Decimal | No | 最新或观测到的价格，单位为每股人民币；指数序列除外。 |
-| priceChange | Decimal \| None | Yes | 带符号的绝对价格变动，单位为每股人民币。 |
-| changeRate | Decimal \| None | Yes | 变动比率；10% 表示为 0.10。 |
-| changeRate5d | Decimal \| None | Yes | 数据源指定的五日价格变动比率。 |
-| changeRate10d | Decimal \| None | Yes | 数据源指定的十日价格变动比率。 |
-| changeRate20d | Decimal \| None | Yes | 数据源指定的二十日价格变动比率。 |
-| changeRate60d | Decimal \| None | Yes | 数据源指定的六十日价格变动比率。 |
-| changeRate52w | Decimal \| None | Yes | 数据源指定的 52 周价格变动比率。 |
-| changeRateYtd | Decimal \| None | Yes | 年初至今价格变动比率。 |
-| amplitude | Decimal \| None | Yes | 盘中价格振幅，以比率小数表示。 |
-| volumeRatio | Decimal \| None | Yes | 数据源成交量比率，为无量纲倍数；2.35 表示 2.35 倍。 |
-| volume | int \| None | Yes | 成交量，以整股数表示。 |
-| amount | Decimal \| None | Yes | 成交金额，单位为人民币。 |
-| turnoverRate | Decimal \| None | Yes | 换手率；百分比以小数表示。 |
-| marketCap | Decimal \| None | Yes | 总市值，单位为人民币。 |
-| floatMarketCap | Decimal \| None | Yes | 流通市值，单位为人民币。 |
-| peTtm | Decimal \| None | Yes | 数据源提供时的滚动市盈率倍数。 |
-| mainNetInflow | Decimal \| None | Yes | 主力资金净流入，单位为人民币。 |
-| mainInflow | Decimal \| None | Yes | 主力资金流入，单位为人民币。 |
-| mainOutflow | Decimal \| None | Yes | 主力资金流出，单位为人民币。 |
-| mainInflow5d | Decimal \| None | Yes | 标准化的五日主力流入字段。 |
-| mainOutflow5d | Decimal \| None | Yes | 标准化的五日主力流出字段。 |
+| instrumentId | InstrumentId | 否 | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| name | str \| None | 是 | 经 Provider 标准化的显示名称。 |
+| price | Decimal | 否 | 最新或观测到的价格，单位为每股人民币；指数序列除外。 |
+| priceChange | Decimal \| None | 是 | 带符号的绝对价格变动，单位为每股人民币。 |
+| changeRate | Decimal \| None | 是 | 变动比率；10% 表示为 0.10。 |
+| changeRate5d | Decimal \| None | 是 | 数据源指定的五日价格变动比率。 |
+| changeRate10d | Decimal \| None | 是 | 数据源指定的十日价格变动比率。 |
+| changeRate20d | Decimal \| None | 是 | 数据源指定的二十日价格变动比率。 |
+| changeRate60d | Decimal \| None | 是 | 数据源指定的六十日价格变动比率。 |
+| changeRate52w | Decimal \| None | 是 | 数据源指定的 52 周价格变动比率。 |
+| changeRateYtd | Decimal \| None | 是 | 年初至今价格变动比率。 |
+| amplitude | Decimal \| None | 是 | 盘中价格振幅，以比率小数表示。 |
+| volumeRatio | Decimal \| None | 是 | 数据源成交量比率，为无量纲倍数；2.35 表示 2.35 倍。 |
+| volume | int \| None | 是 | 成交量，以整股数表示。 |
+| amount | Decimal \| None | 是 | 成交金额，单位为人民币。 |
+| turnoverRate | Decimal \| None | 是 | 换手率；百分比以小数表示。 |
+| marketCap | Decimal \| None | 是 | 总市值，单位为人民币。 |
+| floatMarketCap | Decimal \| None | 是 | 流通市值，单位为人民币。 |
+| peTtm | Decimal \| None | 是 | 数据源提供时的滚动市盈率倍数。 |
+| mainNetInflow | Decimal \| None | 是 | 主力资金净流入，单位为人民币。 |
+| mainInflow | Decimal \| None | 是 | 主力资金流入，单位为人民币。 |
+| mainOutflow | Decimal \| None | 是 | 主力资金流出，单位为人民币。 |
+| mainInflow5d | Decimal \| None | 是 | 标准化的五日主力流入字段。 |
+| mainOutflow5d | Decimal \| None | 是 | 标准化的五日主力流出字段。 |
 
 #### 嵌套记录类型
 
 上述字段使用以下对象类型。Enum 值会直接显示在类型列中。
 
 **`InstrumentId`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | 交易所特定的标的代码。 |
-| market | Market | Yes | — | FinchX 市场标识。 |
-| kind | InstrumentKind | Yes | — | 标的类型。 |
-| exchange | Exchange \| None | No | None | Dataset 需要时使用的交易所身份。 |
+| code | str | 是 | — | 交易所特定的标的代码。 |
+| market | Market | 是 | — | FinchX 市场标识。 |
+| kind | InstrumentKind | 是 | — | 标的类型。 |
+| exchange | Exchange \| None | 否 | None | Dataset 需要时使用的交易所身份。 |
 
 
 #### 示例
@@ -2356,8 +2356,8 @@ for record in result.data:
 
 返回一个标的的行情快照，包括数据源报告的时间戳。
 
-**Dataset:** `market.quote_snapshot`
-**Schema version:** `1.0`
+**Dataset：** `market.quote_snapshot`
+**Schema 版本：** `1.0`
 **已实现的 Provider：** `tencent.finance.qq.quote`
 **路由语义：** `multi_provider`。Registry 将此 Dataset 标记为 `multi_provider`；列出的 Provider 集合就是本版本实际实现的集合。
 
@@ -2371,47 +2371,47 @@ fx.market.quote_snapshot(request: 'MarketQuoteSnapshotRequest', *, provider: 'st
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | MarketQuoteSnapshotRequest | Yes | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
-| provider | str \| None | No | None | 严格指定 Provider id。只使用指定的 Provider。（仅限 keyword） |
-| use_cache | bool \| None | No | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限 keyword） |
+| request | MarketQuoteSnapshotRequest | 是 | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
+| provider | str \| None | 否 | None | 严格指定 Provider id。只使用指定的 Provider。（仅限关键字参数） |
+| use_cache | bool \| None | 否 | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限关键字参数） |
 
-类型化请求模型为 `MarketQuoteSnapshotRequest`. 其字段如下：
+类型化请求模型为 `MarketQuoteSnapshotRequest`。其字段如下：
 
 | 请求字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| instrumentId | InstrumentId | 是 | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
 
 #### 返回值
 
-公开方法的类型标注为 `FetchResult[MarketQuoteSnapshotData]`. FetchResult.data: StandardRecord. 每个 StandardRecord 内的 `data` 数据载荷是 `MarketQuoteSnapshotData` schema 如下.
+公开方法的类型标注为 `FetchResult[MarketQuoteSnapshotData]`。FetchResult.data：StandardRecord。每个 StandardRecord 内的 `data` 数据载荷是 `MarketQuoteSnapshotData` schema 如下。
 
 #### 返回数据字段
 
 | 字段 | 类型 | 可为空 | 说明 |
 | --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | 完整的标的身份：code、market、kind 和可选的 exchange。 |
-| price | Decimal | No | 最新或观测到的价格，单位为每股人民币；指数序列除外。 |
-| previousClose | Decimal \| None | Yes | Previous-时段 close 单位为人民币 每股. |
-| open | Decimal \| None | Yes | 交易时段开盘价，单位为每股人民币。 |
-| high | Decimal \| None | Yes | 交易时段最高价，单位为每股人民币。 |
-| low | Decimal \| None | Yes | 交易时段最低价，单位为每股人民币。 |
-| priceChange | Decimal \| None | Yes | 带符号的绝对价格变动，单位为每股人民币。 |
-| changeRate | Decimal \| None | Yes | 变动比率；10% 表示为 0.10。 |
-| volume | int \| None | Yes | 成交量，以整股数表示。 |
-| amount | Decimal \| None | Yes | 成交金额，单位为人民币。 |
-| sourceTimestamp | datetime | No | 数据源报告的行情时间戳；它不同于 FinchX 的 capturedAt。 |
+| instrumentId | InstrumentId | 否 | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| price | Decimal | 否 | 最新或观测到的价格，单位为每股人民币；指数序列除外。 |
+| previousClose | Decimal \| None | 是 | 前一交易时段收盘价，单位为人民币/股。 |
+| open | Decimal \| None | 是 | 交易时段开盘价，单位为每股人民币。 |
+| high | Decimal \| None | 是 | 交易时段最高价，单位为每股人民币。 |
+| low | Decimal \| None | 是 | 交易时段最低价，单位为每股人民币。 |
+| priceChange | Decimal \| None | 是 | 带符号的绝对价格变动，单位为每股人民币。 |
+| changeRate | Decimal \| None | 是 | 变动比率；10% 表示为 0.10。 |
+| volume | int \| None | 是 | 成交量，以整股数表示。 |
+| amount | Decimal \| None | 是 | 成交金额，单位为人民币。 |
+| sourceTimestamp | datetime | 否 | 数据源报告的行情时间戳；它不同于 FinchX 的 capturedAt。 |
 
 #### 嵌套记录类型
 
 上述字段使用以下对象类型。Enum 值会直接显示在类型列中。
 
 **`InstrumentId`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | 交易所特定的标的代码。 |
-| market | Market | Yes | — | FinchX 市场标识。 |
-| kind | InstrumentKind | Yes | — | 标的类型。 |
-| exchange | Exchange \| None | No | None | Dataset 需要时使用的交易所身份。 |
+| code | str | 是 | — | 交易所特定的标的代码。 |
+| market | Market | 是 | — | FinchX 市场标识。 |
+| kind | InstrumentKind | 是 | — | 标的类型。 |
+| exchange | Exchange \| None | 否 | None | Dataset 需要时使用的交易所身份。 |
 
 
 #### 示例
@@ -2448,8 +2448,8 @@ result = fx.market.quote_snapshot(request)
 
 按一个受支持的市场指标和方向对选定的行情范围排名。
 
-**Dataset:** `market.ranking`
-**Schema version:** `1.0`
+**Dataset：** `market.ranking`
+**Schema 版本：** `1.0`
 **已实现的 Provider：** `tencent.finance.qq.market`
 **路由语义：** `multi_provider`。Registry 将此 Dataset 标记为 `multi_provider`；列出的 Provider 集合就是本版本实际实现的集合。
 
@@ -2463,85 +2463,85 @@ fx.market.ranking(request: 'MarketRankingRequest', *, provider: 'str | None' = N
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | MarketRankingRequest | Yes | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
-| provider | str \| None | No | None | 严格指定 Provider id。只使用指定的 Provider。（仅限 keyword） |
-| use_cache | bool \| None | No | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限 keyword） |
+| request | MarketRankingRequest | 是 | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
+| provider | str \| None | 否 | None | 严格指定 Provider id。只使用指定的 Provider。（仅限关键字参数） |
+| use_cache | bool \| None | 否 | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限关键字参数） |
 
-类型化请求模型为 `MarketRankingRequest`. 其字段如下：
+类型化请求模型为 `MarketRankingRequest`。其字段如下：
 
 | 请求字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| universe | Literal['cn_a_share'] | Yes | — | 要查询的标的范围。 |
-| criterion | Literal['turnover', 'change_percent', 'volume'] | Yes | — | 用于选择指标的排名条件。 |
-| direction | Literal['ascending', 'descending'] | Yes | — | 排名方向。 |
-| limit | int \| None | Yes | — | Maximum 数量 ranking 行 请求的. |
+| universe | Literal['cn_a_share'] | 是 | — | 要查询的标的范围。 |
+| criterion | Literal['turnover', 'change_percent', 'volume'] | 是 | — | 用于选择指标的排名条件。 |
+| direction | Literal['ascending', 'descending'] | 是 | — | 排名方向。 |
+| limit | int \| None | 是 | — | 请求的排名行数上限。 |
 
 #### 返回值
 
-公开方法的类型标注为 `FetchResult[MarketRankingData]`. FetchResult.data: tuple[StandardRecord, ...]. 每个 StandardRecord 内的 `data` 数据载荷是 `MarketRankingData` schema 如下.
+公开方法的类型标注为 `FetchResult[MarketRankingData]`。FetchResult.data：tuple[StandardRecord, ...]。每个 StandardRecord 内的 `data` 数据载荷是 `MarketRankingData` schema 如下。
 
 #### 返回数据字段
 
 | 字段 | 类型 | 可为空 | 说明 |
 | --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | 完整的标的身份：code、market、kind 和可选的 exchange。 |
-| name | str \| None | Yes | 经 Provider 标准化的显示名称。 |
-| price | Decimal | No | 最新或观测到的价格，单位为每股人民币；指数序列除外。 |
-| priceChange | Decimal \| None | Yes | 带符号的绝对价格变动，单位为每股人民币。 |
-| changeRate | Decimal \| None | Yes | 变动比率；10% 表示为 0.10。 |
-| changeRate5d | Decimal \| None | Yes | 数据源指定的五日价格变动比率。 |
-| changeRate10d | Decimal \| None | Yes | 数据源指定的十日价格变动比率。 |
-| changeRate20d | Decimal \| None | Yes | 数据源指定的二十日价格变动比率。 |
-| changeRate60d | Decimal \| None | Yes | 数据源指定的六十日价格变动比率。 |
-| changeRate52w | Decimal \| None | Yes | 数据源指定的 52 周价格变动比率。 |
-| changeRateYtd | Decimal \| None | Yes | 年初至今价格变动比率。 |
-| amplitude | Decimal \| None | Yes | 盘中价格振幅，以比率小数表示。 |
-| volumeRatio | Decimal \| None | Yes | 数据源成交量比率，为无量纲倍数；2.35 表示 2.35 倍。 |
-| volume | int \| None | Yes | 成交量，以整股数表示。 |
-| amount | Decimal \| None | Yes | 成交金额，单位为人民币。 |
-| turnoverRate | Decimal \| None | Yes | 换手率；百分比以小数表示。 |
-| marketCap | Decimal \| None | Yes | 总市值，单位为人民币。 |
-| floatMarketCap | Decimal \| None | Yes | 流通市值，单位为人民币。 |
-| peTtm | Decimal \| None | Yes | 数据源提供时的滚动市盈率倍数。 |
-| mainNetInflow | Decimal \| None | Yes | 主力资金净流入，单位为人民币。 |
-| mainInflow | Decimal \| None | Yes | 主力资金流入，单位为人民币。 |
-| mainOutflow | Decimal \| None | Yes | 主力资金流出，单位为人民币。 |
-| mainInflow5d | Decimal \| None | Yes | 标准化的五日主力流入字段。 |
-| mainOutflow5d | Decimal \| None | Yes | 标准化的五日主力流出字段。 |
-| universe | Literal['cn_a_share'] | No | 要查询的标的范围。 |
-| direction | Literal['ascending', 'descending'] | No | 排名方向。 |
-| position | int | No | 返回排名中从 1 开始计数的位置。 |
-| metric | Any | No | 该行使用的排名指标。 |
+| instrumentId | InstrumentId | 否 | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| name | str \| None | 是 | 经 Provider 标准化的显示名称。 |
+| price | Decimal | 否 | 最新或观测到的价格，单位为每股人民币；指数序列除外。 |
+| priceChange | Decimal \| None | 是 | 带符号的绝对价格变动，单位为每股人民币。 |
+| changeRate | Decimal \| None | 是 | 变动比率；10% 表示为 0.10。 |
+| changeRate5d | Decimal \| None | 是 | 数据源指定的五日价格变动比率。 |
+| changeRate10d | Decimal \| None | 是 | 数据源指定的十日价格变动比率。 |
+| changeRate20d | Decimal \| None | 是 | 数据源指定的二十日价格变动比率。 |
+| changeRate60d | Decimal \| None | 是 | 数据源指定的六十日价格变动比率。 |
+| changeRate52w | Decimal \| None | 是 | 数据源指定的 52 周价格变动比率。 |
+| changeRateYtd | Decimal \| None | 是 | 年初至今价格变动比率。 |
+| amplitude | Decimal \| None | 是 | 盘中价格振幅，以比率小数表示。 |
+| volumeRatio | Decimal \| None | 是 | 数据源成交量比率，为无量纲倍数；2.35 表示 2.35 倍。 |
+| volume | int \| None | 是 | 成交量，以整股数表示。 |
+| amount | Decimal \| None | 是 | 成交金额，单位为人民币。 |
+| turnoverRate | Decimal \| None | 是 | 换手率；百分比以小数表示。 |
+| marketCap | Decimal \| None | 是 | 总市值，单位为人民币。 |
+| floatMarketCap | Decimal \| None | 是 | 流通市值，单位为人民币。 |
+| peTtm | Decimal \| None | 是 | 数据源提供时的滚动市盈率倍数。 |
+| mainNetInflow | Decimal \| None | 是 | 主力资金净流入，单位为人民币。 |
+| mainInflow | Decimal \| None | 是 | 主力资金流入，单位为人民币。 |
+| mainOutflow | Decimal \| None | 是 | 主力资金流出，单位为人民币。 |
+| mainInflow5d | Decimal \| None | 是 | 标准化的五日主力流入字段。 |
+| mainOutflow5d | Decimal \| None | 是 | 标准化的五日主力流出字段。 |
+| universe | Literal['cn_a_share'] | 否 | 要查询的标的范围。 |
+| direction | Literal['ascending', 'descending'] | 否 | 排名方向。 |
+| position | int | 否 | 返回排名中从 1 开始计数的位置。 |
+| metric | Any | 否 | 该行使用的排名指标。 |
 
 #### 嵌套记录类型
 
 上述字段使用以下对象类型。Enum 值会直接显示在类型列中。
 
 **`ChangePercentRankingMetric`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| criterion | 'change_percent' | Yes | — | 用于选择指标的排名条件。 |
-| value | Decimal | Yes | — | 比率小数而不是百分点：4.24% 表示为 0.0424。 |
+| criterion | 'change_percent' | 是 | — | 用于选择指标的排名条件。 |
+| value | Decimal | 是 | — | 比率小数而不是百分点：4.24% 表示为 0.0424。 |
 
 **`InstrumentId`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | 交易所特定的标的代码。 |
-| market | Market | Yes | — | FinchX 市场标识。 |
-| kind | InstrumentKind | Yes | — | 标的类型。 |
-| exchange | Exchange \| None | No | None | Dataset 需要时使用的交易所身份。 |
+| code | str | 是 | — | 交易所特定的标的代码。 |
+| market | Market | 是 | — | FinchX 市场标识。 |
+| kind | InstrumentKind | 是 | — | 标的类型。 |
+| exchange | Exchange \| None | 否 | None | Dataset 需要时使用的交易所身份。 |
 
 **`TurnoverRankingMetric`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| criterion | 'turnover' | Yes | — | 用于选择指标的排名条件。 |
-| value | Decimal | Yes | — | 金额，单位为人民币。 |
+| criterion | 'turnover' | 是 | — | 用于选择指标的排名条件。 |
+| value | Decimal | 是 | — | 金额，单位为人民币。 |
 
 **`VolumeRankingMetric`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| criterion | 'volume' | Yes | — | 用于选择指标的排名条件。 |
-| value | int | Yes | — | 非负整股数量。 |
+| criterion | 'volume' | 是 | — | 用于选择指标的排名条件。 |
+| value | int | 是 | — | 非负整股数量。 |
 
 
 #### 示例
@@ -2581,8 +2581,8 @@ result = fx.market.ranking(request)
 
 返回 Aigupiao 市场情绪快照及数据源定义的比率/计数。
 
-**Dataset:** `market.sentiment_snapshot`
-**Schema version:** `1.0`
+**Dataset：** `market.sentiment_snapshot`
+**Schema 版本：** `1.0`
 **已实现的 Provider：** `aigupiao.market_sentiment`
 **路由语义：** `single_source`。Registry 将此 Dataset 标记为 `single_source`；列出的 Provider 是已实现的特定数据源契约。
 
@@ -2596,38 +2596,38 @@ fx.market.sentiment(request: 'MarketSentimentRequest | None' = None, *, provider
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | MarketSentimentRequest \| None | No | None | 类型化请求模型。不能与便捷业务参数同时使用。 |
-| provider | str \| None | No | None | 严格指定 Provider id。只使用指定的 Provider。（仅限 keyword） |
-| use_cache | bool \| None | No | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限 keyword） |
+| request | MarketSentimentRequest \| None | 否 | None | 类型化请求模型。不能与便捷业务参数同时使用。 |
+| provider | str \| None | 否 | None | 严格指定 Provider id。只使用指定的 Provider。（仅限关键字参数） |
+| use_cache | bool \| None | 否 | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限关键字参数） |
 
-类型化请求模型为 `MarketSentimentRequest`. 其字段如下：
+类型化请求模型为 `MarketSentimentRequest`。其字段如下：
 
 该请求模型没有字段；可以不传 request 对象，直接调用接口使用默认请求行为。
 
 #### 返回值
 
-公开方法的类型标注为 `FetchResult[MarketSentimentData]`. FetchResult.data: StandardRecord. 每个 StandardRecord 内的 `data` 数据载荷是 `MarketSentimentData` schema 如下.
+公开方法的类型标注为 `FetchResult[MarketSentimentData]`。FetchResult.data：StandardRecord。每个 StandardRecord 内的 `data` 数据载荷是 `MarketSentimentData` schema 如下。
 
 #### 返回数据字段
 
 | 字段 | 类型 | 可为空 | 说明 |
 | --- | --- | --- | --- |
-| marketTemperature | str | No | Aigupiao 数据源定义的市场温度；不是物理温度或通用比率。 |
-| totalTurnover | Decimal \| None | Yes | 标准化的 总 turnover 字段. |
-| forecastedTurnover | Decimal \| None | Yes | 数据源 forecast 的 turnover, 不是 observed turnover. |
-| turnoverChangeAmount | Decimal \| None | Yes | 数据源报告的相对前一日换手金额变动。 |
-| blastBreakRatio | Decimal \| None | Yes | 数据源定义的 broken-limit 比率； FinchX does 不是 reconstruct its denominator. |
-| previousLimitUpBreakChangeRatio | Decimal \| None | Yes | 数据源定义的 此前 broken-limit performance 比率. |
-| stopTradingCount | int | No | Count 的 stopped-交易 observations. |
-| oneLimitUpCount | int | No | Count 的 one-limit-up observations. |
-| twoLimitUpCount | int | No | Count 的 two-limit-up observations. |
-| threeLimitUpCount | int | No | Count 的 three-limit-up observations. |
-| highLimitUpCount | int | No | Count 的 high limit-up observations. |
-| twoLimitUpPromotionRatio | Decimal \| None | Yes | 数据源定义的推广比率；FinchX 不复现其分母。 |
-| threeLimitUpPromotionRatio | Decimal \| None | Yes | 数据源定义的推广比率；FinchX 不复现其分母。 |
-| highLimitUpPromotionRatio | Decimal \| None | Yes | 数据源定义的推广比率；FinchX 不复现其分母。 |
-| previousLimitUpThemeChangeRatio | Decimal \| None | Yes | 数据源定义的 此前 limit-up group performance 比率. |
-| previousConsecutiveLimitUpThemeChangeRatio | Decimal \| None | Yes | 数据源定义的 此前 consecutive-limit-up group performance 比率. |
+| marketTemperature | str | 否 | Aigupiao 数据源定义的市场温度；不是物理温度，也不是通用比率。 |
+| totalTurnover | Decimal \| None | 是 | 标准化的总换手字段。 |
+| forecastedTurnover | Decimal \| None | 是 | 数据源预测的换手值，不是实际观测的换手值。 |
+| turnoverChangeAmount | Decimal \| None | 是 | 数据源报告的相对前一日换手金额变动。 |
+| blastBreakRatio | Decimal \| None | 是 | 数据源定义的开板比率；FinchX 不重建其分母。 |
+| previousLimitUpBreakChangeRatio | Decimal \| None | 是 | 数据源定义的此前开板表现比率。 |
+| stopTradingCount | int | 否 | 停牌观测值数量。 |
+| oneLimitUpCount | int | 否 | 一次涨停观测值数量。 |
+| twoLimitUpCount | int | 否 | 两次涨停观测值数量。 |
+| threeLimitUpCount | int | 否 | 三次涨停观测值数量。 |
+| highLimitUpCount | int | 否 | 高位涨停观测值数量。 |
+| twoLimitUpPromotionRatio | Decimal \| None | 是 | 数据源定义的推广比率；FinchX 不复现其分母。 |
+| threeLimitUpPromotionRatio | Decimal \| None | 是 | 数据源定义的推广比率；FinchX 不复现其分母。 |
+| highLimitUpPromotionRatio | Decimal \| None | 是 | 数据源定义的推广比率；FinchX 不复现其分母。 |
+| previousLimitUpThemeChangeRatio | Decimal \| None | 是 | 数据源定义的此前涨停组表现比率。 |
+| previousConsecutiveLimitUpThemeChangeRatio | Decimal \| None | 是 | 数据源定义的此前连续涨停组表现比率。 |
 
 
 
@@ -2665,8 +2665,8 @@ result = fx.market.sentiment(request)
 
 返回指定交易日的东方财富强势股池。
 
-**Dataset:** `market.strong_pool`
-**Schema version:** `1.0`
+**Dataset：** `market.strong_pool`
+**Schema 版本：** `1.0`
 **已实现的 Provider：** `eastmoney.push2ex.strong_pool`
 **路由语义：** `single_source`。Registry 将此 Dataset 标记为 `single_source`；列出的 Provider 是已实现的特定数据源契约。
 
@@ -2680,57 +2680,57 @@ fx.market.strong_pool(request: 'MarketStrongPoolRequest', *, provider: 'str | No
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | MarketStrongPoolRequest | Yes | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
-| provider | str \| None | No | None | 严格指定 Provider id。只使用指定的 Provider。（仅限 keyword） |
-| use_cache | bool \| None | No | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限 keyword） |
+| request | MarketStrongPoolRequest | 是 | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
+| provider | str \| None | 否 | None | 严格指定 Provider id。只使用指定的 Provider。（仅限关键字参数） |
+| use_cache | bool \| None | 否 | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限关键字参数） |
 
-类型化请求模型为 `MarketStrongPoolRequest`. 其字段如下：
+类型化请求模型为 `MarketStrongPoolRequest`。其字段如下：
 
 | 请求字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| tradeDate | date | Yes | — | 数据源交易日期标签；它不是 FinchX 的获取时间。 |
+| tradeDate | date | 是 | — | 数据源交易日期标签；它不是 FinchX 的获取时间。 |
 
 #### 返回值
 
-公开方法的类型标注为 `FetchResult[MarketStrongPoolData]`. FetchResult.data: tuple[StandardRecord, ...]. 每个 StandardRecord 内的 `data` 数据载荷是 `MarketStrongPoolData` schema 如下.
+公开方法的类型标注为 `FetchResult[MarketStrongPoolData]`。FetchResult.data：tuple[StandardRecord, ...]。每个 StandardRecord 内的 `data` 数据载荷是 `MarketStrongPoolData` schema 如下。
 
 #### 返回数据字段
 
 | 字段 | 类型 | 可为空 | 说明 |
 | --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | 完整的标的身份：code、market、kind 和可选的 exchange。 |
-| tradeDate | date | No | 数据源交易日期标签；它不是 FinchX 的获取时间。 |
-| name | str | No | 经 Provider 标准化的显示名称。 |
-| price | Decimal | No | 最新或观测到的价格，单位为每股人民币；指数序列除外。 |
-| limitUpPrice | Decimal | No | 当前交易时段的涨停价，单位为每股人民币。 |
-| changeRate | Decimal | No | 变动比率；10% 表示为 0.10。 |
-| amount | Decimal | No | 成交金额，单位为人民币。 |
-| floatMarketCapitalization | Decimal | No | 流通市值，单位为人民币。 |
-| marketCapitalization | Decimal | No | 总市值，单位为人民币。 |
-| turnoverRate | Decimal | No | 换手率；百分比以小数表示。 |
-| isSixtyDayHigh | bool | No | 数据源是否将该标的标记为 60 日新高。 |
-| selectionReason | Literal['sixty_day_high', 'recent_multiple_limit_ups', 'sixty_day_high_and_recent_multiple_limit_ups'] | No | 强势股池选择的数据源定义原因。 |
-| volumeRatio | Decimal | No | 数据源成交量比率，为无量纲倍数；2.35 表示 2.35 倍。 |
-| industry | str | No | 数据源提供的行业标签。 |
-| limitUpStats | MarketStrongPoolStats | No | 数据源定义的涨停历史统计。 |
+| instrumentId | InstrumentId | 否 | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| tradeDate | date | 否 | 数据源交易日期标签；它不是 FinchX 的获取时间。 |
+| name | str | 否 | 经 Provider 标准化的显示名称。 |
+| price | Decimal | 否 | 最新或观测到的价格，单位为每股人民币；指数序列除外。 |
+| limitUpPrice | Decimal | 否 | 当前交易时段的涨停价，单位为每股人民币。 |
+| changeRate | Decimal | 否 | 变动比率；10% 表示为 0.10。 |
+| amount | Decimal | 否 | 成交金额，单位为人民币。 |
+| floatMarketCapitalization | Decimal | 否 | 流通市值，单位为人民币。 |
+| marketCapitalization | Decimal | 否 | 总市值，单位为人民币。 |
+| turnoverRate | Decimal | 否 | 换手率；百分比以小数表示。 |
+| isSixtyDayHigh | bool | 否 | 数据源是否将该标的标记为 60 日新高。 |
+| selectionReason | Literal['sixty_day_high', 'recent_multiple_limit_ups', 'sixty_day_high_and_recent_multiple_limit_ups'] | 否 | 强势股池选择的数据源定义原因。 |
+| volumeRatio | Decimal | 否 | 数据源成交量比率，为无量纲倍数；2.35 表示 2.35 倍。 |
+| industry | str | 否 | 数据源提供的行业标签。 |
+| limitUpStats | MarketStrongPoolStats | 否 | 数据源定义的涨停历史统计。 |
 
 #### 嵌套记录类型
 
 上述字段使用以下对象类型。Enum 值会直接显示在类型列中。
 
 **`InstrumentId`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | 交易所特定的标的代码。 |
-| market | Market | Yes | — | FinchX 市场标识。 |
-| kind | InstrumentKind | Yes | — | 标的类型。 |
-| exchange | Exchange \| None | No | None | Dataset 需要时使用的交易所身份。 |
+| code | str | 是 | — | 交易所特定的标的代码。 |
+| market | Market | 是 | — | FinchX 市场标识。 |
+| kind | InstrumentKind | 是 | — | 标的类型。 |
+| exchange | Exchange \| None | 否 | None | Dataset 需要时使用的交易所身份。 |
 
 **`MarketStrongPoolStats`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| lookbackDays | int | Yes | — | 标准化的回看天数字段。 |
-| limitUpCount | int | Yes | — | 涨停标的数量。 |
+| lookbackDays | int | 是 | — | 标准化的回看天数字段。 |
+| limitUpCount | int | 是 | — | 涨停标的数量。 |
 
 
 #### 示例
@@ -2767,8 +2767,8 @@ result = fx.market.strong_pool(request)
 
 返回前一交易日涨停池中股票的当日观测值。
 
-**Dataset:** `market.yesterday_limit_up_pool`
-**Schema version:** `1.0`
+**Dataset：** `market.yesterday_limit_up_pool`
+**Schema 版本：** `1.0`
 **已实现的 Provider：** `eastmoney.push2ex.yesterday_limit_up_pool`
 **路由语义：** `single_source`。Registry 将此 Dataset 标记为 `single_source`；列出的 Provider 是已实现的特定数据源契约。
 
@@ -2782,50 +2782,50 @@ fx.market.yesterday_limit_up_pool(request: 'MarketYesterdayLimitUpPoolRequest', 
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | MarketYesterdayLimitUpPoolRequest | Yes | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
-| provider | str \| None | No | None | 严格指定 Provider id。只使用指定的 Provider。（仅限 keyword） |
-| use_cache | bool \| None | No | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限 keyword） |
+| request | MarketYesterdayLimitUpPoolRequest | 是 | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
+| provider | str \| None | 否 | None | 严格指定 Provider id。只使用指定的 Provider。（仅限关键字参数） |
+| use_cache | bool \| None | 否 | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限关键字参数） |
 
-类型化请求模型为 `MarketYesterdayLimitUpPoolRequest`. 其字段如下：
+类型化请求模型为 `MarketYesterdayLimitUpPoolRequest`。其字段如下：
 
 | 请求字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| tradeDate | date | Yes | — | 数据源交易日期标签；它不是 FinchX 的获取时间。 |
+| tradeDate | date | 是 | — | 数据源交易日期标签；它不是 FinchX 的获取时间。 |
 
 #### 返回值
 
-公开方法的类型标注为 `FetchResult[MarketYesterdayLimitUpPoolData]`. FetchResult.data: tuple[StandardRecord, ...]. 每个 StandardRecord 内的 `data` 数据载荷是 `MarketYesterdayLimitUpPoolData` schema 如下.
+公开方法的类型标注为 `FetchResult[MarketYesterdayLimitUpPoolData]`。FetchResult.data：tuple[StandardRecord, ...]。每个 StandardRecord 内的 `data` 数据载荷是 `MarketYesterdayLimitUpPoolData` schema 如下。
 
 #### 返回数据字段
 
 | 字段 | 类型 | 可为空 | 说明 |
 | --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | 完整的标的身份：code、market、kind 和可选的 exchange。 |
-| tradeDate | date | No | 数据源交易日期标签；它不是 FinchX 的获取时间。 |
-| name | str | No | 经 Provider 标准化的显示名称。 |
-| currentPrice | Decimal | No | 当前交易时段价格，单位为每股人民币。 |
-| currentLimitUpPrice | Decimal | No | 当前交易时段的涨停价，单位为每股人民币。 |
-| currentChangeRate | Decimal | No | 当前交易时段的变动比率；10% 表示为 0.10。 |
-| currentAmount | Decimal | No | 当前交易时段的 traded 金额 单位为人民币. |
-| floatMarketCapitalization | Decimal | No | 流通市值，单位为人民币。 |
-| marketCapitalization | Decimal | No | 总市值，单位为人民币。 |
-| currentTurnoverRate | Decimal | No | 当前交易时段的 turnover 比率. |
-| currentAmplitude | Decimal | No | 当前交易时段的 价格 amplitude as a 比率 fraction. |
-| yesterdayFirstLimitUpTime | str \| None | Yes | Previous-时段 first limit-up 时间, market-local HH：MM：SS. |
-| yesterdayConsecutiveLimitUpDays | int | No | Prior-时段 consecutive limit-up 数量. |
-| industry | str | No | 数据源提供的行业标签。 |
+| instrumentId | InstrumentId | 否 | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| tradeDate | date | 否 | 数据源交易日期标签；它不是 FinchX 的获取时间。 |
+| name | str | 否 | 经 Provider 标准化的显示名称。 |
+| currentPrice | Decimal | 否 | 当前交易时段价格，单位为每股人民币。 |
+| currentLimitUpPrice | Decimal | 否 | 当前交易时段的涨停价，单位为每股人民币。 |
+| currentChangeRate | Decimal | 否 | 当前交易时段的变动比率；10% 表示为 0.10。 |
+| currentAmount | Decimal | 否 | 当前交易时段成交金额，单位为人民币。 |
+| floatMarketCapitalization | Decimal | 否 | 流通市值，单位为人民币。 |
+| marketCapitalization | Decimal | 否 | 总市值，单位为人民币。 |
+| currentTurnoverRate | Decimal | 否 | 当前交易时段的换手比率。 |
+| currentAmplitude | Decimal | 否 | 当前交易时段的价格振幅，以比率小数表示。 |
+| yesterdayFirstLimitUpTime | str \| None | 是 | 前一交易时段的首次涨停时间，使用当地市场 HH:MM:SS 格式。 |
+| yesterdayConsecutiveLimitUpDays | int | 否 | 此前交易时段的连续涨停次数。 |
+| industry | str | 否 | 数据源提供的行业标签。 |
 
 #### 嵌套记录类型
 
 上述字段使用以下对象类型。Enum 值会直接显示在类型列中。
 
 **`InstrumentId`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | 交易所特定的标的代码。 |
-| market | Market | Yes | — | FinchX 市场标识。 |
-| kind | InstrumentKind | Yes | — | 标的类型。 |
-| exchange | Exchange \| None | No | None | Dataset 需要时使用的交易所身份。 |
+| code | str | 是 | — | 交易所特定的标的代码。 |
+| market | Market | 是 | — | FinchX 市场标识。 |
+| kind | InstrumentKind | 是 | — | 标的类型。 |
+| exchange | Exchange \| None | 否 | None | Dataset 需要时使用的交易所身份。 |
 
 
 #### 示例
@@ -2866,8 +2866,8 @@ result = fx.market.yesterday_limit_up_pool(request)
 
 返回一个标的的标准化公司概况。
 
-**Dataset:** `fundamental.company_profile`
-**Schema version:** `1.0`
+**Dataset：** `fundamental.company_profile`
+**Schema 版本：** `1.0`
 **已实现的 Provider：** `tencent.finance.qq.f10`
 **路由语义：** `multi_provider`。Registry 将此 Dataset 标记为 `multi_provider`；列出的 Provider 集合就是本版本实际实现的集合。
 
@@ -2881,30 +2881,30 @@ fx.fundamental.company_profile(instrument_id: 'InstrumentId | None' = None, *, r
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| instrument_id | InstrumentId \| None | No | None | 目标标的的完整 InstrumentId。 |
-| request | CompanyProfileRequest \| None | No | None | 类型化请求模型。不能与便捷业务参数同时使用。 |
-| provider | str \| None | No | None | 严格指定 Provider id。只使用指定的 Provider。（仅限 keyword） |
-| use_cache | bool \| None | No | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限 keyword） |
+| instrument_id | InstrumentId \| None | 否 | None | 目标标的的完整 InstrumentId。 |
+| request | CompanyProfileRequest \| None | 否 | None | 类型化请求模型。不能与便捷业务参数同时使用。 |
+| provider | str \| None | 否 | None | 严格指定 Provider id。只使用指定的 Provider。（仅限关键字参数） |
+| use_cache | bool \| None | 否 | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限关键字参数） |
 
-类型化请求模型为 `CompanyProfileRequest`. 其字段如下：
+类型化请求模型为 `CompanyProfileRequest`。其字段如下：
 
 | 请求字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| instrumentId | InstrumentId | 是 | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
 
 #### 返回值
 
-公开方法的类型标注为 `FetchResult[CompanyProfileData]`. FetchResult.data: StandardRecord. 每个 StandardRecord 内的 `data` 数据载荷是 `CompanyProfileData` schema 如下.
+公开方法的类型标注为 `FetchResult[CompanyProfileData]`。FetchResult.data：StandardRecord。每个 StandardRecord 内的 `data` 数据载荷是 `CompanyProfileData` schema 如下。
 
 #### 返回数据字段
 
 | 字段 | 类型 | 可为空 | 说明 |
 | --- | --- | --- | --- |
-| symbol | str | No | 经 Provider 标准化的标的 symbol 字符串。 |
-| companyName | str \| None | Yes | 标准化的 company name 字段. |
-| businessDescription | str \| None | Yes | 标准化的 business description 字段. |
-| issuePrice | Decimal \| None | Yes | 每股人民币。Tencent gsjj.jg 保留为数据源候选字段。 |
-| listingDate | date \| None | Yes | 标准化的 listing 日期 字段. |
+| symbol | str | 否 | 经 Provider 标准化的标的 symbol 字符串。 |
+| companyName | str \| None | 是 | 标准化的公司名称字段。 |
+| businessDescription | str \| None | 是 | 标准化的业务描述字段。 |
+| issuePrice | Decimal \| None | 是 | 每股人民币。Tencent gsjj.jg 保留为数据源候选字段。 |
+| listingDate | date \| None | 是 | 标准化的上市日期字段。 |
 
 
 
@@ -2942,8 +2942,8 @@ result = fx.fundamental.company_profile(request)
 
 返回一个标的在可用报告期内的标准化摘要指标。
 
-**Dataset:** `fundamental.financial_summary`
-**Schema version:** `1.0`
+**Dataset：** `fundamental.financial_summary`
+**Schema 版本：** `1.0`
 **已实现的 Provider：** `tencent.finance.qq.f10`
 **路由语义：** `multi_provider`。Registry 将此 Dataset 标记为 `multi_provider`；列出的 Provider 集合就是本版本实际实现的集合。
 
@@ -2957,49 +2957,49 @@ fx.fundamental.financial_summary(request: 'FinancialSummaryRequest', *, provider
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | FinancialSummaryRequest | Yes | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
-| provider | str \| None | No | None | 严格指定 Provider id。只使用指定的 Provider。（仅限 keyword） |
-| use_cache | bool \| None | No | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限 keyword） |
+| request | FinancialSummaryRequest | 是 | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
+| provider | str \| None | 否 | None | 严格指定 Provider id。只使用指定的 Provider。（仅限关键字参数） |
+| use_cache | bool \| None | 否 | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限关键字参数） |
 
-类型化请求模型为 `FinancialSummaryRequest`. 其字段如下：
+类型化请求模型为 `FinancialSummaryRequest`。其字段如下：
 
 | 请求字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| instrumentId | InstrumentId | 是 | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
 
 #### 返回值
 
-公开方法的类型标注为 `FetchResult[FinancialSummaryData]`. FetchResult.data: StandardRecord. 每个 StandardRecord 内的 `data` 数据载荷是 `FinancialSummaryData` schema 如下.
+公开方法的类型标注为 `FetchResult[FinancialSummaryData]`。FetchResult.data：StandardRecord。每个 StandardRecord 内的 `data` 数据载荷是 `FinancialSummaryData` schema 如下。
 
 #### 返回数据字段
 
 | 字段 | 类型 | 可为空 | 说明 |
 | --- | --- | --- | --- |
-| symbol | str | No | 经 Provider 标准化的标的 symbol 字符串。 |
-| periods | list[FinancialSummaryPeriod] | No | 报告期或持有人期间记录。 |
+| symbol | str | 否 | 经 Provider 标准化的标的 symbol 字符串。 |
+| periods | list[FinancialSummaryPeriod] | 否 | 报告期或持有人期间记录。 |
 
 #### 嵌套记录类型
 
 上述字段使用以下对象类型。Enum 值会直接显示在类型列中。
 
 **`FinancialSummaryPeriod`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| periodEnd | date \| None | No | None | 可选的财务报告期末日期。 |
-| reportedPeriodLabel | str | Yes | — | 数据源报告期标签。 |
-| periodType | Literal['annual', 'interim', 'unknown'] | Yes | — | Reporting-period classification. |
-| eps | Decimal \| None | No | None | 可用时的每股收益。 |
-| revenue | Decimal \| None | No | None | 可用时的收入金额。 |
-| revenueGrowth | Decimal \| None | No | None | Revenue growth 比率. |
-| netProfit | Decimal \| None | No | None | 可用时的净利润金额。 |
-| netProfitGrowth | Decimal \| None | No | None | Net-profit growth 比率. |
-| bookValuePerShare | Decimal \| None | No | None | Book 值 每股. |
-| netAssets | Decimal \| None | No | None | Net assets 金额. |
-| goodwill | Decimal \| None | No | None | Goodwill 金额. |
-| goodwillToNetAssets | Decimal \| None | No | None | Goodwill-to-net-assets 比率. |
-| roe | Decimal \| None | No | None | Return on equity 比率. |
-| debtRatio | Decimal \| None | No | None | Debt 比率. |
-| grossMargin | Decimal \| None | No | None | Gross-margin 比率. |
+| periodEnd | date \| None | 否 | None | 可选的财务报告期末日期。 |
+| reportedPeriodLabel | str | 是 | — | 数据源报告期标签。 |
+| periodType | Literal['annual', 'interim', 'unknown'] | 是 | — | 报告期分类。 |
+| eps | Decimal \| None | 否 | None | 可用时的每股收益。 |
+| revenue | Decimal \| None | 否 | None | 可用时的收入金额。 |
+| revenueGrowth | Decimal \| None | 否 | None | 收入增长比率。 |
+| netProfit | Decimal \| None | 否 | None | 可用时的净利润金额。 |
+| netProfitGrowth | Decimal \| None | 否 | None | 净利润增长比率。 |
+| bookValuePerShare | Decimal \| None | 否 | None | 每股账面价值。 |
+| netAssets | Decimal \| None | 否 | None | 净资产金额。 |
+| goodwill | Decimal \| None | 否 | None | 商誉金额。 |
+| goodwillToNetAssets | Decimal \| None | 否 | None | 商誉与净资产比率。 |
+| roe | Decimal \| None | 否 | None | 净资产收益率。 |
+| debtRatio | Decimal \| None | 否 | None | 负债比率。 |
+| grossMargin | Decimal \| None | 否 | None | 毛利率。 |
 
 
 #### 示例
@@ -3036,8 +3036,8 @@ result = fx.fundamental.financial_summary(request)
 
 返回一个标的数据源提供的行业比较指标。
 
-**Dataset:** `fundamental.industry_comparison`
-**Schema version:** `1.0`
+**Dataset：** `fundamental.industry_comparison`
+**Schema 版本：** `1.0`
 **已实现的 Provider：** `tencent.finance.qq.f10`
 **路由语义：** `multi_provider`。Registry 将此 Dataset 标记为 `multi_provider`；列出的 Provider 集合就是本版本实际实现的集合。
 
@@ -3051,44 +3051,44 @@ fx.fundamental.industry_comparison(request: 'FundamentalIndustryComparisonReques
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | FundamentalIndustryComparisonRequest | Yes | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
-| provider | str \| None | No | None | 严格指定 Provider id。只使用指定的 Provider。（仅限 keyword） |
-| use_cache | bool \| None | No | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限 keyword） |
+| request | FundamentalIndustryComparisonRequest | 是 | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
+| provider | str \| None | 否 | None | 严格指定 Provider id。只使用指定的 Provider。（仅限关键字参数） |
+| use_cache | bool \| None | 否 | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限关键字参数） |
 
-类型化请求模型为 `IndustryComparisonRequest`. 其字段如下：
+类型化请求模型为 `IndustryComparisonRequest`。其字段如下：
 
 | 请求字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| instrumentId | InstrumentId | 是 | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
 
 #### 返回值
 
-公开方法的类型标注为 `FetchResult[IndustryComparisonData]`. FetchResult.data: StandardRecord. 每个 StandardRecord 内的 `data` 数据载荷是 `IndustryComparisonData` schema 如下.
+公开方法的类型标注为 `FetchResult[IndustryComparisonData]`。FetchResult.data：StandardRecord。每个 StandardRecord 内的 `data` 数据载荷是 `IndustryComparisonData` schema 如下。
 
 #### 返回数据字段
 
 | 字段 | 类型 | 可为空 | 说明 |
 | --- | --- | --- | --- |
-| symbol | str | No | 经 Provider 标准化的标的 symbol 字符串。 |
-| industryName | str \| None | Yes | 标准化的 industry name 字段. |
-| metrics | list[IndustryComparisonMetric] | No | Industry comparison metric 行. |
+| symbol | str | 否 | 经 Provider 标准化的标的 symbol 字符串。 |
+| industryName | str \| None | 是 | 标准化的行业名称字段。 |
+| metrics | list[IndustryComparisonMetric] | 否 | 行业比较指标记录。 |
 
 #### 嵌套记录类型
 
 上述字段使用以下对象类型。Enum 值会直接显示在类型列中。
 
 **`IndustryComparisonMetric`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| metric | Literal['eps', 'revenue', 'net_profit', 'book_value_per_share', 'roe', 'debt_ratio', 'gross_margin', 'revenue_growth', 'net_profit_growth', 'market_cap', 'pe', 'pb', 'dividend_yield'] | Yes | — | 该行使用的排名指标。 |
-| metricBasis | Literal['financial_period', 'market_snapshot'] | Yes | — | Allowed 值： financial_period, market_snapshot. |
-| companyValue | Decimal \| None | No | None | 标准化的 company 值 字段. |
-| industryAvg | Decimal \| None | No | None | 标准化的 industry avg 字段. |
-| industryMax | Decimal \| None | No | None | 标准化的 industry max 字段. |
-| industryMin | Decimal \| None | No | None | 标准化的 industry min 字段. |
-| periodEnd | date \| None | No | None | 可选的财务报告期末日期。 |
-| reportedPeriodLabel | str | Yes | — | 数据源报告期标签。 |
-| observationAt | datetime \| None | No | None | 标准化的 observation at 字段. |
+| metric | Literal['eps', 'revenue', 'net_profit', 'book_value_per_share', 'roe', 'debt_ratio', 'gross_margin', 'revenue_growth', 'net_profit_growth', 'market_cap', 'pe', 'pb', 'dividend_yield'] | 是 | — | 该行使用的排名指标。 |
+| metricBasis | Literal['financial_period', 'market_snapshot'] | 是 | — | 允许值：financial_period、market_snapshot。 |
+| companyValue | Decimal \| None | 否 | None | 标准化的公司值字段。 |
+| industryAvg | Decimal \| None | 否 | None | 标准化的行业平均值字段。 |
+| industryMax | Decimal \| None | 否 | None | 标准化的行业最大值字段。 |
+| industryMin | Decimal \| None | 否 | None | 标准化的行业最小值字段。 |
+| periodEnd | date \| None | 否 | None | 可选的财务报告期末日期。 |
+| reportedPeriodLabel | str | 是 | — | 数据源报告期标签。 |
+| observationAt | datetime \| None | 否 | None | 标准化的观测时间字段。 |
 
 
 #### 示例
@@ -3125,8 +3125,8 @@ result = fx.fundamental.industry_comparison(request)
 
 返回公司的标准化收入拆分记录。
 
-**Dataset:** `fundamental.revenue_breakdown`
-**Schema version:** `1.0`
+**Dataset：** `fundamental.revenue_breakdown`
+**Schema 版本：** `1.0`
 **已实现的 Provider：** `tencent.finance.qq.f10`
 **路由语义：** `multi_provider`。Registry 将此 Dataset 标记为 `multi_provider`；列出的 Provider 集合就是本版本实际实现的集合。
 
@@ -3140,43 +3140,43 @@ fx.fundamental.revenue_breakdown(request: 'RevenueBreakdownRequest', *, provider
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | RevenueBreakdownRequest | Yes | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
-| provider | str \| None | No | None | 严格指定 Provider id。只使用指定的 Provider。（仅限 keyword） |
-| use_cache | bool \| None | No | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限 keyword） |
+| request | RevenueBreakdownRequest | 是 | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
+| provider | str \| None | 否 | None | 严格指定 Provider id。只使用指定的 Provider。（仅限关键字参数） |
+| use_cache | bool \| None | 否 | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限关键字参数） |
 
-类型化请求模型为 `RevenueBreakdownRequest`. 其字段如下：
+类型化请求模型为 `RevenueBreakdownRequest`。其字段如下：
 
 | 请求字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| instrumentId | InstrumentId | 是 | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
 
 #### 返回值
 
-公开方法的类型标注为 `FetchResult[RevenueBreakdownData]`. FetchResult.data: StandardRecord. 每个 StandardRecord 内的 `data` 数据载荷是 `RevenueBreakdownData` schema 如下.
+公开方法的类型标注为 `FetchResult[RevenueBreakdownData]`。FetchResult.data：StandardRecord。每个 StandardRecord 内的 `data` 数据载荷是 `RevenueBreakdownData` schema 如下。
 
 #### 返回数据字段
 
 | 字段 | 类型 | 可为空 | 说明 |
 | --- | --- | --- | --- |
-| symbol | str | No | 经 Provider 标准化的标的 symbol 字符串。 |
-| breakdowns | list[RevenueBreakdownRow] | No | Revenue-breakdown 行. |
+| symbol | str | 否 | 经 Provider 标准化的标的 symbol 字符串。 |
+| breakdowns | list[RevenueBreakdownRow] | 否 | 收入拆分记录。 |
 
 #### 嵌套记录类型
 
 上述字段使用以下对象类型。Enum 值会直接显示在类型列中。
 
 **`RevenueBreakdownRow`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| reportedPeriodLabel | str | Yes | — | 数据源报告期标签。 |
-| periodEnd | date \| None | No | None | 可选的财务报告期末日期。 |
-| dimension | Literal['product', 'region', 'industry'] | Yes | — | Allowed 值： product, region, industry. |
-| itemName | str | Yes | — | 标准化的 item name 字段. |
-| revenue | Decimal \| None | Yes | — | 可用时的收入金额。 |
-| revenueShare | Decimal \| None | No | None | 标准化的 revenue 股份 字段. |
-| currency | 'CNY' | Yes | — | 货币代码。 |
-| sourceGroup | Literal['detail', 'others'] | Yes | — | Allowed 值： detail, others. |
-| isRollup | bool | Yes | — | 标准化的汇总标志字段。 |
+| reportedPeriodLabel | str | 是 | — | 数据源报告期标签。 |
+| periodEnd | date \| None | 否 | None | 可选的财务报告期末日期。 |
+| dimension | Literal['product', 'region', 'industry'] | 是 | — | 允许值：product、region、industry。 |
+| itemName | str | 是 | — | 标准化的项目名称字段。 |
+| revenue | Decimal \| None | 是 | — | 可用时的收入金额。 |
+| revenueShare | Decimal \| None | 否 | None | 标准化的收入占比字段。 |
+| currency | 'CNY' | 是 | — | 货币代码。 |
+| sourceGroup | Literal['detail', 'others'] | 是 | — | 允许值：detail、others。 |
+| isRollup | bool | 是 | — | 标准化的汇总标志字段。 |
 
 
 #### 示例
@@ -3211,14 +3211,14 @@ result = fx.fundamental.revenue_breakdown(request)
 
 ## `financial`
 
-Structured financial statements.
+Structured financial statements。
 
 ### `fx.financial.statements(...)`
 
 返回请求报表类型和期间的标准化财务报表行项目。
 
-**Dataset:** `financial.statement`
-**Schema version:** `1.0`
+**Dataset：** `financial.statement`
+**Schema 版本：** `1.0`
 **已实现的 Provider：** `tonghuashun.financial`
 **路由语义：** `multi_provider`。Registry 将此 Dataset 标记为 `multi_provider`；列出的 Provider 集合就是本版本实际实现的集合。
 
@@ -3232,64 +3232,64 @@ fx.financial.statements(instrument_id: 'InstrumentId | None' = None, statement_t
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| instrument_id | InstrumentId \| None | No | None | 目标标的的完整 InstrumentId。 |
-| statement_type | StatementType \| None | No | None | StatementType selection. |
-| period_end | date \| None | No | None | 可选的 reporting period end 日期. |
-| max_periods | int \| None | No | None | 可选的 maximum 数量 financial periods. |
-| request | FinancialStatementRequest \| None | No | None | 类型化请求模型。不能与便捷业务参数同时使用。 |
-| provider | str \| None | No | None | 严格指定 Provider id。只使用指定的 Provider。（仅限 keyword） |
-| use_cache | bool \| None | No | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限 keyword） |
+| instrument_id | InstrumentId \| None | 否 | None | 目标标的的完整 InstrumentId。 |
+| statement_type | StatementType \| None | 否 | None | StatementType 选择。 |
+| period_end | date \| None | 否 | None | 可选的报告期末日期。 |
+| max_periods | int \| None | 否 | None | 可选的财务期间数量上限。 |
+| request | FinancialStatementRequest \| None | 否 | None | 类型化请求模型。不能与便捷业务参数同时使用。 |
+| provider | str \| None | 否 | None | 严格指定 Provider id。只使用指定的 Provider。（仅限关键字参数） |
+| use_cache | bool \| None | 否 | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限关键字参数） |
 
-类型化请求模型为 `FinancialStatementRequest`. 其字段如下：
+类型化请求模型为 `FinancialStatementRequest`。其字段如下：
 
 | 请求字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
-| statementType | Literal['balance_sheet', 'income_statement', 'cash_flow_statement'] | Yes | — | 财务报表类型。 |
-| periodEnd | date \| None | No | None | 可选的财务报告期末日期。 |
-| maxPeriods | int \| None | No | None | 标准化的 max periods 字段. |
+| instrumentId | InstrumentId | 是 | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| statementType | Literal['balance_sheet', 'income_statement', 'cash_flow_statement'] | 是 | — | 财务报表类型。 |
+| periodEnd | date \| None | 否 | None | 可选的财务报告期末日期。 |
+| maxPeriods | int \| None | 否 | None | 标准化的最大期间数字段。 |
 
 #### 返回值
 
-公开方法的类型标注为 `FetchResult[FinancialStatementData]`. FetchResult.data: StandardRecord. 每个 StandardRecord 内的 `data` 数据载荷是 `FinancialStatementData` schema 如下.
+公开方法的类型标注为 `FetchResult[FinancialStatementData]`。FetchResult.data：StandardRecord。每个 StandardRecord 内的 `data` 数据载荷是 `FinancialStatementData` schema 如下。
 
 #### 返回数据字段
 
 | 字段 | 类型 | 可为空 | 说明 |
 | --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | 完整的标的身份：code、market、kind 和可选的 exchange。 |
-| symbol | str | No | 经 Provider 标准化的标的 symbol 字符串。 |
-| statementType | Literal['balance_sheet', 'income_statement', 'cash_flow_statement'] | No | 财务报表类型。 |
-| periods | list[FinancialStatementPeriod] | No | 报告期或持有人期间记录。 |
+| instrumentId | InstrumentId | 否 | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| symbol | str | 否 | 经 Provider 标准化的标的 symbol 字符串。 |
+| statementType | Literal['balance_sheet', 'income_statement', 'cash_flow_statement'] | 否 | 财务报表类型。 |
+| periods | list[FinancialStatementPeriod] | 否 | 报告期或持有人期间记录。 |
 
 #### 嵌套记录类型
 
 上述字段使用以下对象类型。Enum 值会直接显示在类型列中。
 
 **`FinancialStatementLineItem`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| lineItemId | str | Yes | — | 标准化的 line item id 字段. |
-| sourceName | str | Yes | — | 标准化的 数据源 name 字段. |
-| sourceUnit | str | Yes | — | 标准化的 数据源 unit 字段. |
-| sourceValue | str \| bool \| int \| Decimal \| None | Yes | — | 标准化的 数据源 值 字段. |
-| value | Decimal \| None | No | None | 标准化的 值 字段. |
-| currency | Currency \| None | No | None | 货币代码。 |
-| missingReason | Literal['null', 'false', 'empty_string', 'special_marker'] \| None | No | None | 标准化的 missing reason 字段. |
+| lineItemId | str | 是 | — | 标准化的行项目 id 字段。 |
+| sourceName | str | 是 | — | 标准化的数据源名称字段。 |
+| sourceUnit | str | 是 | — | 标准化的数据源单位字段。 |
+| sourceValue | str \| bool \| int \| Decimal \| None | 是 | — | 标准化的 数据源 值 字段。 |
+| value | Decimal \| None | 否 | None | 标准化的 值 字段。 |
+| currency | Currency \| None | 否 | None | 货币代码。 |
+| missingReason | Literal['null', 'false', 'empty_string', 'special_marker'] \| None | 否 | None | 标准化的缺失原因字段。 |
 
 **`FinancialStatementPeriod`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| periodEnd | date | Yes | — | 可选的财务报告期末日期。 |
-| lineItems | list[FinancialStatementLineItem] | Yes | — | Financial statement line items. |
+| periodEnd | date | 是 | — | 可选的财务报告期末日期。 |
+| lineItems | list[FinancialStatementLineItem] | 是 | — | 财务报表行项目。 |
 
 **`InstrumentId`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | 交易所特定的标的代码。 |
-| market | Market | Yes | — | FinchX 市场标识。 |
-| kind | InstrumentKind | Yes | — | 标的类型。 |
-| exchange | Exchange \| None | No | None | Dataset 需要时使用的交易所身份。 |
+| code | str | 是 | — | 交易所特定的标的代码。 |
+| market | Market | 是 | — | FinchX 市场标识。 |
+| kind | InstrumentKind | 是 | — | 标的类型。 |
+| exchange | Exchange \| None | 否 | None | Dataset 需要时使用的交易所身份。 |
 
 
 #### 示例
@@ -3324,14 +3324,14 @@ result = fx.financial.statements(request)
 
 ## `news`
 
-Individual-stock news search references.
+Individual-stock news search references。
 
 ### `fx.news.search(...)`
 
 搜索个股新闻元数据并返回可序列化的文档引用。
 
-**Dataset:** `news.document`
-**Schema version:** `1.0`
+**Dataset：** `news.document`
+**Schema 版本：** `1.0`
 **已实现的 Provider：** `eastmoney.news`, `eastmoney.market_news`, `aigupiao.market_news`, `baidu.finscope.market_news`
 **路由语义：** `multi_provider`。Registry 将此 Dataset 标记为 `multi_provider`；列出的 Provider 集合就是本版本实际实现的集合。
 
@@ -3345,71 +3345,71 @@ fx.news.search(instrument: 'InstrumentId | str | None' = None, *, page: 'int' = 
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| instrument | InstrumentId \| str \| None | No | None | 用于文档搜索的 InstrumentId 或受支持的六位代码文本。 |
-| page | int | No | 1 | 从 1 开始计数的结果页；默认值为 1。 |
-| page_size | int | No | 20 | 页面大小；默认值为 20，并受请求模型上限约束。 |
-| max_results | int \| None | No | None | 可选的结果数量上限。 |
-| since | date \| datetime \| None | No | None | 可选的、包含边界的最早发布时间。 |
-| until | date \| datetime \| None | No | None | 可选的、包含边界的最晚发布时间。 |
-| sort | str | No | 'published_desc' | 文档排序方式；公开默认值为 published_desc。 |
-| request | NewsSearchRequest \| None | No | None | 类型化请求模型。不能与便捷业务参数同时使用。 |
-| provider | str \| None | No | None | 严格指定 Provider id。只使用指定的 Provider。（仅限 keyword） |
-| use_cache | bool \| None | No | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限 keyword） |
+| instrument | InstrumentId \| str \| None | 否 | None | 用于文档搜索的 InstrumentId 或受支持的六位代码文本。 |
+| page | int | 否 | 1 | 从 1 开始计数的结果页；默认值为 1。 |
+| page_size | int | 否 | 20 | 页面大小；默认值为 20，并受请求模型上限约束。 |
+| max_results | int \| None | 否 | None | 可选的结果数量上限。 |
+| since | date \| datetime \| None | 否 | None | 可选的、包含边界的最早发布时间。 |
+| until | date \| datetime \| None | 否 | None | 可选的、包含边界的最晚发布时间。 |
+| sort | str | 否 | 'published_desc' | 文档排序方式；公开默认值为 published_desc。 |
+| request | NewsSearchRequest \| None | 否 | None | 类型化请求模型。不能与便捷业务参数同时使用。 |
+| provider | str \| None | 否 | None | 严格指定 Provider id。只使用指定的 Provider。（仅限关键字参数） |
+| use_cache | bool \| None | 否 | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限关键字参数） |
 
-类型化请求模型为 `NewsSearchRequest`. 其字段如下：
+类型化请求模型为 `NewsSearchRequest`。其字段如下：
 
 | 请求字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
-| page | int | No | 1 | 从 1 开始计数的结果页；默认值为 1。 |
-| pageSize | int | No | 20 | 标准化的页面大小字段。 |
-| maxResults | int \| None | No | None | 标准化的最大结果数​​字段。 |
-| since | date \| datetime \| None | No | None | 可选的、包含边界的最早发布时间。 |
-| until | date \| datetime \| None | No | None | 可选的、包含边界的最晚发布时间。 |
-| sort | Literal['published_desc', 'published_asc'] | No | 'published_desc' | 文档排序方式；公开默认值为 published_desc。 |
+| instrumentId | InstrumentId | 是 | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| page | int | 否 | 1 | 从 1 开始计数的结果页；默认值为 1。 |
+| pageSize | int | 否 | 20 | 标准化的页面大小字段。 |
+| maxResults | int \| None | 否 | None | 标准化的最大结果数​​字段。 |
+| since | date \| datetime \| None | 否 | None | 可选的、包含边界的最早发布时间。 |
+| until | date \| datetime \| None | 否 | None | 可选的、包含边界的最晚发布时间。 |
+| sort | Literal['published_desc', 'published_asc'] | 否 | 'published_desc' | 文档排序方式；公开默认值为 published_desc。 |
 
 #### 返回值
 
-公开方法的类型标注为 `FetchResult[NewsDocumentData]`. FetchResult.data: tuple[NewsDocumentRef, ...]. 每个 StandardRecord 内的 `data` 数据载荷是 `NewsDocumentData` schema 如下.
+公开方法的类型标注为 `FetchResult[NewsDocumentData]`。FetchResult.data：tuple[NewsDocumentRef, ...]。每个 StandardRecord 内的 `data` 数据载荷是 `NewsDocumentData` schema 如下。
 
 #### 返回数据字段
 
 | 字段 | 类型 | 可为空 | 说明 |
 | --- | --- | --- | --- |
-| documentId | str | No | FinchX 文档身份。 |
-| sourceDocumentId | str | No | 数据源侧文档身份。 |
-| title | str | No | 文档标题。 |
-| contentText | str \| None | Yes | 内容可用时获取到的文档正文。 |
-| summary | str \| None | Yes | 可用时的数据源简短摘要。 |
-| publishedAt | datetime \| None | Yes | 数据源提供的发布时间戳。 |
-| sourceOccurrences | list[NewsSourceOccurrence] | No | 数据源-side occurrences retained during document normalization. |
-| url | AnyUrl | No | 标准化的 URL 字段。 |
-| originalUrl | AnyUrl \| None | Yes | 提供时的原始文档 URL。 |
-| contentAvailable | bool | No | 该结果中是否包含文档内容。 |
-| source | str \| None | Yes | 标准化的数据源字段。 |
-| relatedInstruments | list[InstrumentId] | No | 与文档相关的标的。 |
+| documentId | str | 否 | FinchX 文档身份。 |
+| sourceDocumentId | str | 否 | 数据源侧文档身份。 |
+| title | str | 否 | 文档标题。 |
+| contentText | str \| None | 是 | 内容可用时获取到的文档正文。 |
+| summary | str \| None | 是 | 可用时的数据源简短摘要。 |
+| publishedAt | datetime \| None | 是 | 数据源提供的发布时间戳。 |
+| sourceOccurrences | list[NewsSourceOccurrence] | 否 | 文档标准化过程中保留的数据源侧出现记录。 |
+| url | AnyUrl | 否 | 标准化的 URL 字段。 |
+| originalUrl | AnyUrl \| None | 是 | 提供时的原始文档 URL。 |
+| contentAvailable | bool | 否 | 该结果中是否包含文档内容。 |
+| source | str \| None | 是 | 标准化的数据源字段。 |
+| relatedInstruments | list[InstrumentId] | 否 | 与文档相关的标的。 |
 
 #### 嵌套记录类型
 
 上述字段使用以下对象类型。Enum 值会直接显示在类型列中。
 
 **`InstrumentId`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | 交易所特定的标的代码。 |
-| market | Market | Yes | — | FinchX 市场标识。 |
-| kind | InstrumentKind | Yes | — | 标的类型。 |
-| exchange | Exchange \| None | No | None | Dataset 需要时使用的交易所身份。 |
+| code | str | 是 | — | 交易所特定的标的代码。 |
+| market | Market | 是 | — | FinchX 市场标识。 |
+| kind | InstrumentKind | 是 | — | 标的类型。 |
+| exchange | Exchange \| None | 否 | None | Dataset 需要时使用的交易所身份。 |
 
 **`NewsSourceOccurrence`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| providerId | str | Yes | — | 标准化的 Provider id 字段. |
-| sourceDocumentId | str | Yes | — | 数据源侧文档身份。 |
-| sourceUrl | AnyUrl \| None | No | None | 直接数据源 URL 或数据源接口引用。 |
-| documentUrl | AnyUrl \| None | No | None | 标准化的 document url 字段. |
-| publishedAt | datetime \| None | No | None | 数据源提供的发布时间戳。 |
-| capturedAt | datetime | Yes | — | FinchX 获取数据源观测值时的带时区时间。 |
+| providerId | str | 是 | — | 标准化的 Provider id。 |
+| sourceDocumentId | str | 是 | — | 数据源侧文档身份。 |
+| sourceUrl | AnyUrl \| None | 否 | None | 直接数据源 URL 或数据源接口引用。 |
+| documentUrl | AnyUrl \| None | 否 | None | 标准化的文档 URL 字段。 |
+| publishedAt | datetime \| None | 否 | None | 数据源提供的发布时间戳。 |
+| capturedAt | datetime | 是 | — | FinchX 获取数据源观测值时的带时区时间。 |
 
 
 #### 示例
@@ -3444,14 +3444,14 @@ for ref in result.data:
 
 ## `disclosure`
 
-Individual-stock disclosure search references.
+Individual-stock disclosure search references。
 
 ### `fx.disclosure.search(...)`
 
 搜索个股公告并返回可序列化的通知引用。
 
-**Dataset:** `disclosure.document`
-**Schema version:** `1.0`
+**Dataset：** `disclosure.document`
+**Schema 版本：** `1.0`
 **已实现的 Provider：** `eastmoney.disclosure`
 **路由语义：** `multi_provider`。Registry 将此 Dataset 标记为 `multi_provider`；列出的 Provider 集合就是本版本实际实现的集合。
 
@@ -3465,81 +3465,81 @@ fx.disclosure.search(instrument: 'InstrumentId | str | None' = None, *, page: 'i
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| instrument | InstrumentId \| str \| None | No | None | 用于文档搜索的 InstrumentId 或受支持的六位代码文本。 |
-| page | int | No | 1 | 从 1 开始计数的结果页；默认值为 1。 |
-| page_size | int | No | 20 | 页面大小；默认值为 20，并受请求模型上限约束。 |
-| max_results | int \| None | No | None | 可选的结果数量上限。 |
-| since | date \| datetime \| None | No | None | 可选的、包含边界的最早发布时间。 |
-| until | date \| datetime \| None | No | None | 可选的、包含边界的最晚发布时间。 |
-| categories | Sequence[str] \| None | No | None | 可选的公告类别代码或名称。 |
-| sort | str | No | 'published_desc' | 文档排序方式；公开默认值为 published_desc。 |
-| request | DisclosureSearchRequest \| None | No | None | 类型化请求模型。不能与便捷业务参数同时使用。 |
-| provider | str \| None | No | None | 严格指定 Provider id。只使用指定的 Provider。（仅限 keyword） |
-| use_cache | bool \| None | No | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限 keyword） |
+| instrument | InstrumentId \| str \| None | 否 | None | 用于文档搜索的 InstrumentId 或受支持的六位代码文本。 |
+| page | int | 否 | 1 | 从 1 开始计数的结果页；默认值为 1。 |
+| page_size | int | 否 | 20 | 页面大小；默认值为 20，并受请求模型上限约束。 |
+| max_results | int \| None | 否 | None | 可选的结果数量上限。 |
+| since | date \| datetime \| None | 否 | None | 可选的、包含边界的最早发布时间。 |
+| until | date \| datetime \| None | 否 | None | 可选的、包含边界的最晚发布时间。 |
+| categories | Sequence[str] \| None | 否 | None | 可选的公告类别代码或名称。 |
+| sort | str | 否 | 'published_desc' | 文档排序方式；公开默认值为 published_desc。 |
+| request | DisclosureSearchRequest \| None | 否 | None | 类型化请求模型。不能与便捷业务参数同时使用。 |
+| provider | str \| None | 否 | None | 严格指定 Provider id。只使用指定的 Provider。（仅限关键字参数） |
+| use_cache | bool \| None | 否 | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限关键字参数） |
 
-类型化请求模型为 `DisclosureSearchRequest`. 其字段如下：
+类型化请求模型为 `DisclosureSearchRequest`。其字段如下：
 
 | 请求字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
-| page | int | No | 1 | 从 1 开始计数的结果页；默认值为 1。 |
-| pageSize | int | No | 20 | 标准化的页面大小字段。 |
-| maxResults | int \| None | No | None | 标准化的最大结果数​​字段。 |
-| since | date \| datetime \| None | No | None | 可选的、包含边界的最早发布时间。 |
-| until | date \| datetime \| None | No | None | 可选的、包含边界的最晚发布时间。 |
-| sort | Literal['published_desc', 'published_asc'] | No | 'published_desc' | 文档排序方式；公开默认值为 published_desc。 |
-| categories | list[str] \| None | No | None | 公告类别。 |
+| instrumentId | InstrumentId | 是 | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| page | int | 否 | 1 | 从 1 开始计数的结果页；默认值为 1。 |
+| pageSize | int | 否 | 20 | 标准化的页面大小字段。 |
+| maxResults | int \| None | 否 | None | 标准化的最大结果数​​字段。 |
+| since | date \| datetime \| None | 否 | None | 可选的、包含边界的最早发布时间。 |
+| until | date \| datetime \| None | 否 | None | 可选的、包含边界的最晚发布时间。 |
+| sort | Literal['published_desc', 'published_asc'] | 否 | 'published_desc' | 文档排序方式；公开默认值为 published_desc。 |
+| categories | list[str] \| None | 否 | None | 公告类别。 |
 
 #### 返回值
 
-公开方法的类型标注为 `FetchResult[DisclosureDocumentData]`. FetchResult.data: tuple[DisclosureDocumentRef, ...]. 每个 StandardRecord 内的 `data` 数据载荷是 `DisclosureDocumentData` schema 如下.
+公开方法的类型标注为 `FetchResult[DisclosureDocumentData]`。FetchResult.data：tuple[DisclosureDocumentRef, ...]。每个 StandardRecord 内的 `data` 数据载荷是 `DisclosureDocumentData` schema 如下。
 
 #### 返回数据字段
 
 | 字段 | 类型 | 可为空 | 说明 |
 | --- | --- | --- | --- |
-| documentId | str | No | FinchX 文档身份。 |
-| sourceDocumentId | str | No | 数据源侧文档身份。 |
-| title | str | No | 文档标题。 |
-| contentText | str \| None | Yes | 内容可用时获取到的文档正文。 |
-| noticeDate | date | No | Disclosure notice 日期. |
-| publishedAt | datetime \| None | Yes | 数据源提供的发布时间戳。 |
-| sourceRecordedAt | datetime \| None | Yes | 数据源侧记录的时间戳，不同于发布时间和获取时间。 |
-| categories | list[DisclosureCategory] | No | 公告类别。 |
-| relatedInstruments | list[InstrumentId] | No | 与文档相关的标的。 |
-| contentAvailable | bool | No | 该结果中是否包含文档内容。 |
-| pdfAvailable | bool | No | 是否有可用的 PDF 附件。 |
-| originalDocumentUrl | AnyUrl | No | Original disclosure document URL. |
-| attachments | list[DisclosureAttachment] | No | Disclosure attachments. |
-| sourceType | str \| None | Yes | 数据源 document type label. |
+| documentId | str | 否 | FinchX 文档身份。 |
+| sourceDocumentId | str | 否 | 数据源侧文档身份。 |
+| title | str | 否 | 文档标题。 |
+| contentText | str \| None | 是 | 内容可用时获取到的文档正文。 |
+| noticeDate | date | 否 | 公告日期。 |
+| publishedAt | datetime \| None | 是 | 数据源提供的发布时间戳。 |
+| sourceRecordedAt | datetime \| None | 是 | 数据源侧记录的时间戳，不同于发布时间和获取时间。 |
+| categories | list[DisclosureCategory] | 否 | 公告类别。 |
+| relatedInstruments | list[InstrumentId] | 否 | 与文档相关的标的。 |
+| contentAvailable | bool | 否 | 该结果中是否包含文档内容。 |
+| pdfAvailable | bool | 否 | 是否有可用的 PDF 附件。 |
+| originalDocumentUrl | AnyUrl | 否 | 原始公告文档 URL。 |
+| attachments | list[DisclosureAttachment] | 否 | 公告附件。 |
+| sourceType | str \| None | 是 | 数据源文档类型标签。 |
 
 #### 嵌套记录类型
 
 上述字段使用以下对象类型。Enum 值会直接显示在类型列中。
 
 **`DisclosureAttachment`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| sequence | int \| None | No | None | 标准化的 sequence 字段. |
-| size | int \| None | No | None | 标准化的 size 字段. |
-| attachmentType | str \| None | No | None | 标准化的 attachment type 字段. |
-| url | AnyUrl | Yes | — | 标准化的 URL 字段。 |
-| webUrl | AnyUrl \| None | No | None | 标准化的 web url 字段. |
+| sequence | int \| None | 否 | None | 标准化的序号字段。 |
+| size | int \| None | 否 | None | 标准化的大小字段。 |
+| attachmentType | str \| None | 否 | None | 标准化的附件类型字段。 |
+| url | AnyUrl | 是 | — | 标准化的 URL 字段。 |
+| webUrl | AnyUrl \| None | 否 | None | 标准化的网页 URL 字段。 |
 
 **`DisclosureCategory`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | 交易所特定的标的代码。 |
-| name | str | Yes | — | 经 Provider 标准化的显示名称。 |
-| source | str | No | 'eastmoney' | 标准化的数据源字段。 |
+| code | str | 是 | — | 交易所特定的标的代码。 |
+| name | str | 是 | — | 经 Provider 标准化的显示名称。 |
+| source | str | 否 | 'eastmoney' | 标准化的数据源字段。 |
 
 **`InstrumentId`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | 交易所特定的标的代码。 |
-| market | Market | Yes | — | FinchX 市场标识。 |
-| kind | InstrumentKind | Yes | — | 标的类型。 |
-| exchange | Exchange \| None | No | None | Dataset 需要时使用的交易所身份。 |
+| code | str | 是 | — | 交易所特定的标的代码。 |
+| market | Market | 是 | — | FinchX 市场标识。 |
+| kind | InstrumentKind | 是 | — | 标的类型。 |
+| exchange | Exchange \| None | 否 | None | Dataset 需要时使用的交易所身份。 |
 
 
 #### 示例
@@ -3580,8 +3580,8 @@ for ref in result.data:
 
 返回一个标的的总股本和流通股本数量。
 
-**Dataset:** `ownership.capital_snapshot`
-**Schema version:** `1.0`
+**Dataset：** `ownership.capital_snapshot`
+**Schema 版本：** `1.0`
 **已实现的 Provider：** `tencent.finance.qq.f10`
 **路由语义：** `multi_provider`。Registry 将此 Dataset 标记为 `multi_provider`；列出的 Provider 集合就是本版本实际实现的集合。
 
@@ -3595,27 +3595,27 @@ fx.ownership.capital_snapshot(request: 'CapitalSnapshotRequest', *, provider: 's
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | CapitalSnapshotRequest | Yes | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
-| provider | str \| None | No | None | 严格指定 Provider id。只使用指定的 Provider。（仅限 keyword） |
-| use_cache | bool \| None | No | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限 keyword） |
+| request | CapitalSnapshotRequest | 是 | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
+| provider | str \| None | 否 | None | 严格指定 Provider id。只使用指定的 Provider。（仅限关键字参数） |
+| use_cache | bool \| None | 否 | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限关键字参数） |
 
-类型化请求模型为 `CapitalSnapshotRequest`. 其字段如下：
+类型化请求模型为 `CapitalSnapshotRequest`。其字段如下：
 
 | 请求字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| instrumentId | InstrumentId | 是 | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
 
 #### 返回值
 
-公开方法的类型标注为 `FetchResult[CapitalSnapshotData]`. FetchResult.data: StandardRecord. 每个 StandardRecord 内的 `data` 数据载荷是 `CapitalSnapshotData` schema 如下.
+公开方法的类型标注为 `FetchResult[CapitalSnapshotData]`。FetchResult.data：StandardRecord。每个 StandardRecord 内的 `data` 数据载荷是 `CapitalSnapshotData` schema 如下。
 
 #### 返回数据字段
 
 | 字段 | 类型 | 可为空 | 说明 |
 | --- | --- | --- | --- |
-| symbol | str | No | 经 Provider 标准化的标的 symbol 字符串。 |
-| totalShares | int \| None | Yes | 总股本。 |
-| floatShares | int \| None | Yes | 流通股本。 |
+| symbol | str | 否 | 经 Provider 标准化的标的 symbol 字符串。 |
+| totalShares | int \| None | 是 | 总股本。 |
+| floatShares | int \| None | 是 | 流通股本。 |
 
 
 
@@ -3653,8 +3653,8 @@ result = fx.ownership.capital_snapshot(request)
 
 返回一个标的的流通股东记录，也可以指定日期。
 
-**Dataset:** `ownership.float_holder`
-**Schema version:** `1.0`
+**Dataset：** `ownership.float_holder`
+**Schema 版本：** `1.0`
 **已实现的 Provider：** `tencent.finance.qq.float_holder`
 **路由语义：** `multi_provider`。Registry 将此 Dataset 标记为 `multi_provider`；列出的 Provider 集合就是本版本实际实现的集合。
 
@@ -3668,51 +3668,51 @@ fx.ownership.float_holder(request: 'FloatHolderRequest', *, provider: 'str | Non
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | FloatHolderRequest | Yes | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
-| provider | str \| None | No | None | 严格指定 Provider id。只使用指定的 Provider。（仅限 keyword） |
-| use_cache | bool \| None | No | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限 keyword） |
+| request | FloatHolderRequest | 是 | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
+| provider | str \| None | 否 | None | 严格指定 Provider id。只使用指定的 Provider。（仅限关键字参数） |
+| use_cache | bool \| None | 否 | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限关键字参数） |
 
-类型化请求模型为 `FloatHolderRequest`. 其字段如下：
+类型化请求模型为 `FloatHolderRequest`。其字段如下：
 
 | 请求字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
-| asOf | datetime \| None | No | None | 查询或计算的可选截止日期。 |
+| instrumentId | InstrumentId | 是 | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| asOf | datetime \| None | 否 | None | 查询或计算的可选截止日期。 |
 
 #### 返回值
 
-公开方法的类型标注为 `FetchResult[FloatHolderData]`. FetchResult.data: StandardRecord. 每个 StandardRecord 内的 `data` 数据载荷是 `FloatHolderData` schema 如下.
+公开方法的类型标注为 `FetchResult[FloatHolderData]`。FetchResult.data：StandardRecord。每个 StandardRecord 内的 `data` 数据载荷是 `FloatHolderData` schema 如下。
 
 #### 返回数据字段
 
 | 字段 | 类型 | 可为空 | 说明 |
 | --- | --- | --- | --- |
-| symbol | str | No | 经 Provider 标准化的标的 symbol 字符串。 |
-| periods | list[FloatHolderPeriod] | No | 报告期或持有人期间记录。 |
+| symbol | str | 否 | 经 Provider 标准化的标的 symbol 字符串。 |
+| periods | list[FloatHolderPeriod] | 否 | 报告期或持有人期间记录。 |
 
 #### 嵌套记录类型
 
 上述字段使用以下对象类型。Enum 值会直接显示在类型列中。
 
 **`FloatHolderPeriod`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| periodEnd | date | Yes | — | 可选的财务报告期末日期。 |
-| publishedAt | datetime | Yes | — | 数据源提供的发布时间戳。 |
-| rows | list[FloatHolderRow] | Yes | — | 标准化的 行 字段. |
+| periodEnd | date | 是 | — | 可选的财务报告期末日期。 |
+| publishedAt | datetime | 是 | — | 数据源提供的发布时间戳。 |
+| rows | list[FloatHolderRow] | 是 | — | 标准化的 行 字段。 |
 
 **`FloatHolderRow`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| rank | int | Yes | — | 根据腾讯 rows 数组顺序推导。 |
-| holderId | str \| None | No | None | 标准化的 holder id 字段. |
-| holderName | str | Yes | — | 标准化的 holder name 字段. |
-| shares | int | Yes | — | 股份数量。 |
-| holderType | str | Yes | — | 标准化的 holder type 字段. |
-| floatShareRatio | Decimal \| None | No | None | 标准化的 float 股份 比率 字段. |
-| previousShares | int \| None | No | None | 标准化的 此前 股份 字段. |
-| shareChange | int \| None | No | None | 带符号的股份数量变动。 |
-| isNewTopFloatHolderEntry | bool \| None | No | None | 多股票相邻期间校验后根据 bdms=1 推导。 |
+| rank | int | 是 | — | 根据腾讯 rows 数组顺序推导。 |
+| holderId | str \| None | 否 | None | 标准化的持有人 id 字段。 |
+| holderName | str | 是 | — | 标准化的持有人名称字段。 |
+| shares | int | 是 | — | 股份数量。 |
+| holderType | str | 是 | — | 标准化的持有人类型字段。 |
+| floatShareRatio | Decimal \| None | 否 | None | 标准化的流通股份比率字段。 |
+| previousShares | int \| None | 否 | None | 标准化的此前股份字段。 |
+| shareChange | int \| None | 否 | None | 带符号的股份数量变动。 |
+| isNewTopFloatHolderEntry | bool \| None | 否 | None | 多股票相邻期间校验后根据 bdms=1 推导。 |
 
 
 #### 示例
@@ -3749,8 +3749,8 @@ result = fx.ownership.float_holder(request)
 
 返回股东数量、集中度和户均指标。
 
-**Dataset:** `ownership.holder_summary_snapshot`
-**Schema version:** `1.0`
+**Dataset：** `ownership.holder_summary_snapshot`
+**Schema 版本：** `1.0`
 **已实现的 Provider：** `tencent.finance.qq.f10`
 **路由语义：** `multi_provider`。Registry 将此 Dataset 标记为 `multi_provider`；列出的 Provider 集合就是本版本实际实现的集合。
 
@@ -3764,30 +3764,30 @@ fx.ownership.holder_summary_snapshot(request: 'HolderSummarySnapshotRequest', *,
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | HolderSummarySnapshotRequest | Yes | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
-| provider | str \| None | No | None | 严格指定 Provider id。只使用指定的 Provider。（仅限 keyword） |
-| use_cache | bool \| None | No | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限 keyword） |
+| request | HolderSummarySnapshotRequest | 是 | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
+| provider | str \| None | 否 | None | 严格指定 Provider id。只使用指定的 Provider。（仅限关键字参数） |
+| use_cache | bool \| None | 否 | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限关键字参数） |
 
-类型化请求模型为 `HolderSummarySnapshotRequest`. 其字段如下：
+类型化请求模型为 `HolderSummarySnapshotRequest`。其字段如下：
 
 | 请求字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| instrumentId | InstrumentId | 是 | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
 
 #### 返回值
 
-公开方法的类型标注为 `FetchResult[HolderSummarySnapshotData]`. FetchResult.data: StandardRecord. 每个 StandardRecord 内的 `data` 数据载荷是 `HolderSummarySnapshotData` schema 如下.
+公开方法的类型标注为 `FetchResult[HolderSummarySnapshotData]`。FetchResult.data：StandardRecord。每个 StandardRecord 内的 `data` 数据载荷是 `HolderSummarySnapshotData` schema 如下。
 
 #### 返回数据字段
 
 | 字段 | 类型 | 可为空 | 说明 |
 | --- | --- | --- | --- |
-| symbol | str | No | 经 Provider 标准化的标的 symbol 字符串。 |
-| shareholderCount | int \| None | Yes | Shareholder 数量. |
-| averageSharesPerHolder | Decimal \| None | Yes | Average 股份 per holder. |
-| shareholderCountChange | Decimal \| None | Yes | Shareholder-数量 变动 比率, 不是 an absolute 数量 delta. |
-| top10FloatHolderRatio | Decimal \| None | Yes | Top-ten 流通-holder 比率. |
-| top10HolderRatio | Decimal \| None | Yes | Top-ten holder 比率. |
+| symbol | str | 否 | 经 Provider 标准化的标的 symbol 字符串。 |
+| shareholderCount | int \| None | 是 | 股东数量。 |
+| averageSharesPerHolder | Decimal \| None | 是 | 每位持有人的平均股份数。 |
+| shareholderCountChange | Decimal \| None | 是 | 股东数量变动比率，不是绝对数量差值。 |
+| top10FloatHolderRatio | Decimal \| None | 是 | 前十大流通股东占比。 |
+| top10HolderRatio | Decimal \| None | 是 | 前十大股东占比。 |
 
 
 
@@ -3829,8 +3829,8 @@ result = fx.ownership.holder_summary_snapshot(request)
 
 返回标准化的管理层持股变动事件。
 
-**Dataset:** `company.executive_share_change`
-**Schema version:** `1.0`
+**Dataset：** `company.executive_share_change`
+**Schema 版本：** `1.0`
 **已实现的 Provider：** `tencent.finance.qq.f10`
 **路由语义：** `multi_provider`。Registry 将此 Dataset 标记为 `multi_provider`；列出的 Provider 集合就是本版本实际实现的集合。
 
@@ -3844,38 +3844,38 @@ fx.company.executive_share_change(request: 'ExecutiveShareChangeRequest', *, pro
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | ExecutiveShareChangeRequest | Yes | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
-| provider | str \| None | No | None | 严格指定 Provider id。只使用指定的 Provider。（仅限 keyword） |
-| use_cache | bool \| None | No | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限 keyword） |
+| request | ExecutiveShareChangeRequest | 是 | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
+| provider | str \| None | 否 | None | 严格指定 Provider id。只使用指定的 Provider。（仅限关键字参数） |
+| use_cache | bool \| None | 否 | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限关键字参数） |
 
-类型化请求模型为 `ExecutiveShareChangeRequest`. 其字段如下：
+类型化请求模型为 `ExecutiveShareChangeRequest`。其字段如下：
 
 | 请求字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| instrumentId | InstrumentId | 是 | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
 
 #### 返回值
 
-公开方法的类型标注为 `FetchResult[ExecutiveShareChangeData]`. FetchResult.data: StandardRecord. 每个 StandardRecord 内的 `data` 数据载荷是 `ExecutiveShareChangeData` schema 如下.
+公开方法的类型标注为 `FetchResult[ExecutiveShareChangeData]`。FetchResult.data：StandardRecord。每个 StandardRecord 内的 `data` 数据载荷是 `ExecutiveShareChangeData` schema 如下。
 
 #### 返回数据字段
 
 | 字段 | 类型 | 可为空 | 说明 |
 | --- | --- | --- | --- |
-| symbol | str | No | 经 Provider 标准化的标的 symbol 字符串。 |
-| changes | list[ExecutiveShareChange] | No | 标准化的 changes 字段. |
+| symbol | str | 否 | 经 Provider 标准化的标的 symbol 字符串。 |
+| changes | list[ExecutiveShareChange] | 否 | 标准化的变动记录字段。 |
 
 #### 嵌套记录类型
 
 上述字段使用以下对象类型。Enum 值会直接显示在类型列中。
 
 **`ExecutiveShareChange`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| eventDate | date \| None | No | None | Executive 股份-变动 event 日期. |
-| personName | str \| None | No | None | 管理层或相关人员姓名。 |
-| shareChange | int \| None | No | None | 带符号的股份数量变动。 |
-| averagePrice | Decimal \| None | No | None | 事件平均价格，单位为每股人民币。 |
+| eventDate | date \| None | 否 | None | 管理层持股变动事件日期。 |
+| personName | str \| None | 否 | None | 管理层或相关人员姓名。 |
+| shareChange | int \| None | 否 | None | 带符号的股份数量变动。 |
+| averagePrice | Decimal \| None | 否 | None | 事件平均价格，单位为每股人民币。 |
 
 
 #### 示例
@@ -3912,8 +3912,8 @@ result = fx.company.executive_share_change(request)
 
 返回标准化的管理层名册和职务。
 
-**Dataset:** `company.executive_snapshot`
-**Schema version:** `1.0`
+**Dataset：** `company.executive_snapshot`
+**Schema 版本：** `1.0`
 **已实现的 Provider：** `tencent.finance.qq.f10`
 **路由语义：** `multi_provider`。Registry 将此 Dataset 标记为 `multi_provider`；列出的 Provider 集合就是本版本实际实现的集合。
 
@@ -3927,38 +3927,38 @@ fx.company.executive_snapshot(request: 'ExecutiveSnapshotRequest', *, provider: 
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | ExecutiveSnapshotRequest | Yes | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
-| provider | str \| None | No | None | 严格指定 Provider id。只使用指定的 Provider。（仅限 keyword） |
-| use_cache | bool \| None | No | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限 keyword） |
+| request | ExecutiveSnapshotRequest | 是 | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
+| provider | str \| None | 否 | None | 严格指定 Provider id。只使用指定的 Provider。（仅限关键字参数） |
+| use_cache | bool \| None | 否 | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限关键字参数） |
 
-类型化请求模型为 `ExecutiveSnapshotRequest`. 其字段如下：
+类型化请求模型为 `ExecutiveSnapshotRequest`。其字段如下：
 
 | 请求字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| instrumentId | InstrumentId | 是 | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
 
 #### 返回值
 
-公开方法的类型标注为 `FetchResult[ExecutiveSnapshotData]`. FetchResult.data: StandardRecord. 每个 StandardRecord 内的 `data` 数据载荷是 `ExecutiveSnapshotData` schema 如下.
+公开方法的类型标注为 `FetchResult[ExecutiveSnapshotData]`。FetchResult.data：StandardRecord。每个 StandardRecord 内的 `data` 数据载荷是 `ExecutiveSnapshotData` schema 如下。
 
 #### 返回数据字段
 
 | 字段 | 类型 | 可为空 | 说明 |
 | --- | --- | --- | --- |
-| symbol | str | No | 经 Provider 标准化的标的 symbol 字符串。 |
-| executives | list[ExecutiveEntry] | No | Executive entries. |
+| symbol | str | 否 | 经 Provider 标准化的标的 symbol 字符串。 |
+| executives | list[ExecutiveEntry] | 否 | 管理层条目。 |
 
 #### 嵌套记录类型
 
 上述字段使用以下对象类型。Enum 值会直接显示在类型列中。
 
 **`ExecutiveEntry`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| name | str | Yes | — | 经 Provider 标准化的显示名称。 |
-| roles | list[str] | Yes | — | Executive roles. |
-| shares | int \| None | No | None | 股份数量。 |
-| compensation | Decimal \| None | No | None | 提供时的薪酬金额。 |
+| name | str | 是 | — | 经 Provider 标准化的显示名称。 |
+| roles | list[str] | 是 | — | 管理层职务。 |
+| shares | int \| None | 否 | None | 股份数量。 |
+| compensation | Decimal \| None | 否 | None | 提供时的薪酬金额。 |
 
 
 #### 示例
@@ -3999,8 +3999,8 @@ result = fx.company.executive_snapshot(request)
 
 返回标准化的分红事件及其数据源字段。
 
-**Dataset:** `corporate_action.dividend`
-**Schema version:** `1.0`
+**Dataset：** `corporate_action.dividend`
+**Schema 版本：** `1.0`
 **已实现的 Provider：** `tencent.finance.qq.f10`
 **路由语义：** `multi_provider`。Registry 将此 Dataset 标记为 `multi_provider`；列出的 Provider 集合就是本版本实际实现的集合。
 
@@ -4014,43 +4014,43 @@ fx.corporate_action.dividend(request: 'DividendRequest', *, provider: 'str | Non
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | DividendRequest | Yes | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
-| provider | str \| None | No | None | 严格指定 Provider id。只使用指定的 Provider。（仅限 keyword） |
-| use_cache | bool \| None | No | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限 keyword） |
+| request | DividendRequest | 是 | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
+| provider | str \| None | 否 | None | 严格指定 Provider id。只使用指定的 Provider。（仅限关键字参数） |
+| use_cache | bool \| None | 否 | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限关键字参数） |
 
-类型化请求模型为 `DividendRequest`. 其字段如下：
+类型化请求模型为 `DividendRequest`。其字段如下：
 
 | 请求字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| instrumentId | InstrumentId | 是 | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
 
 #### 返回值
 
-公开方法的类型标注为 `FetchResult[DividendData]`. FetchResult.data: StandardRecord. 每个 StandardRecord 内的 `data` 数据载荷是 `DividendData` schema 如下.
+公开方法的类型标注为 `FetchResult[DividendData]`。FetchResult.data：StandardRecord。每个 StandardRecord 内的 `data` 数据载荷是 `DividendData` schema 如下。
 
 #### 返回数据字段
 
 | 字段 | 类型 | 可为空 | 说明 |
 | --- | --- | --- | --- |
-| symbol | str | No | 经 Provider 标准化的标的 symbol 字符串。 |
-| dividends | list[Dividend] | No | Dividend event 行. |
+| symbol | str | 否 | 经 Provider 标准化的标的 symbol 字符串。 |
+| dividends | list[Dividend] | 否 | 分红事件记录。 |
 
 #### 嵌套记录类型
 
 上述字段使用以下对象类型。Enum 值会直接显示在类型列中。
 
 **`Dividend`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| fiscalYear | int \| None | No | None | 标准化的 fiscal year 字段. |
-| announcementDate | date \| None | No | None | 标准化的 announcement 日期 字段. |
-| stockDividendPer10 | Decimal \| None | No | None | 标准化的 stock dividend per10 字段. |
-| capitalizationPer10 | Decimal \| None | No | None | 标准化的 capitalization per10 字段. |
-| cashDividendPer10 | Decimal \| None | No | None | 标准化的 cash dividend per10 字段. |
-| rightsIssuePer10 | Decimal \| None | No | None | 标准化的 rights issue per10 字段. |
-| recordDate | date \| None | No | None | Corporate-action 记录 日期. |
-| exDate | date \| None | No | None | 除息或除权日期。 |
-| description | str \| None | No | None | 标准化的 description 字段. |
+| fiscalYear | int \| None | 否 | None | 标准化的财务年度字段。 |
+| announcementDate | date \| None | 否 | None | 标准化的公告日期字段。 |
+| stockDividendPer10 | Decimal \| None | 否 | None | 标准化的每十股股票股利字段。 |
+| capitalizationPer10 | Decimal \| None | 否 | None | 标准化的每十股资本公积转增字段。 |
+| cashDividendPer10 | Decimal \| None | 否 | None | 标准化的每十股现金股利字段。 |
+| rightsIssuePer10 | Decimal \| None | 否 | None | 标准化的每十股配股字段。 |
+| recordDate | date \| None | 否 | None | 公司行为记录日期。 |
+| exDate | date \| None | 否 | None | 除息或除权日期。 |
+| description | str \| None | 否 | None | 标准化的说明字段。 |
 
 
 #### 示例
@@ -4087,8 +4087,8 @@ result = fx.corporate_action.dividend(request)
 
 返回标准化的股份回购事件及其数据源字段。
 
-**Dataset:** `corporate_action.repurchase`
-**Schema version:** `1.0`
+**Dataset：** `corporate_action.repurchase`
+**Schema 版本：** `1.0`
 **已实现的 Provider：** `tencent.finance.qq.f10`
 **路由语义：** `multi_provider`。Registry 将此 Dataset 标记为 `multi_provider`；列出的 Provider 集合就是本版本实际实现的集合。
 
@@ -4102,40 +4102,40 @@ fx.corporate_action.repurchase(request: 'RepurchaseRequest', *, provider: 'str |
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | RepurchaseRequest | Yes | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
-| provider | str \| None | No | None | 严格指定 Provider id。只使用指定的 Provider。（仅限 keyword） |
-| use_cache | bool \| None | No | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限 keyword） |
+| request | RepurchaseRequest | 是 | — | 类型化请求模型。不能与便捷业务参数同时使用。 |
+| provider | str \| None | 否 | None | 严格指定 Provider id。只使用指定的 Provider。（仅限关键字参数） |
+| use_cache | bool \| None | 否 | None | 是否可以使用已配置的缓存；None 表示遵循已配置的 CachePolicy。（仅限关键字参数） |
 
-类型化请求模型为 `RepurchaseRequest`. 其字段如下：
+类型化请求模型为 `RepurchaseRequest`。其字段如下：
 
 | 请求字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| instrumentId | InstrumentId | 是 | — | 完整的标的身份：code、market、kind 和可选的 exchange。 |
 
 #### 返回值
 
-公开方法的类型标注为 `FetchResult[RepurchaseData]`. FetchResult.data: StandardRecord. 每个 StandardRecord 内的 `data` 数据载荷是 `RepurchaseData` schema 如下.
+公开方法的类型标注为 `FetchResult[RepurchaseData]`。FetchResult.data：StandardRecord。每个 StandardRecord 内的 `data` 数据载荷是 `RepurchaseData` schema 如下。
 
 #### 返回数据字段
 
 | 字段 | 类型 | 可为空 | 说明 |
 | --- | --- | --- | --- |
-| symbol | str | No | 经 Provider 标准化的标的 symbol 字符串。 |
-| repurchases | list[Repurchase] | No | Repurchase event 行. |
+| symbol | str | 否 | 经 Provider 标准化的标的 symbol 字符串。 |
+| repurchases | list[Repurchase] | 否 | 回购事件记录。 |
 
 #### 嵌套记录类型
 
 上述字段使用以下对象类型。Enum 值会直接显示在类型列中。
 
 **`Repurchase`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| repurchaseDate | date \| None | No | None | Repurchase 日期. |
-| quantity | int \| None | No | None | Repurchased 股份 quantity. |
-| averagePrice | Decimal \| None | No | None | 事件平均价格，单位为每股人民币。 |
-| currency | Currency \| None | No | None | 货币代码。 |
-| fundAmount | Decimal \| None | No | None | 该事件已使用或公告的资金金额，单位为人民币。 |
-| market | str \| None | No | None | FinchX 市场标识。 |
+| repurchaseDate | date \| None | 否 | None | 回购日期。 |
+| quantity | int \| None | 否 | None | 回购股份数量。 |
+| averagePrice | Decimal \| None | 否 | None | 事件平均价格，单位为每股人民币。 |
+| currency | Currency \| None | 否 | None | 货币代码。 |
+| fundAmount | Decimal \| None | 否 | None | 该事件已使用或公告的资金金额，单位为人民币。 |
+| market | str \| None | 否 | None | FinchX 市场标识。 |
 
 
 #### 示例
@@ -4188,12 +4188,12 @@ fx.market.deviation(instrument_id: 'InstrumentId', *, windows: 'Sequence[int]' =
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| instrument_id | InstrumentId | Yes | — | 完整的 SSE/SZSE A 股股票身份。 |
-| windows | Sequence[int] | No | (10, 30) | 仅接受 10 和 30；重复项会被拒绝。 |
-| as_of | date \| None | No | None | 截止日期；使用不晚于该截止日期的最近已完成交易时段。 |
-| window_convention | DeviationWindowConvention | No | max_deviation_scan | `strict_exchange_window` 或 `max_deviation_scan`. |
-| provider | str \| None | No | None | 严格指定 Kline Provider。交易日历查询仍使用运行时选择的日历 Provider。 |
-| use_cache | bool \| None | No | None | 传递给底层交易日历和 Kline 获取调用。 |
+| instrument_id | InstrumentId | 是 | — | 完整的 SSE/SZSE A 股股票身份。 |
+| windows | Sequence[int] | 否 | (10, 30) | 仅接受 10 和 30；重复项会被拒绝。 |
+| as_of | date \| None | 否 | None | 截止日期；使用不晚于该截止日期的最近已完成交易时段。 |
+| window_convention | DeviationWindowConvention | 否 | max_deviation_scan | `strict_exchange_window` 或 `max_deviation_scan`。 |
+| provider | str \| None | 否 | None | 严格指定 Kline Provider。交易日历查询仍使用运行时选择的日历 Provider。 |
+| use_cache | bool \| None | 否 | None | 传递给底层交易日历和 Kline 获取调用。 |
 
 #### 计算规则
 
@@ -4207,53 +4207,53 @@ fx.market.deviation(instrument_id: 'InstrumentId', *, windows: 'Sequence[int]' =
 
 | 字段 | 类型 | 可为空 | 说明 |
 | --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | 完整的标的身份：code、market、kind 和可选的 exchange。 |
-| board | str | No | 偏离值基准映射所使用的已解析板块分类。 |
-| effectiveAsOf | date | No | 计算实际使用的最近已完成交易时段。 |
-| calculationMode | 'official_close' | No | 冻结的计算模式；v1 为 official_close。 |
-| priceBasis | 'qfq_stock__raw_index' | No | 冻结的价格口径；v1 为 qfq_stock__raw_index。 |
-| ruleVersion | str | No | 偏离值计算规则集的版本。 |
-| windows | list[DeviationWindowData] | No | 每个请求窗口的计算观测值。 |
+| instrumentId | InstrumentId | 否 | 完整的标的身份：code、market、kind 和可选的 exchange。 |
+| board | str | 否 | 偏离值基准映射所使用的已解析板块分类。 |
+| effectiveAsOf | date | 否 | 计算实际使用的最近已完成交易时段。 |
+| calculationMode | 'official_close' | 否 | 冻结的计算模式；v1 为 official_close。 |
+| priceBasis | 'qfq_stock__raw_index' | 否 | 冻结的价格口径；v1 为 qfq_stock__raw_index。 |
+| ruleVersion | str | 否 | 偏离值计算规则集的版本。 |
+| windows | list[DeviationWindowData] | 否 | 每个请求窗口的计算观测值。 |
 
 #### 嵌套记录类型
 
 上述字段使用以下对象类型。Enum 值会直接显示在类型列中。
 
 **`DeviationWindowData`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| windowDays | Literal[10, 30] | Yes | — | 选定的偏离值窗口：10 或 30 个交易日。 |
-| windowConvention | DeviationWindowConvention | Yes | — | 窗口解释：strict_exchange_window 或 max_deviation_scan。 |
-| tradingSessions | int | Yes | — | 计算使用的对齐交易时段数量。 |
-| startDate | date | Yes | — | 请求范围或选定窗口的包含起始日期。 |
-| baselineDate | date | Yes | — | 紧邻选定窗口起点之前的交易时段。 |
-| endDate | date | Yes | — | 请求范围或选定窗口的包含结束日期。 |
-| startPrice | Decimal | Yes | — | 选定基准日期的股票价格。 |
-| windowStartPrice | Decimal | Yes | — | 选定窗口起始日期的股票价格。 |
-| currentPrice | Decimal | Yes | — | 当前交易时段价格，单位为每股人民币。 |
-| benchmarkInstrument | InstrumentId | Yes | — | 作为基准使用的经审计指数标的。 |
-| benchmarkName | str | Yes | — | 便于人类阅读的基准名称。 |
-| benchmarkStart | Decimal | Yes | — | 选定基准日期的基准点位。 |
-| benchmarkCurrent | Decimal | Yes | — | 计算结束日期的基准点位。 |
-| stockReturn | Decimal | Yes | — | 从选定基准日期到结束日期的累计股票收益率。 |
-| benchmarkReturn | Decimal | Yes | — | 从选定基准日期到结束日期的累计基准收益率。 |
-| deviation | Decimal | Yes | — | 股票收益率减去基准收益率，以比率表示。 |
-| upperThreshold | Decimal | Yes | — | 选定窗口的上偏离值阈值。 |
-| lowerThreshold | Decimal | Yes | — | 选定窗口的下偏离值阈值。 |
-| remainingToUpper | Decimal | Yes | — | 上阈值减去计算得到的偏离值。 |
-| remainingToLower | Decimal | Yes | — | 计算得到的偏离值减去下阈值。 |
-| upperTriggerPrice | Decimal | Yes | — | 在基准收益率保持不变时确定性的上触发价格估计。 |
-| lowerTriggerPrice | Decimal | Yes | — | 在基准收益率保持不变时确定性的下触发价格估计。 |
-| remainingPricePctToUpper | Decimal | Yes | — | 价格空间中到上触发估计值的距离。 |
-| remainingPricePctToLower | Decimal | Yes | — | 价格空间中到下触发估计值的距离。 |
+| windowDays | Literal[10, 30] | 是 | — | 选定的偏离值窗口：10 或 30 个交易日。 |
+| windowConvention | DeviationWindowConvention | 是 | — | 窗口解释：strict_exchange_window 或 max_deviation_scan。 |
+| tradingSessions | int | 是 | — | 计算使用的对齐交易时段数量。 |
+| startDate | date | 是 | — | 请求范围或选定窗口的包含起始日期。 |
+| baselineDate | date | 是 | — | 紧邻选定窗口起点之前的交易时段。 |
+| endDate | date | 是 | — | 请求范围或选定窗口的包含结束日期。 |
+| startPrice | Decimal | 是 | — | 选定基准日期的股票价格。 |
+| windowStartPrice | Decimal | 是 | — | 选定窗口起始日期的股票价格。 |
+| currentPrice | Decimal | 是 | — | 当前交易时段价格，单位为每股人民币。 |
+| benchmarkInstrument | InstrumentId | 是 | — | 作为基准使用的经审计指数标的。 |
+| benchmarkName | str | 是 | — | 便于人类阅读的基准名称。 |
+| benchmarkStart | Decimal | 是 | — | 选定基准日期的基准点位。 |
+| benchmarkCurrent | Decimal | 是 | — | 计算结束日期的基准点位。 |
+| stockReturn | Decimal | 是 | — | 从选定基准日期到结束日期的累计股票收益率。 |
+| benchmarkReturn | Decimal | 是 | — | 从选定基准日期到结束日期的累计基准收益率。 |
+| deviation | Decimal | 是 | — | 股票收益率减去基准收益率，以比率表示。 |
+| upperThreshold | Decimal | 是 | — | 选定窗口的上偏离值阈值。 |
+| lowerThreshold | Decimal | 是 | — | 选定窗口的下偏离值阈值。 |
+| remainingToUpper | Decimal | 是 | — | 上阈值减去计算得到的偏离值。 |
+| remainingToLower | Decimal | 是 | — | 计算得到的偏离值减去下阈值。 |
+| upperTriggerPrice | Decimal | 是 | — | 在基准收益率保持不变时确定性的上触发价格估计。 |
+| lowerTriggerPrice | Decimal | 是 | — | 在基准收益率保持不变时确定性的下触发价格估计。 |
+| remainingPricePctToUpper | Decimal | 是 | — | 价格空间中到上触发估计值的距离。 |
+| remainingPricePctToLower | Decimal | 是 | — | 价格空间中到下触发估计值的距离。 |
 
 **`InstrumentId`**
-| 字段 | 类型 | 必填 | Default | 说明 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | 交易所特定的标的代码。 |
-| market | Market | Yes | — | FinchX 市场标识。 |
-| kind | InstrumentKind | Yes | — | 标的类型。 |
-| exchange | Exchange \| None | No | None | Dataset 需要时使用的交易所身份。 |
+| code | str | 是 | — | 交易所特定的标的代码。 |
+| market | Market | 是 | — | FinchX 市场标识。 |
+| kind | InstrumentKind | 是 | — | 标的类型。 |
+| exchange | Exchange \| None | 否 | None | Dataset 需要时使用的交易所身份。 |
 
 
 #### 示例
@@ -4281,10 +4281,10 @@ for window in result.data.windows:
 
 | Extra | 包 | 能力 |
 | --- | --- | --- |
-| `calendar` | `pandas_market_calendars` | Optional trading-calendar Provider `pandas_market_calendars`. |
-| `jygs` | `playwright` | Authenticated `jiuyangongshe.daily_replay`; also requires `JYGS_SESSION`. |
+| `calendar` | `pandas_market_calendars` | 可选的交易日历 Provider `pandas_market_calendars`。 |
+| `jygs` | `playwright` | 需要身份验证的 `jiuyangongshe.daily_replay`；还需要 `JYGS_SESSION`。 |
 
-从源码 checkout 安装时，使用 `python -m pip install ".[calendar]"` 或 `python -m pip install ".[jygs]"`。发布到 PyPI 后，使用 `pip install "finchx[calendar]"` 或 `pip install "finchx[jygs]"`。
+从源码目录安装时，使用 `python -m pip install ".[calendar]"` 或 `python -m pip install ".[jygs]"`。发布到 PyPI 后，使用 `pip install "finchx[calendar]"` 或 `pip install "finchx[jygs]"`。
 
 ## 第三方数据说明
 
