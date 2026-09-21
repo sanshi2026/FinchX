@@ -1,5 +1,8 @@
 # Trading Calendar
 
+English | [简体中文](TRADING_CALENDAR.zh-CN.md)
+
+
 `trading_calendar@1.0` returns one row for every natural date in an inclusive
 range. Each row contains `date` and `isTradingDay`. Rows are sorted ascending,
 complete, non-duplicated, and represented in the shared `Market.CN_A` scope for

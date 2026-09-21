@@ -1,5 +1,8 @@
 # Market Deviation
 
+English | [简体中文](DEVIATION.zh-CN.md)
+
+
 `market.deviation` is a deterministic FinchX computation for one explicitly
 identified A-share equity. It compares the stock's close-based return with an
 audited board benchmark over a requested 10- or 30-trading-day window.

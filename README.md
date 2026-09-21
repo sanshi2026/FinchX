@@ -1,5 +1,8 @@
 # FinchX
 
+English | [简体中文](README.zh-CN.md)
+
+
 FinchX is an independent Python library for accessing and normalizing A-share market data from registered third-party providers.
 
 ## What is FinchX?

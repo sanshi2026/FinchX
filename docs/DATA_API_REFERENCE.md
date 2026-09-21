@@ -1,5 +1,8 @@
 # FinchX Data & API Reference
 
+English | [简体中文](DATA_API_REFERENCE.zh-CN.md)
+
+
 This reference describes the current public surface from the Client, Dataset definitions, Pydantic schemas and Provider registry: 42 Provider-backed / Dataset-backed public endpoints plus the computed `market.deviation` capability. The computed capability is documented separately because it is intentionally outside the Provider-backed inventory.
 
 ## Common concepts
