@@ -30,7 +30,7 @@ FinchX 提供九个 namespace、稳定的 `FetchResult` 外层结构、标准化
 正式发布版本推荐：
 
 ```bash
-python -m pip install finchx
+pip install finchx
 ```
 
 如果从源码目录安装：

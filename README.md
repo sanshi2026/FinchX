@@ -31,7 +31,7 @@ FinchX exposes nine namespaces, a stable `FetchResult` envelope, normalized Data
 For the released package:
 
 ```bash
-python -m pip install finchx
+pip install finchx
 ```
 
 For a source checkout:
