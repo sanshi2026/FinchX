@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from dataclasses import dataclass
 from typing import Any
 
 from finchx.contracts import StandardRecord
@@ -15,6 +16,7 @@ from finchx.datasets.disclosure import (
 from finchx.datasets.document_common import matches_datetime_range, normalize_document_instrument
 from finchx.datasets.news import NewsDocumentRef, NewsSearchRequest, normalize_news_document, normalize_news_search
 from finchx.providers.eastmoney_documents import EastmoneyDisclosureProvider, EastmoneyNewsProvider
+from finchx.providers.errors import ProviderError
 
 
 def _document_source_id(document_id: str, *, kind: str) -> str:
@@ -88,6 +90,12 @@ def _build_disclosure_request(
     )
 
 
+@dataclass(frozen=True)
+class _NewsSearchOutcome:
+    records: tuple[NewsDocumentRef, ...]
+    warnings: tuple[str, ...] = ()
+
+
 class NewsService:
     """Search serializable news refs and fetch complete article text."""
 
@@ -118,27 +126,45 @@ class NewsService:
         )
 
     def _search_request(self, request: NewsSearchRequest) -> tuple[NewsDocumentRef, ...]:
+        return self._search_request_with_warnings(request).records
+
+    def _search_request_with_warnings(self, request: NewsSearchRequest) -> _NewsSearchOutcome:
         records: list[NewsDocumentRef] = []
+        warnings: list[str] = []
         seen: dict[str, str] = {}
         page_index = request.page
         exhaustive = request.max_results is not None and request.sort == "published_asc"
         while True:
             page_request = request if page_index == request.page else request.model_copy(update={"page": page_index})
             page = self.provider.fetch_raw_news_page(page_request)
+            warnings.extend(getattr(page, "warnings", ()))
             page_has_new = False
-            for row in page.rows:
+            page_has_parseable = False
+            for row_index, row in enumerate(page.rows):
                 if row.document_id in seen:
                     if seen[row.document_id] != row.title:
                         raise ValueError("duplicate news document IDs have conflicting titles")
                     continue
                 seen[row.document_id] = row.title
                 page_has_new = True
-                candidate = normalize_news_search(request, row, source=self.provider.source)
+                try:
+                    candidate = normalize_news_search(request, row, source=self.provider.source)
+                except (TypeError, ValueError) as exc:
+                    warnings.append(
+                        f"Skipped EastMoney news row {row_index}: normalization failed: {exc}"
+                    )
+                    continue
+                page_has_parseable = True
                 if not matches_datetime_range(candidate.published_at, since=request.since, until=request.until):
                     continue
                 records.append(candidate)
                 if request.max_results is not None and not exhaustive and len(records) >= request.max_results:
                     break
+            if page_has_new and not page_has_parseable:
+                raise ProviderError(
+                    self.provider.source,
+                    "EastMoney news page contained no normalizable rows",
+                )
             if request.max_results is None or (not exhaustive and len(records) >= request.max_results):
                 break
             if page.rows and not page_has_new:
@@ -147,7 +173,10 @@ class NewsService:
                 break
             page_index += 1
         records.sort(key=lambda record: record.published_at, reverse=request.sort == "published_desc")
-        return tuple(records[: request.max_results] if request.max_results is not None else records)
+        return _NewsSearchOutcome(
+            tuple(records[: request.max_results] if request.max_results is not None else records),
+            tuple(warnings),
+        )
 
     def get_document(self, ref: NewsDocumentRef) -> StandardRecord:
         source_id = _validate_document_ref(ref, NewsDocumentRef, kind="news", source=self.provider.source)

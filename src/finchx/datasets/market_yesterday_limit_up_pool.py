@@ -28,9 +28,19 @@ def _validate_identity(instrument: InstrumentId) -> None:
 
 
 class MarketYesterdayLimitUpPoolRequest(ContractModel):
-    """Request stocks that hit limit-up on the previous session, as of tradeDate."""
+    """Request the latest EastMoney yesterday-limit-up pool snapshot.
 
-    trade_date: date = Field(alias="tradeDate")
+    ``tradeDate`` remains an optional, deprecated construction-time field for
+    callers migrating from the old request shape.  It cannot select history;
+    the Provider rejects it instead of silently returning a different date.
+    """
+
+    trade_date: date | None = Field(
+        default=None,
+        alias="tradeDate",
+        deprecated=True,
+        description="Deprecated compatibility input; this Provider returns the latest snapshot and does not support historical selection.",
+    )
 
 
 class MarketYesterdayLimitUpPoolData(ContractModel):
@@ -118,8 +128,6 @@ def normalize_market_yesterday_limit_up_pool(
         raise ValueError("request must be a MarketYesterdayLimitUpPoolRequest")
     records: list[StandardRecord] = []
     for row in rows:
-        if row.trade_date != request.trade_date:
-            raise ValueError("provider yesterday-pool row date does not match request")
         if row.captured_at.tzinfo is None or row.captured_at.utcoffset() is None:
             raise ValueError("provider returned a naive captured_at timestamp")
         _validate_identity(row.instrument_id)

@@ -175,17 +175,12 @@ class _EastmoneyProviderBase:
         self,
         document: Mapping[str, Any],
         *,
-        requested_date: date,
         page_index: int,
-    ) -> tuple[dict[str, Any], int, list[Mapping[str, Any]]]:
+    ) -> tuple[dict[str, Any], date, int, list[Mapping[str, Any]]]:
         data = document.get("data")
         if not isinstance(data, dict):
             self._fail(f"EastMoney page {page_index} omitted data object")
         qdate = self._source_date(data.get("qdate"), "data.qdate")
-        if qdate != requested_date:
-            self._fail(
-                f"EastMoney qdate mismatch: requested {requested_date.isoformat()}, got {qdate.isoformat()}"
-            )
         tc = self._integer(data.get("tc"), "data.tc")
         if tc < 0:
             self._fail("EastMoney data.tc must not be negative")
@@ -194,7 +189,15 @@ class _EastmoneyProviderBase:
             self._fail(f"EastMoney page {page_index} pool must be an array")
         if not all(isinstance(row, dict) for row in pool):
             self._fail(f"EastMoney page {page_index} contains a non-object pool row")
-        return data, tc, pool
+        return data, qdate, tc, pool
+
+    def _ensure_latest_snapshot_request(self, request: object, label: str) -> None:
+        legacy_date = getattr(request, "__dict__", {}).get("trade_date")
+        if legacy_date is not None:
+            self._fail(
+                f"EastMoney {label} is a latest snapshot only; "
+                "tradeDate cannot select historical data, so omit it"
+            )
 
     def _breadth_data(self, document: Mapping[str, Any]) -> Mapping[str, Any]:
         data = document.get("data")
@@ -397,8 +400,10 @@ class EastmoneyLimitUpPoolProvider(_EastmoneyProviderBase):
     ) -> tuple[_ProviderLimitUpRow, ...]:
         if not isinstance(request, MarketLimitUpPoolRequest):
             self._fail("request must be a MarketLimitUpPoolRequest")
+        self._ensure_latest_snapshot_request(request, "limit-up pool")
         rows: list[tuple[Mapping[str, Any], str]] = []
         expected_total: int | None = None
+        observed_date: date | None = None
         seen: set[tuple[str, str]] = set()
         page_index = 0
         while expected_total is None or len(rows) < expected_total:
@@ -407,10 +412,13 @@ class EastmoneyLimitUpPoolProvider(_EastmoneyProviderBase):
                 "Pageindex": page_index,
                 "pagesize": self._page_size,
                 "sort": "fbt:asc",
-                "date": request.trade_date.strftime("%Y%m%d"),
             })
             document, request_url = self._request_document(EASTMONEY_LIMIT_UP_POOL_ENDPOINT, params)
-            _, total, page_rows = self._page_data(document, requested_date=request.trade_date, page_index=page_index)
+            _, response_date, total, page_rows = self._page_data(document, page_index=page_index)
+            if observed_date is None:
+                observed_date = response_date
+            elif response_date != observed_date:
+                self._fail("EastMoney limit-up pool qdate changed between pages")
             if expected_total is None:
                 expected_total = total
             elif total != expected_total:
@@ -435,6 +443,8 @@ class EastmoneyLimitUpPoolProvider(_EastmoneyProviderBase):
             page_index += 1
         if expected_total is None or len(rows) != expected_total:
             self._fail("EastMoney limit-up pool returned an incomplete count")
+        if observed_date is None:
+            self._fail("EastMoney limit-up pool did not return qdate")
         captured_at = self._captured_at()
         allowed = {"c", "m", "n", "p", "zdp", "amount", "ltsz", "tshare", "hs", "lbc", "fbt", "lbt", "fund", "zbc", "hybk", "zttj"}
         parsed: list[_ProviderLimitUpRow] = []
@@ -445,7 +455,7 @@ class EastmoneyLimitUpPoolProvider(_EastmoneyProviderBase):
             days, count = self._zttj(raw.get("zttj"), "limit-up row.zttj")
             parsed.append(_ProviderLimitUpRow(
                 instrument_id=instrument,
-                trade_date=request.trade_date,
+                trade_date=observed_date,
                 name=name,
                 price_milli_cny=self._decimal(raw.get("p"), "limit-up row.p"),
                 change_percent_points=self._decimal(raw.get("zdp"), "limit-up row.zdp"),
@@ -461,7 +471,7 @@ class EastmoneyLimitUpPoolProvider(_EastmoneyProviderBase):
                 industry=self._required_text(raw.get("hybk"), "limit-up row.hybk"),
                 stats_days=days,
                 stats_count=count,
-                source_record_id=f"{request.trade_date.isoformat()}:{instrument.exchange.value}:{instrument.code}",
+                source_record_id=f"{observed_date.isoformat()}:{instrument.exchange.value}:{instrument.code}",
                 source_url=request_url,
                 captured_at=captured_at,
             ))
@@ -476,15 +486,21 @@ class EastmoneyLimitDownPoolProvider(_EastmoneyProviderBase):
     ) -> tuple[_ProviderLimitDownRow, ...]:
         if not isinstance(request, MarketLimitDownPoolRequest):
             self._fail("request must be a MarketLimitDownPoolRequest")
+        self._ensure_latest_snapshot_request(request, "limit-down pool")
         rows: list[tuple[Mapping[str, Any], str]] = []
         expected_total: int | None = None
+        observed_date: date | None = None
         seen: set[tuple[str, str]] = set()
         page_index = 0
         while expected_total is None or len(rows) < expected_total:
             params = self._common_params()
-            params.update({"Pageindex": page_index, "pagesize": self._page_size, "sort": "fund:asc", "date": request.trade_date.strftime("%Y%m%d")})
+            params.update({"Pageindex": page_index, "pagesize": self._page_size, "sort": "fund:asc"})
             document, request_url = self._request_document(EASTMONEY_LIMIT_DOWN_POOL_ENDPOINT, params)
-            _, total, page_rows = self._page_data(document, requested_date=request.trade_date, page_index=page_index)
+            _, response_date, total, page_rows = self._page_data(document, page_index=page_index)
+            if observed_date is None:
+                observed_date = response_date
+            elif response_date != observed_date:
+                self._fail("EastMoney limit-down pool qdate changed between pages")
             if expected_total is None:
                 expected_total = total
             elif total != expected_total:
@@ -509,6 +525,8 @@ class EastmoneyLimitDownPoolProvider(_EastmoneyProviderBase):
             page_index += 1
         if expected_total is None or len(rows) != expected_total:
             self._fail("EastMoney limit-down pool returned an incomplete count")
+        if observed_date is None:
+            self._fail("EastMoney limit-down pool did not return qdate")
         captured_at = self._captured_at()
         allowed = {"c", "m", "n", "p", "zdp", "amount", "ltsz", "tshare", "pe", "hs", "fund", "lbt", "fba", "days", "oc", "hybk"}
         required = allowed - {"pe"}
@@ -518,7 +536,7 @@ class EastmoneyLimitDownPoolProvider(_EastmoneyProviderBase):
             instrument = self._instrument(raw, context="limit-down row")
             parsed.append(_ProviderLimitDownRow(
                 instrument_id=instrument,
-                trade_date=request.trade_date,
+                trade_date=observed_date,
                 name=self._required_text(raw.get("n"), "limit-down row.n"),
                 price_milli_cny=self._decimal(raw.get("p"), "limit-down row.p"),
                 change_percent_points=self._decimal(raw.get("zdp"), "limit-down row.zdp"),
@@ -533,7 +551,7 @@ class EastmoneyLimitDownPoolProvider(_EastmoneyProviderBase):
                 consecutive_days=self._positive_integer(raw.get("days"), "limit-down row.days"),
                 open_count=self._non_negative_integer(raw.get("oc"), "limit-down row.oc"),
                 industry=self._required_text(raw.get("hybk"), "limit-down row.hybk"),
-                source_record_id=f"{request.trade_date.isoformat()}:{instrument.exchange.value}:{instrument.code}",
+                source_record_id=f"{observed_date.isoformat()}:{instrument.exchange.value}:{instrument.code}",
                 source_url=request_url,
                 captured_at=captured_at,
             ))
@@ -548,15 +566,21 @@ class EastmoneyYesterdayLimitUpPoolProvider(_EastmoneyProviderBase):
     ) -> tuple[_ProviderYesterdayLimitUpRow, ...]:
         if not isinstance(request, MarketYesterdayLimitUpPoolRequest):
             self._fail("request must be a MarketYesterdayLimitUpPoolRequest")
+        self._ensure_latest_snapshot_request(request, "yesterday limit-up pool")
         rows: list[tuple[Mapping[str, Any], str]] = []
         expected_total: int | None = None
+        observed_date: date | None = None
         seen: set[tuple[str, str]] = set()
         page_index = 0
         while expected_total is None or len(rows) < expected_total:
             params = self._common_params()
-            params.update({"Pageindex": page_index, "pagesize": self._page_size, "sort": "zs:desc", "date": request.trade_date.strftime("%Y%m%d")})
+            params.update({"Pageindex": page_index, "pagesize": self._page_size, "sort": "zs:desc"})
             document, request_url = self._request_document(EASTMONEY_YESTERDAY_LIMIT_UP_POOL_ENDPOINT, params)
-            _, total, page_rows = self._page_data(document, requested_date=request.trade_date, page_index=page_index)
+            _, response_date, total, page_rows = self._page_data(document, page_index=page_index)
+            if observed_date is None:
+                observed_date = response_date
+            elif response_date != observed_date:
+                self._fail("EastMoney yesterday limit-up pool qdate changed between pages")
             if expected_total is None:
                 expected_total = total
             elif total != expected_total:
@@ -581,6 +605,8 @@ class EastmoneyYesterdayLimitUpPoolProvider(_EastmoneyProviderBase):
             page_index += 1
         if expected_total is None or len(rows) != expected_total:
             self._fail("EastMoney yesterday limit-up pool returned an incomplete count")
+        if observed_date is None:
+            self._fail("EastMoney yesterday limit-up pool did not return qdate")
         captured_at = self._captured_at()
         allowed = {"c", "m", "n", "p", "ztp", "zdp", "amount", "ltsz", "tshare", "hs", "zf", "zs", "yfbt", "ylbc", "hybk", "zttj"}
         parsed: list[_ProviderYesterdayLimitUpRow] = []
@@ -590,7 +616,7 @@ class EastmoneyYesterdayLimitUpPoolProvider(_EastmoneyProviderBase):
             stats_days, stats_count = self._zttj(raw.get("zttj"), "yesterday limit-up row.zttj")
             parsed.append(_ProviderYesterdayLimitUpRow(
                 instrument_id=instrument,
-                trade_date=request.trade_date,
+                trade_date=observed_date,
                 name=self._required_text(raw.get("n"), "yesterday limit-up row.n"),
                 current_price_milli_cny=self._decimal(raw.get("p"), "yesterday limit-up row.p"),
                 current_limit_up_price_milli_cny=self._decimal(raw.get("ztp"), "yesterday limit-up row.ztp"),
@@ -606,7 +632,7 @@ class EastmoneyYesterdayLimitUpPoolProvider(_EastmoneyProviderBase):
                 stats_days_raw=stats_days,
                 stats_count_raw=stats_count,
                 industry=self._required_text(raw.get("hybk"), "yesterday limit-up row.hybk"),
-                source_record_id=f"{request.trade_date.isoformat()}:{instrument.exchange.value}:{instrument.code}",
+                source_record_id=f"{observed_date.isoformat()}:{instrument.exchange.value}:{instrument.code}",
                 source_url=request_url,
                 captured_at=captured_at,
             ))
@@ -621,15 +647,21 @@ class EastmoneyStrongPoolProvider(_EastmoneyProviderBase):
     ) -> tuple[_ProviderStrongPoolRow, ...]:
         if not isinstance(request, MarketStrongPoolRequest):
             self._fail("request must be a MarketStrongPoolRequest")
+        self._ensure_latest_snapshot_request(request, "strong pool")
         rows: list[tuple[Mapping[str, Any], str]] = []
         expected_total: int | None = None
+        observed_date: date | None = None
         seen: set[tuple[str, str]] = set()
         page_index = 0
         while expected_total is None or len(rows) < expected_total:
             params = self._common_params()
-            params.update({"Pageindex": page_index, "pagesize": self._page_size, "sort": "zdp:desc", "date": request.trade_date.strftime("%Y%m%d")})
+            params.update({"Pageindex": page_index, "pagesize": self._page_size, "sort": "zdp:desc"})
             document, request_url = self._request_document(EASTMONEY_STRONG_POOL_ENDPOINT, params)
-            _, total, page_rows = self._page_data(document, requested_date=request.trade_date, page_index=page_index)
+            _, response_date, total, page_rows = self._page_data(document, page_index=page_index)
+            if observed_date is None:
+                observed_date = response_date
+            elif response_date != observed_date:
+                self._fail("EastMoney strong pool qdate changed between pages")
             if expected_total is None:
                 expected_total = total
             elif total != expected_total:
@@ -654,6 +686,8 @@ class EastmoneyStrongPoolProvider(_EastmoneyProviderBase):
             page_index += 1
         if expected_total is None or len(rows) != expected_total:
             self._fail("EastMoney strong pool returned an incomplete count")
+        if observed_date is None:
+            self._fail("EastMoney strong pool did not return qdate")
         captured_at = self._captured_at()
         allowed = {"c", "m", "n", "p", "ztp", "ztf", "zdp", "amount", "ltsz", "tshare", "hs", "nh", "cc", "lb", "zs", "zttj", "hybk"}
         parsed: list[_ProviderStrongPoolRow] = []
@@ -678,7 +712,7 @@ class EastmoneyStrongPoolProvider(_EastmoneyProviderBase):
                 self._fail("strong-pool row.ztf has unexpected source type")
             parsed.append(_ProviderStrongPoolRow(
                 instrument_id=instrument,
-                trade_date=request.trade_date,
+                trade_date=observed_date,
                 name=self._required_text(raw.get("n"), "strong-pool row.n"),
                 price_milli_cny=self._decimal(raw.get("p"), "strong-pool row.p"),
                 limit_up_price_milli_cny=self._decimal(raw.get("ztp"), "strong-pool row.ztp"),
@@ -695,7 +729,7 @@ class EastmoneyStrongPoolProvider(_EastmoneyProviderBase):
                 stats_days=days,
                 stats_count=count,
                 industry=self._required_text(raw.get("hybk"), "strong-pool row.hybk"),
-                source_record_id=f"{request.trade_date.isoformat()}:{instrument.exchange.value}:{instrument.code}",
+                source_record_id=f"{observed_date.isoformat()}:{instrument.exchange.value}:{instrument.code}",
                 source_url=request_url,
                 captured_at=captured_at,
             ))
@@ -710,15 +744,21 @@ class EastmoneyBrokenLimitPoolProvider(_EastmoneyProviderBase):
     ) -> tuple[_ProviderBrokenLimitPoolRow, ...]:
         if not isinstance(request, MarketBrokenLimitPoolRequest):
             self._fail("request must be a MarketBrokenLimitPoolRequest")
+        self._ensure_latest_snapshot_request(request, "broken-limit pool")
         rows: list[tuple[Mapping[str, Any], str]] = []
         expected_total: int | None = None
+        observed_date: date | None = None
         seen: set[tuple[str, str]] = set()
         page_index = 0
         while expected_total is None or len(rows) < expected_total:
             params = self._common_params()
-            params.update({"Pageindex": page_index, "pagesize": self._page_size, "sort": "fbt:asc", "date": request.trade_date.strftime("%Y%m%d")})
+            params.update({"Pageindex": page_index, "pagesize": self._page_size, "sort": "fbt:asc"})
             document, request_url = self._request_document(EASTMONEY_BROKEN_LIMIT_POOL_ENDPOINT, params)
-            _, total, page_rows = self._page_data(document, requested_date=request.trade_date, page_index=page_index)
+            _, response_date, total, page_rows = self._page_data(document, page_index=page_index)
+            if observed_date is None:
+                observed_date = response_date
+            elif response_date != observed_date:
+                self._fail("EastMoney broken-limit pool qdate changed between pages")
             if expected_total is None:
                 expected_total = total
             elif total != expected_total:
@@ -743,6 +783,8 @@ class EastmoneyBrokenLimitPoolProvider(_EastmoneyProviderBase):
             page_index += 1
         if expected_total is None or len(rows) != expected_total:
             self._fail("EastMoney broken-limit pool returned an incomplete count")
+        if observed_date is None:
+            self._fail("EastMoney broken-limit pool did not return qdate")
         captured_at = self._captured_at()
         allowed = {"c", "m", "n", "p", "ztp", "zdp", "amount", "ltsz", "tshare", "hs", "fbt", "zbc", "zf", "zs", "zttj", "hybk"}
         parsed: list[_ProviderBrokenLimitPoolRow] = []
@@ -752,7 +794,7 @@ class EastmoneyBrokenLimitPoolProvider(_EastmoneyProviderBase):
             days, count = self._zttj(raw.get("zttj"), "broken-limit row.zttj")
             parsed.append(_ProviderBrokenLimitPoolRow(
                 instrument_id=instrument,
-                trade_date=request.trade_date,
+                trade_date=observed_date,
                 name=self._required_text(raw.get("n"), "broken-limit row.n"),
                 price_milli_cny=self._decimal(raw.get("p"), "broken-limit row.p"),
                 limit_up_price_milli_cny=self._decimal(raw.get("ztp"), "broken-limit row.ztp"),
@@ -768,7 +810,7 @@ class EastmoneyBrokenLimitPoolProvider(_EastmoneyProviderBase):
                 stats_days=days,
                 stats_count=count,
                 industry=self._required_text(raw.get("hybk"), "broken-limit row.hybk"),
-                source_record_id=f"{request.trade_date.isoformat()}:{instrument.exchange.value}:{instrument.code}",
+                source_record_id=f"{observed_date.isoformat()}:{instrument.exchange.value}:{instrument.code}",
                 source_url=request_url,
                 captured_at=captured_at,
             ))

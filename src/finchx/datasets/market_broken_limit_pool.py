@@ -28,9 +28,19 @@ def _validate_identity(instrument: InstrumentId) -> None:
 
 
 class MarketBrokenLimitPoolRequest(ContractModel):
-    """Request stocks that broke their upper limit during one source trade date."""
+    """Request the latest EastMoney broken-limit pool snapshot.
 
-    trade_date: date = Field(alias="tradeDate")
+    ``tradeDate`` remains an optional, deprecated construction-time field for
+    callers migrating from the old request shape.  It cannot select history;
+    the Provider rejects it instead of silently returning a different date.
+    """
+
+    trade_date: date | None = Field(
+        default=None,
+        alias="tradeDate",
+        deprecated=True,
+        description="Deprecated compatibility input; this Provider returns the latest snapshot and does not support historical selection.",
+    )
 
 
 class MarketBrokenLimitPoolStats(ContractModel):
@@ -124,8 +134,6 @@ def normalize_market_broken_limit_pool(
         raise ValueError("request must be a MarketBrokenLimitPoolRequest")
     records: list[StandardRecord] = []
     for row in rows:
-        if row.trade_date != request.trade_date:
-            raise ValueError("provider broken-limit row date does not match request")
         if row.captured_at.tzinfo is None or row.captured_at.utcoffset() is None:
             raise ValueError("provider returned a naive captured_at timestamp")
         _validate_identity(row.instrument_id)

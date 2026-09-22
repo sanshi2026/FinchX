@@ -5,7 +5,11 @@ from __future__ import annotations
 from datetime import datetime, timezone
 import inspect
 from pathlib import Path
+import sys
 from typing import get_origin, get_type_hints
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 
 import finchx
 from finchx import FinchX
@@ -13,6 +17,7 @@ from finchx.client import CLIENT_ENDPOINTS
 from finchx.collectors import FetchResult
 from finchx.providers import __all__ as PROVIDER_EXPORTS
 from finchx.providers.registry import PROVIDER_REGISTRY
+from tools.generate_api_reference import all_endpoint_keys, computed_endpoint_keys
 
 
 PUBLIC_TOP_LEVEL_EXPORTS = {
@@ -119,7 +124,7 @@ PUBLIC_SIGNATURES = {
     "reference.instrument": "instrument_id? request? provider* use_cache*",
     "reference.trading_calendar": "start_date? end_date? market? request? provider* use_cache*",
     "market.breadth": "request? provider* use_cache*",
-    "market.broken_limit_pool": "request provider* use_cache*",
+    "market.broken_limit_pool": "request? provider* use_cache*",
     "market.consecutive_limit_up": "request? provider* use_cache*",
     "market.daily_replay": "request provider* use_cache*",
     "market.dragon_tiger_detail": "request provider* use_cache*",
@@ -133,17 +138,17 @@ PUBLIC_SIGNATURES = {
     "market.index_intraday_5d": "request provider* use_cache*",
     "market.industry_comparison": "request provider* use_cache*",
     "market.instrument_sector_snapshot": "request provider* use_cache*",
-    "market.limit_down_pool": "request provider* use_cache*",
+    "market.limit_down_pool": "request? provider* use_cache*",
     "market.stock_keyword": "request provider* use_cache*",
-    "market.limit_up_pool": "request provider* use_cache*",
+    "market.limit_up_pool": "request? provider* use_cache*",
     "market.ohlcv": "instrument_id? start_date? end_date? adjustment? request? provider* use_cache*",
     "market.orderbook": "request provider* use_cache*",
     "market.quote": "universe? request? provider* use_cache*",
     "market.quote_snapshot": "request provider* use_cache*",
     "market.ranking": "request provider* use_cache*",
     "market.sentiment": "request? provider* use_cache*",
-    "market.strong_pool": "request provider* use_cache*",
-    "market.yesterday_limit_up_pool": "request provider* use_cache*",
+    "market.strong_pool": "request? provider* use_cache*",
+    "market.yesterday_limit_up_pool": "request? provider* use_cache*",
     "fundamental.company_profile": "instrument_id? request? provider* use_cache*",
     "fundamental.financial_summary": "request provider* use_cache*",
     "fundamental.industry_comparison": "request provider* use_cache*",
@@ -215,9 +220,9 @@ def test_namespace_and_endpoint_inventory_matches_real_client_code():
     }
 
     assert actual == PUBLIC_ENDPOINTS
-    assert len(actual) == 9
-    assert sum(len(methods) for methods in actual.values()) == 42
-    assert len(CLIENT_ENDPOINTS) == 42
+    assert len(actual) == len(PUBLIC_ENDPOINTS)
+    assert sum(len(methods) for methods in actual.values()) == len(CLIENT_ENDPOINTS)
+    assert len(CLIENT_ENDPOINTS) == sum(len(methods) for methods in PUBLIC_ENDPOINTS.values())
 
 
 def test_registry_inventory_and_client_routes_match_the_public_contract():
@@ -231,7 +236,7 @@ def test_registry_inventory_and_client_routes_match_the_public_contract():
     assert set(PROVIDER_EXPORTS) == PUBLIC_PROVIDER_EXPORTS
     assert len(PROVIDER_EXPORTS) == 36
     assert len(PROVIDER_REGISTRY.list_providers()) == 29
-    assert len(registered_datasets) == 42
+    assert len(registered_datasets) == len(CLIENT_ENDPOINTS)
     assert client_datasets == registered_datasets
     assert registered_pairs == 47
     assert all(
@@ -341,4 +346,8 @@ def test_release_docs_and_example_use_public_endpoint_forms():
     assert "result = client.market.quote()" in example
     assert 'client.market.quote(provider="tencent.finance.qq.market")' in example
     assert "MissingOptionalDependency" in example
-    assert "42 Provider-backed / Dataset-backed public endpoints" in api_reference
+    assert (
+        f"{len(CLIENT_ENDPOINTS)} data interfaces + "
+        f"{len(computed_endpoint_keys())} computed capability = "
+        f"{len(all_endpoint_keys())} public capabilities"
+    ) in api_reference

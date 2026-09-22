@@ -129,11 +129,30 @@ This is a deterministic close-based calculation over FinchX trading-calendar and
 
 ### Instrument identity
 
-Single-instrument endpoints accept either a complete `InstrumentId` or a verified six-digit A-share code. The latter is normalized to `Market.CN_A` plus `InstrumentKind.EQUITY`; code prefixes `6`, `0`/`3`, and `4`/`8`/`9` identify SSE, SZSE, and BSE respectively where supported. Index and other ambiguous identities require a complete `InstrumentId` with `code`, `market`, `kind`, and, where needed, an explicit `exchange`.
+Single-instrument endpoints accept either a complete `InstrumentId` or a verified six-digit A-share code. The latter is normalized to `Market.CN_A` plus `InstrumentKind.EQUITY`; code prefixes `6` and `0`/`3` identify SSE and SZSE. Other ambiguous identities require a complete `InstrumentId` with `code`, `market`, `kind`, and, where needed, an explicit `exchange`.
 
 ### FetchResult
 
-Every Client endpoint returns a `FetchResult`. Its public fields include `data`, `dataset`, `dataset_id`, `provider`, `provider_id`, `captured_at`, `warnings`, `provenance`, `attempts`, `fallback_used`, and `cache_hit`. `dataset_id` and `provider_id` are convenience properties for `dataset.name` and `provider`. Most provider-backed endpoints put standardized `StandardRecord` objects in `data`; search endpoints return typed document-reference tuples; the computed deviation endpoint returns `DeviationData` directly. The full contract is in [DATA_API_REFERENCE.md](docs/DATA_API_REFERENCE.md).
+Every Client endpoint returns a `FetchResult`. Its public fields include `data`, `dataset`, `dataset_id`, `provider`, `provider_id`, `captured_at`, `warnings`, `provenance`, `attempts`, `fallback_used`, and `cache_hit`. `dataset_id` and `provider_id` are convenience properties for `dataset.name` and `provider`. Most provider-backed endpoints put standardized `StandardRecord` objects in `data`; search endpoints return typed document-reference tuples; the computed deviation endpoint returns `DeviationData` directly. The default display focuses on business rows, while the existing fields and `StandardRecord` objects retain full audit metadata.
+
+```python
+result = fx.reference.trading_calendar(...)
+print(result)
+rows = result.to_dicts()
+df = result.to_pandas()  # requires the optional pandas package
+```
+
+`to_dicts()` always returns a list of business-data dictionaries, including for a single record. `to_pandas()` is an optional convenience and raises a clear installation error when pandas is unavailable. The full contract is in [DATA_API_REFERENCE.md](docs/DATA_API_REFERENCE.md).
+
+### Snapshot pool interfaces
+
+The EastMoney `limit_up_pool()`, `limit_down_pool()`, `broken_limit_pool()`, `strong_pool()`, and `yesterday_limit_up_pool()` endpoints expose the latest available snapshot:
+
+```python
+result = fx.market.broken_limit_pool()
+```
+
+They do not promise historical selection. The returned business rows retain EastMoney's observed `tradeDate`; the deprecated request `tradeDate` compatibility field cannot select a historical date and is rejected if supplied.
 
 ### Choosing a Provider
 

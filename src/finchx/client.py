@@ -367,12 +367,13 @@ class MarketNamespace(_RequestNamespace):
 
     def broken_limit_pool(
         self,
-        request: MarketBrokenLimitPoolRequest,
+        request: MarketBrokenLimitPoolRequest | None = None,
         *,
         provider: str | None = None,
         use_cache: bool | None = None,
     ) -> FetchResult[MarketBrokenLimitPoolData]:
-        """Fetch the broken-limit pool in a FetchResult."""
+        """Fetch the latest broken-limit pool snapshot in a FetchResult."""
+        request = request if request is not None else MarketBrokenLimitPoolRequest()
         return self._fetch_request(MARKET_BROKEN_LIMIT_POOL_DATASET, request, provider=provider, use_cache=use_cache)
 
     def consecutive_limit_up(
@@ -566,22 +567,24 @@ class MarketNamespace(_RequestNamespace):
 
     def limit_down_pool(
         self,
-        request: MarketLimitDownPoolRequest,
+        request: MarketLimitDownPoolRequest | None = None,
         *,
         provider: str | None = None,
         use_cache: bool | None = None,
     ) -> FetchResult[MarketLimitDownPoolData]:
-        """Fetch the limit-down pool in a FetchResult."""
+        """Fetch the latest limit-down pool snapshot in a FetchResult."""
+        request = request if request is not None else MarketLimitDownPoolRequest()
         return self._fetch_request(MARKET_LIMIT_DOWN_POOL_DATASET, request, provider=provider, use_cache=use_cache)
 
     def limit_up_pool(
         self,
-        request: MarketLimitUpPoolRequest,
+        request: MarketLimitUpPoolRequest | None = None,
         *,
         provider: str | None = None,
         use_cache: bool | None = None,
     ) -> FetchResult[MarketLimitUpPoolData]:
-        """Fetch the limit-up pool in a FetchResult."""
+        """Fetch the latest limit-up pool snapshot in a FetchResult."""
+        request = request if request is not None else MarketLimitUpPoolRequest()
         return self._fetch_request(MARKET_LIMIT_UP_POOL_DATASET, request, provider=provider, use_cache=use_cache)
 
     def orderbook(
@@ -639,22 +642,24 @@ class MarketNamespace(_RequestNamespace):
 
     def strong_pool(
         self,
-        request: MarketStrongPoolRequest,
+        request: MarketStrongPoolRequest | None = None,
         *,
         provider: str | None = None,
         use_cache: bool | None = None,
     ) -> FetchResult[MarketStrongPoolData]:
-        """Fetch the strong pool in a FetchResult."""
+        """Fetch the latest strong-pool snapshot in a FetchResult."""
+        request = request if request is not None else MarketStrongPoolRequest()
         return self._fetch_request(MARKET_STRONG_POOL_DATASET, request, provider=provider, use_cache=use_cache)
 
     def yesterday_limit_up_pool(
         self,
-        request: MarketYesterdayLimitUpPoolRequest,
+        request: MarketYesterdayLimitUpPoolRequest | None = None,
         *,
         provider: str | None = None,
         use_cache: bool | None = None,
     ) -> FetchResult[MarketYesterdayLimitUpPoolData]:
-        """Fetch the yesterday-limit-up pool in a FetchResult."""
+        """Fetch the latest yesterday-limit-up pool snapshot in a FetchResult."""
+        request = request if request is not None else MarketYesterdayLimitUpPoolRequest()
         return self._fetch_request(MARKET_YESTERDAY_LIMIT_UP_POOL_DATASET, request, provider=provider, use_cache=use_cache)
 
 

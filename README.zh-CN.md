@@ -128,11 +128,30 @@ for window in result.data.windows:
 
 ### 标的身份
 
-单证券接口既接受完整的 `InstrumentId`，也接受已验证的六位 A 股代码。后者会规范化为 `Market.CN_A` + `InstrumentKind.EQUITY`；在接口支持时，代码前缀 `6`、`0`/`3`、`4`/`8`/`9` 分别标识 SSE、SZSE、BSE。指数和其他有歧义的标的必须提供包含 `code`、`market`、`kind` 以及必要时明确 `exchange` 的完整 `InstrumentId`。
+单证券接口既接受完整的 `InstrumentId`，也接受已验证的六位 A 股代码。后者会规范化为 `Market.CN_A` + `InstrumentKind.EQUITY`；代码前缀 `6` 和 `0`/`3` 分别标识 SSE、SZSE。其他有歧义的标的必须提供包含 `code`、`market`、`kind` 以及必要时明确 `exchange` 的完整 `InstrumentId`。
 
 ### FetchResult
 
-每个 Client 接口都返回 `FetchResult`。其公开字段包括 `data`、`dataset`、`dataset_id`、`provider`、`provider_id`、`captured_at`、`warnings`、`provenance`、`attempts`、`fallback_used` 和 `cache_hit`。`dataset_id` 与 `provider_id` 分别是 `dataset.name` 与 `provider` 的便捷属性。大多数 Provider-backed 接口把标准化的 `StandardRecord` 对象放入 `data`；搜索接口返回带类型的文档引用元组；计算型偏离值接口直接返回 `DeviationData`。完整契约见 [DATA_API_REFERENCE.zh-CN.md](docs/DATA_API_REFERENCE.zh-CN.md)。
+每个 Client 接口都返回 `FetchResult`。其公开字段包括 `data`、`dataset`、`dataset_id`、`provider`、`provider_id`、`captured_at`、`warnings`、`provenance`、`attempts`、`fallback_used` 和 `cache_hit`。`dataset_id` 与 `provider_id` 分别是 `dataset.name` 与 `provider` 的便捷属性。大多数 Provider-backed 接口把标准化的 `StandardRecord` 对象放入 `data`；搜索接口返回带类型的文档引用元组；计算型偏离值接口直接返回 `DeviationData`。默认展示聚焦业务数据，现有字段和 `StandardRecord` 对象仍完整保留审计元数据。
+
+```python
+result = fx.reference.trading_calendar(...)
+print(result)
+rows = result.to_dicts()
+df = result.to_pandas()  # 需要可选的 pandas 包
+```
+
+`to_dicts()` 始终返回业务数据字典列表，单条结果也保持这一形式。`to_pandas()` 是可选便捷方法；未安装 pandas 时会给出明确的安装错误。完整契约见 [DATA_API_REFERENCE.zh-CN.md](docs/DATA_API_REFERENCE.zh-CN.md)。
+
+### 快照池接口
+
+EastMoney 的 `limit_up_pool()`、`limit_down_pool()`、`broken_limit_pool()`、`strong_pool()` 和 `yesterday_limit_up_pool()` 接口提供最新可用快照：
+
+```python
+result = fx.market.broken_limit_pool()
+```
+
+这些接口不承诺历史日期选择。业务数据行会保留 EastMoney 返回的 `tradeDate`；已弃用的 request `tradeDate` 兼容字段不能选择历史日期，传入时会明确拒绝。
 
 ### 选择 Provider
 

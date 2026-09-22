@@ -45,8 +45,8 @@ _TIMEZONE = timezone(timedelta(hours=8))
 _JSONP = re.compile(r"^\s*[A-Za-z_$][A-Za-z0-9_$.]*\s*\((.*)\)\s*;?\s*$", re.DOTALL)
 _NEWS_ID = re.compile(r"^[0-9]{12,24}$")
 _DISCLOSURE_ID = re.compile(r"^AN[0-9]{12,24}$")
-_NEWS_ROW_FIELDS = frozenset(
-    {"Art_ShowTime", "Art_Code", "Np_dst", "Art_Title", "Art_SortStart", "Art_OriginUrl", "Art_Url"}
+_NEWS_ROW_REQUIRED_FIELDS = frozenset(
+    {"Art_ShowTime", "Art_Code", "Art_Title", "Art_Url"}
 )
 _DISCLOSURE_ROW_FIELDS = frozenset(
     {
@@ -81,6 +81,7 @@ class _ProviderDocumentPage:
     total_hits: int | None
     request_url: str
     next_page_token: str | None = None
+    warnings: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -327,36 +328,54 @@ class EastmoneyNewsProvider(_EastmoneyDocumentProviderBase):
         if not isinstance(raw_rows, list):
             self._fail("EastMoney news list must contain an array")
         rows: list[_ProviderNewsRow] = []
+        warnings: list[str] = []
         for index, raw in enumerate(raw_rows):
-            if not isinstance(raw, dict) or set(raw) != _NEWS_ROW_FIELDS:
-                self._fail(f"EastMoney news row {index} fields drifted")
-            document_id = self._text(raw.get("Art_Code"), f"news.list[{index}].Art_Code")
-            if _NEWS_ID.fullmatch(document_id) is None:
-                self._fail(f"EastMoney news row {index} has an invalid Art_Code")
-            title = self._text(raw.get("Art_Title"), f"news.list[{index}].Art_Title")
-            published = self._source_datetime(raw.get("Art_ShowTime"), f"news.list[{index}].Art_ShowTime")
-            url = self._text(raw.get("Art_Url"), f"news.list[{index}].Art_Url")
-            original = self._text(raw.get("Art_OriginUrl"), f"news.list[{index}].Art_OriginUrl")
-            sort_start = self._text(raw.get("Art_SortStart"), f"news.list[{index}].Art_SortStart")
-            if not sort_start.isdigit():
-                self._fail(f"EastMoney news row {index}.Art_SortStart must be numeric text")
-            rows.append(
-                _ProviderNewsRow(
-                    instrument_id=request.instrument_id,
-                    document_id=document_id,
-                    title=title,
-                    published_at=published,
-                    url=url,
-                    original_url=original,
-                    source_name=None,
-                    content_text=None,
-                    source_url=request_url,
-                    captured_at=self._captured_at(),
-                    sort_start=sort_start,
-                    np_dst=self._text(raw.get("Np_dst"), f"news.list[{index}].Np_dst"),
+            if not isinstance(raw, dict):
+                warnings.append(f"Skipped EastMoney news row {index}: row is not an object")
+                continue
+            missing = _NEWS_ROW_REQUIRED_FIELDS.difference(raw)
+            if missing:
+                warnings.append(
+                    f"Skipped EastMoney news row {index}: required fields missing: "
+                    f"{', '.join(sorted(missing))}"
                 )
-            )
-        return _ProviderDocumentPage(tuple(rows), page_index, actual_page_size, total_hits, request_url)
+                continue
+            try:
+                document_id = self._text(raw.get("Art_Code"), f"news.list[{index}].Art_Code")
+                if _NEWS_ID.fullmatch(document_id) is None:
+                    self._fail(f"EastMoney news row {index} has an invalid Art_Code")
+                title = self._text(raw.get("Art_Title"), f"news.list[{index}].Art_Title")
+                published = self._source_datetime(raw.get("Art_ShowTime"), f"news.list[{index}].Art_ShowTime")
+                url = self._text(raw.get("Art_Url"), f"news.list[{index}].Art_Url")
+                original = self._optional_text(raw.get("Art_OriginUrl"), f"news.list[{index}].Art_OriginUrl")
+                sort_start = self._optional_text(raw.get("Art_SortStart"), f"news.list[{index}].Art_SortStart")
+                if sort_start is not None and not sort_start.isdigit():
+                    self._fail(f"EastMoney news row {index}.Art_SortStart must be numeric text")
+                np_dst = self._optional_text(raw.get("Np_dst"), f"news.list[{index}].Np_dst")
+                rows.append(
+                    _ProviderNewsRow(
+                        instrument_id=request.instrument_id,
+                        document_id=document_id,
+                        title=title,
+                        published_at=published,
+                        url=url,
+                        original_url=original,
+                        source_name=None,
+                        content_text=None,
+                        source_url=request_url,
+                        captured_at=self._captured_at(),
+                        sort_start=sort_start,
+                        np_dst=np_dst,
+                    )
+                )
+            except ProviderError as exc:
+                warnings.append(f"Skipped EastMoney news row {index}: {exc.reason}")
+        if raw_rows and not rows:
+            self._fail("EastMoney news list contained no parseable rows")
+        return _ProviderDocumentPage(
+            tuple(rows), page_index, actual_page_size, total_hits, request_url,
+            warnings=tuple(warnings),
+        )
 
     def fetch_raw_news_document(self, document_id: str) -> _ProviderNewsRow:
         if not isinstance(document_id, str) or _NEWS_ID.fullmatch(document_id) is None:
@@ -412,6 +431,13 @@ class EastmoneyNewsProvider(_EastmoneyDocumentProviderBase):
     def _text(self, value: object, label: str) -> str:
         if not isinstance(value, str) or not value.strip():
             self._fail(f"{label} must be non-empty text")
+        return value
+
+    def _optional_text(self, value: object, label: str) -> str | None:
+        if value is None:
+            return None
+        if not isinstance(value, str) or not value.strip():
+            self._fail(f"{label} must be non-empty text when present")
         return value
 
     def _source_datetime(self, value: object, label: str) -> datetime:

@@ -147,6 +147,28 @@ def test_client_does_not_hide_collector_errors():
         client.market.quote()
 
 
+@pytest.mark.parametrize(
+    "method_name, request_type",
+    [
+        ("limit_up_pool", datasets.MarketLimitUpPoolRequest),
+        ("limit_down_pool", datasets.MarketLimitDownPoolRequest),
+        ("broken_limit_pool", datasets.MarketBrokenLimitPoolRequest),
+        ("strong_pool", datasets.MarketStrongPoolRequest),
+        ("yesterday_limit_up_pool", datasets.MarketYesterdayLimitUpPoolRequest),
+    ],
+)
+def test_latest_snapshot_pool_methods_build_empty_requests_by_default(method_name, request_type):
+    collector = SpyCollector()
+    client = FinchX(collector=collector)
+
+    assert getattr(client.market, method_name)() is collector.result
+
+    request = collector.calls[0]["kwargs"]["request"]
+    assert isinstance(request, request_type)
+    assert request.__dict__["trade_date"] is None
+    assert request.model_dump(exclude_none=True, by_alias=True) == {}
+
+
 def test_collector_configuration_cannot_be_silently_ignored():
     with pytest.raises(ValueError, match="cannot be combined"):
         FinchX(collector=SpyCollector(), cache=object())

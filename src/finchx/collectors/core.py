@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable, Mapping
+from copy import deepcopy
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 import math
 from numbers import Real
+from pprint import pformat
 import re
 from time import sleep
 from types import MappingProxyType
@@ -14,7 +16,7 @@ from typing import Any, Generic, TypeVar
 
 from pydantic import BaseModel
 
-from finchx.contracts import Source
+from finchx.contracts import Source, StandardRecord
 from finchx.datasets.definition import DatasetDefinition
 from finchx.datasets.disclosure import (
     DISCLOSURE_DOCUMENT_DATASET,
@@ -188,6 +190,15 @@ _DEFAULT_FALLBACK_ERRORS = frozenset(
 )
 
 
+def _short_display(value: Any, *, max_chars: int = 1200) -> str:
+    """Render a terminal-friendly business-data preview."""
+
+    rendered = pformat(value, width=100, compact=True)
+    if len(rendered) <= max_chars:
+        return rendered
+    return rendered[: max_chars - 3] + "..."
+
+
 @dataclass(frozen=True)
 class FetchAttempt:
     """Safe, per-attempt execution facts retained by a successful fetch."""
@@ -299,6 +310,19 @@ class RoutingPolicy:
 
 
 @dataclass(frozen=True)
+class _RouteResult:
+    """Internal route envelope for successful data plus non-fatal warnings."""
+
+    data: Any
+    warnings: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "warnings", tuple(self.warnings))
+        if any(not isinstance(warning, str) or not warning.strip() for warning in self.warnings):
+            raise TypeError("route warnings must contain non-empty strings")
+
+
+@dataclass(frozen=True)
 class FetchResult(Generic[DataT]):
     """The data and direct provenance of one successful Collector fetch."""
 
@@ -342,6 +366,69 @@ class FetchResult(Generic[DataT]):
         """Return the selected stable Provider identity."""
 
         return self.provider
+
+    def to_dicts(self) -> list[dict[str, Any]]:
+        """Return the business data from standardized records.
+
+        Provider, provenance, attempts, cache and other audit facts remain
+        available through the existing ``FetchResult`` and ``StandardRecord``
+        attributes; they are intentionally not mixed into these row dicts.
+        """
+
+        records = self._standard_records()
+        if records is None:
+            raise TypeError(
+                "FetchResult.to_dicts() is only available for StandardRecord data"
+            )
+        return [deepcopy(record.data) for record in records]
+
+    def to_pandas(self) -> Any:
+        """Return standardized business data as a pandas DataFrame.
+
+        pandas is deliberately optional because it is not a FinchX runtime
+        dependency.  Install it separately before calling this helper.
+        """
+
+        try:
+            import pandas as pd
+        except ImportError as exc:
+            raise ImportError(
+                "FetchResult.to_pandas() requires the optional dependency "
+                "'pandas'. Install pandas to use this helper."
+            ) from exc
+        return pd.DataFrame(self.to_dicts())
+
+    def __repr__(self) -> str:
+        records = self._standard_records()
+        if records is not None:
+            rows = self.to_dicts()
+            preview = rows[:3]
+            if len(rows) > len(preview):
+                preview.append({"...": f"{len(rows) - len(preview)} more rows"})
+            return (
+                f"FetchResult(dataset={self.dataset_id!r}, rows={len(rows)}, "
+                f"data={_short_display(preview)})"
+            )
+
+        business_data = self.data
+        if isinstance(business_data, BaseModel):
+            business_data = business_data.model_dump(mode="json")
+        return (
+            f"FetchResult(dataset={self.dataset_id!r}, "
+            f"data={_short_display(business_data)})"
+        )
+
+    def __str__(self) -> str:
+        return repr(self)
+
+    def _standard_records(self) -> tuple[StandardRecord, ...] | None:
+        if isinstance(self.data, StandardRecord):
+            return (self.data,)
+        if isinstance(self.data, (tuple, list)) and all(
+            isinstance(record, StandardRecord) for record in self.data
+        ):
+            return tuple(self.data)
+        return None
 
 
 @dataclass(frozen=True)
@@ -527,10 +614,17 @@ class Collector:
                 try:
                     instance = self._resolve_provider(spec.provider_id, spec.provider)
                     route = self._routes.get((definition.name, spec.provider_id))
+                    route_warnings = ()
                     if route is None:
                         data = self._invoke_generic(instance, definition, kwargs)
                     else:
-                        data = route(instance, definition, dict(kwargs))
+                        routed = route(instance, definition, dict(kwargs))
+                        if isinstance(routed, _RouteResult):
+                            data = routed.data
+                            route_warnings = routed.warnings
+                        else:
+                            data = routed
+                            route_warnings = ()
                 except Exception as raw_error:
                     error = self._normalize_execution_error(
                         raw_error,
@@ -677,6 +771,7 @@ class Collector:
                         dataset=definition,
                         provider=spec.provider_id,
                         captured_at=captured_at,
+                        warnings=route_warnings,
                         provenance=self._provider_provenance(instance),
                         attempts=tuple(attempts),
                         fallback_used=provider_index > 0,
@@ -1606,7 +1701,8 @@ def _news_search_route(
     # the public Client path still has one runtime owner.
     from finchx.query.documents import NewsService
 
-    return NewsService(provider)._search_request(request)
+    outcome = NewsService(provider)._search_request_with_warnings(request)
+    return _RouteResult(outcome.records, outcome.warnings)
 
 
 def _disclosure_search_route(

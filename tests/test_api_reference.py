@@ -13,16 +13,18 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from finchx import __version__  # noqa: E402
+sys.path.insert(0, str(ROOT / "src"))
 from finchx.collectors.core import FetchResult  # noqa: E402
 
 from tools.generate_api_reference import (  # noqa: E402
+    CATEGORY_SPECS,
     DESCRIPTION_ZH,
     EXAMPLE_SPECS,
-    MINIMUM_INPUT_ZH,
     SUMMARY_ZH,
     endpoint_key,
     all_endpoint_keys,
+    computed_endpoint_keys,
+    provider_endpoint_keys,
     render,
 )
 
@@ -86,8 +88,30 @@ def test_generated_documents_are_current_and_have_all_capabilities():
     assert chinese == render("zh")
     assert set(_examples(english)) == set(EXAMPLE_SPECS) == set(all_endpoint_keys())
     assert len(_examples(english)) == len(all_endpoint_keys())
-    assert f"from the {__version__} public Client" in english
-    assert f"根据 {__version__} 公开 Client" in chinese
+    count_phrase_en = (
+        f"{len(provider_endpoint_keys())} data interfaces + "
+        f"{len(computed_endpoint_keys())} computed capability = "
+        f"{len(all_endpoint_keys())} public capabilities"
+    )
+    count_phrase_zh = (
+        f"{len(provider_endpoint_keys())} 个数据接口 + "
+        f"{len(computed_endpoint_keys())} 个计算能力 = "
+        f"{len(all_endpoint_keys())} 个公开能力"
+    )
+    assert count_phrase_en in english
+    assert count_phrase_zh in chinese
+
+
+def test_capability_inventory_and_categories_are_derived_from_runtime_metadata():
+    provider_keys = set(provider_endpoint_keys())
+    computed_keys = set(computed_endpoint_keys())
+    category_keys = [key for category in CATEGORY_SPECS for key in category.endpoint_keys]
+
+    assert provider_keys
+    assert computed_keys
+    assert set(category_keys) == provider_keys | computed_keys
+    assert len(category_keys) == len(set(category_keys))
+    assert len(all_endpoint_keys()) == len(provider_keys) + len(computed_keys)
 
 
 def test_generated_documents_have_no_pydantic_sentinel_or_mechanical_chinese_fallbacks():
@@ -96,18 +120,26 @@ def test_generated_documents_have_no_pydantic_sentinel_or_mechanical_chinese_fal
 
     assert "PydanticUndefined" not in english
     assert "PydanticUndefined" not in chinese
-    assert "Declared by the Pydantic model." not in chinese
+    assert "Business field." not in english
+    assert "业务字段。" not in chinese
+    assert "Nested business model：" not in english
+    assert " in a FetchResult" not in english
+    assert " and return it in a FetchResult" not in english
+    for document in (english, chinese):
+        assert "Routing semantics" not in document
+        assert "Declared by the Pydantic model." not in document
+        assert "The public return annotation" not in document
+        assert "Schema version" not in document
+        assert "StandardRecord" not in document
+        assert "record_id" not in document
+        assert "entity_id" not in document
+        assert "captured_at" not in document
     assert "Declared by the source signature." not in chinese
     assert "Public Client endpoint." not in chinese
     assert "Required / Optional" not in chinese
     assert "Provider-backed / Dataset-backed" not in chinese
     for description in DESCRIPTION_ZH:
         assert description not in chinese
-    assert set(MINIMUM_INPUT_ZH) == {spec.minimum_input_en for spec in EXAMPLE_SPECS.values()}
-    for spec in EXAMPLE_SPECS.values():
-        assert spec.minimum_input_en in english
-        assert spec.minimum_input_zh in chinese
-
     assert not re.search(r"\| (?:Yes|No) \|", chinese)
     for summary in SUMMARY_ZH.values():
         assert summary in chinese
@@ -179,6 +211,51 @@ def test_fundamental_industry_comparison_documents_alias_without_inventing_an_ex
     assert "FundamentalIndustryComparisonRequest" in document
     assert "finchx.datasets.IndustryComparisonRequest" in document
     assert "from finchx.datasets import FundamentalIndustryComparisonRequest" not in document
+
+
+def test_latest_pool_request_tables_keep_trade_date_only_in_deprecated_note():
+    document = (ROOT / "docs" / "DATA_API_REFERENCE.md").read_text(encoding="utf-8")
+    for key in (
+        "market.limit_up_pool",
+        "market.limit_down_pool",
+        "market.broken_limit_pool",
+        "market.strong_pool",
+        "market.yesterday_limit_up_pool",
+    ):
+        block = document.split(f"### `fx.{key}(...)`", 1)[1].split("\n### `fx.", 1)[0]
+        parameters = block.split("**Parameters**", 1)[1].split("**Output fields**", 1)[0]
+        assert "tradeDate" not in parameters
+        assert "tradeDate" not in block.split("**Example**", 1)[1].split("**Parameters**", 1)[0]
+        if "**Request fields**" in block:
+            request_fields = block.split("**Request fields**", 1)[1].split("**Output fields**", 1)[0]
+            assert "tradeDate" not in request_fields
+        assert "| tradeDate |" in block
+        assert "**Output fields**" in block
+
+    assert document.count("**Deprecated compatibility:**") == 1
+
+
+def test_common_provider_parameters_are_documented_once():
+    english = (ROOT / "docs" / "DATA_API_REFERENCE.md").read_text(encoding="utf-8")
+    chinese = (ROOT / "docs" / "DATA_API_REFERENCE.zh-CN.md").read_text(encoding="utf-8")
+
+    assert english.count("### Common parameters") == 1
+    assert chinese.count("### 公共参数") == 1
+    assert "`provider`" in english and "`use_cache`" in english
+    assert "`provider`" in chinese and "`use_cache`" in chinese
+    for document, parameters_heading in (
+        (english, "**Parameters**"),
+        (chinese, "**参数**"),
+    ):
+        block = document.split("### `fx.market.quote_snapshot(...)`", 1)[1].split("\n### `fx.", 1)[0]
+        parameters = block.split(parameters_heading, 1)[1].split("**Output fields**" if parameters_heading == "**Parameters**" else "**输出字段**", 1)[0]
+        assert "| provider |" not in parameters
+        assert "| use_cache |" not in parameters
+
+
+def test_generator_has_one_active_renderer():
+    source = (ROOT / "tools" / "generate_api_reference.py").read_text(encoding="utf-8")
+    assert len(re.findall(r"^def render\(", source, re.MULTILINE)) == 1
 
 
 def test_generator_check_mode_passes():
