@@ -2,165 +2,81 @@
 
 English | [简体中文](DATA_API_REFERENCE.zh-CN.md)
 
+This reference is generated from the 1.0.0 public Client, Dataset definitions, Pydantic request/data models and Provider Registry. It covers 42 Provider-backed / Dataset-backed public endpoints plus 1 computed capability (43 total capabilities).
 
-This reference describes the current public surface from the Client, Dataset definitions, Pydantic schemas and Provider registry: 42 Provider-backed / Dataset-backed public endpoints plus the computed `market.deviation` capability. The computed capability is documented separately because it is intentionally outside the Provider-backed inventory.
+## Common rules
 
-## Common concepts
+Signatures below are taken from the live public Client. Request-field Required / Optional values come from Pydantic `model_fields`; convenience-mode and cross-field rules are documented separately when a signature alone is insufficient. Both language versions use the same structured Example definitions.
 
-### InstrumentId
+| Rule | Meaning |
+| --- | --- |
+| `provider` | Strict Provider id pin; a failure is not silently redirected. |
+| `use_cache` | None follows the configured CachePolicy; FinchX construction does not create storage. |
+| Request model | Some methods expose a convenience call and a typed request alternative; valid combinations follow the Client and Pydantic validators. |
+| InstrumentId | Use a complete identity with code, market, kind and exchange when the endpoint requires it. |
 
-Most market, fundamental, financial, ownership, company and corporate-action requests use a complete `InstrumentId`:
+## Endpoint index
 
-```python
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
+This index is generated from `CLIENT_ENDPOINTS`, plus the computed `market.deviation` capability.
 
-instrument_id = InstrumentId(
-    code="600519", market=Market.CN_A,
-    kind=InstrumentKind.EQUITY, exchange=Exchange.SSE,
-)
-```
-Allowed enum values are `Market.CN_A` (`cn_a`), `InstrumentKind.EQUITY`/`INDEX`/`ETF` (`equity`, `index`, `etf`), and `Exchange.SSE`/`SZSE`/`BSE` (`sse`, `szse`, `bse`). `exchange` is optional in the base identity model but is required by capabilities that need an exchange-specific mapping.
-
-### FetchResult
-
-All explicit Client methods return a `FetchResult`. Its fields are:
-
-| Field | Type | Default | Meaning |
-| --- | --- | --- | --- |
-| `data` | generic | — | Returned standardized records, document references, or computed data. |
-| `dataset` | DatasetDefinition | — | Dataset name, schema version, request type and payload type. |
-| `dataset_id` | str | — | Convenience property containing `dataset.name`. |
-| `provider` | str \| None | — | Provider id used for the successful fetch; computed deviation is `None`. |
-| `provider_id` | str \| None | — | Convenience property mirroring `provider`. |
-| `captured_at` | datetime | — | Timezone-aware FinchX capture time. |
-| `warnings` | tuple[str, ...] | () | Non-fatal fetch warnings. |
-| `provenance` | tuple[Source, ...] | () | Direct source identities retained by the result. |
-| `attempts` | tuple[FetchAttempt, ...] | () | Provider attempts, including retry/failure facts when available. |
-| `fallback_used` | bool | False | Whether the runtime used a later allowed Provider after an earlier failure. |
-| `cache_hit` | bool | False | Whether the result came from the configured cache. |
-
-A provider-backed record is a `StandardRecord` envelope. Its public fields are `dataset`, `schemaVersion`, `recordId`, `entityId`, `eventAt`, `publishedAt`, `updatedAt`, `capturedAt`, `asOf`, `source`, `status`, `quality`, `provenance` and `data`. The Dataset field tables below describe the normalized `record.data` payload. Listing and time-series endpoints return a tuple of envelopes; news and disclosure search return tuples of `NewsDocumentRef` or `DisclosureDocumentRef` rather than full `StandardRecord` envelopes.
-
-`Source` contains `providerId`, optional `sourceRecordId` and optional `sourceUrl`. `FetchAttempt` contains `provider`, `attempt`, `started_at`, `captured_at`, `success`, and optional `error_type`/`error_message`.
-
-### Provider selection
-
-`provider=` is a strict pin. When provided, only that Provider id is used and a failure is not silently redirected to another Provider. Without a pin, runtime policy controls retry and Provider selection. This document lists implemented Providers only; it does not assign primary or fallback roles.
-
-Provider ids are stable registry identities such as `tencent.finance.qq.klines` or `eastmoney.stockrank`. A Dataset marked `single_source` has a source-specific public contract; a Dataset marked `multi_provider` can admit peer Providers implementing the same normalized contract.
-
-### Cache
-
-`use_cache=None` follows the configured `CachePolicy`. `use_cache=False` bypasses cache reads. An explicit Provider pin bypasses a cached result. `FinchX()` has no enabled cache or default SQLite file unless one is supplied through Collector configuration.
-
-### Time fields
-
-`capturedAt` is when FinchX captured an upstream observation. It is distinct from source `publishedAt`, source `sourceTimestamp`, market `tradeDate`/`barDate`, disclosure `noticeDate`, and source `calculatedAt`. `effectiveAsOf` in deviation is the completed session actually used by the calculation.
-
-### Errors
-
-The main public categories are `InvalidRequest`, `AuthenticationError`, `MissingOptionalDependency`, `SchemaDrift`, `NoData`, `ProviderDoesNotSupportDataset`, `UnknownProvider`, and `AllProvidersFailed`. Transport, rate-limit and timeout conditions may be retried or routed according to the configured runtime policy when no strict Provider pin is used.
-
-## Data Sources
-
-The table lists the current registry identities and the public endpoints that use them. It is an implementation inventory, not an upstream SLA or a promised routing order.
-
-| Provider id | Endpoints | Notes |
-| --- | --- | --- |
-| `szse.official.calendar` | `reference.trading_calendar` | — |
-| `pandas_market_calendars` | `reference.trading_calendar` | optional: pandas_market_calendars |
-| `tencent.finance.qq.market` | `reference.instrument`, `market.quote`, `market.ranking` | — |
-| `tencent.finance.qq.quote` | `market.quote_snapshot`, `market.orderbook` | — |
-| `tencent.finance.qq.klines` | `market.ohlcv` | — |
-| `sohu.finance.klines` | `market.ohlcv` | — |
-| `tencent.finance.qq.intraday` | `market.equity_intraday`, `market.equity_intraday_5d`, `market.index_intraday`, `market.index_intraday_5d` | — |
-| `tencent.finance.qq.fund_flow` | `market.fund_flow_snapshot`, `market.fund_flow_intraday`, `market.fund_flow_daily` | — |
-| `eastmoney.push2ex.breadth` | `market.breadth` | — |
-| `eastmoney.push2ex.limit_up_pool` | `market.limit_up_pool` | — |
-| `eastmoney.push2ex.limit_down_pool` | `market.limit_down_pool` | — |
-| `eastmoney.push2ex.yesterday_limit_up_pool` | `market.yesterday_limit_up_pool` | — |
-| `eastmoney.push2ex.strong_pool` | `market.strong_pool` | — |
-| `eastmoney.push2ex.broken_limit_pool` | `market.broken_limit_pool` | — |
-| `tencent.finance.qq.sector` | `market.instrument_sector_snapshot` | — |
-| `eastmoney.stockrank` | `market.stock_keyword` | — |
-| `tencent.finance.qq.industry` | `market.industry_comparison` | — |
-| `tonghuashun.financial` | `financial.statements` | — |
-| `tencent.finance.qq.f10` | `fundamental.company_profile`, `fundamental.financial_summary`, `fundamental.revenue_breakdown`, `fundamental.industry_comparison`, `ownership.capital_snapshot`, `ownership.holder_summary_snapshot`, `company.executive_snapshot`, `company.executive_share_change`, `corporate_action.dividend`, `corporate_action.repurchase` | — |
-| `tencent.finance.qq.float_holder` | `ownership.float_holder` | — |
-| `eastmoney.news` | `news.search` | — |
-| `eastmoney.disclosure` | `disclosure.search` | — |
-| `eastmoney.market_news` | `news.search` | — |
-| `aigupiao.market_news` | `news.search` | — |
-| `baidu.finscope.market_news` | `news.search` | — |
-| `aigupiao.market_sentiment` | `market.sentiment` | — |
-| `aigupiao.series_limit_up` | `market.consecutive_limit_up` | — |
-| `aigupiao.dragon_tiger` | `market.dragon_tiger_list`, `market.dragon_tiger_detail` | — |
-| `jiuyangongshe.daily_replay` | `market.daily_replay` | authentication required; optional: playwright |
-
-## Endpoint Index
-
-The index covers all 42 registered Dataset-backed methods plus the computed deviation capability.
-
-| Namespace | Endpoint | Dataset | Implemented Provider(s) | Required primary input |
+| Namespace | Method | Dataset | Implemented Providers | Minimum business input |
 | --- | --- | --- | --- | --- |
-| `reference` | `instrument` | `instrument` | `tencent.finance.qq.market` | instrumentId |
-| `reference` | `trading_calendar` | `trading_calendar` | `szse.official.calendar`, `pandas_market_calendars` | market, startDate, endDate |
-| `market` | `breadth` | `market.breadth` | `eastmoney.push2ex.breadth` | — |
-| `market` | `broken_limit_pool` | `market.broken_limit_pool` | `eastmoney.push2ex.broken_limit_pool` | tradeDate |
-| `market` | `consecutive_limit_up` | `market.consecutive_limit_up_snapshot` | `aigupiao.series_limit_up` | — |
-| `market` | `daily_replay` | `market.daily_replay` | `jiuyangongshe.daily_replay` | requestedDate |
-| `market` | `dragon_tiger_detail` | `market.dragon_tiger_detail` | `aigupiao.dragon_tiger` | instrumentId, tradeDate, tradeId |
-| `market` | `dragon_tiger_list` | `market.dragon_tiger_list` | `aigupiao.dragon_tiger` | tradeDate |
-| `market` | `equity_intraday` | `market.equity_intraday` | `tencent.finance.qq.intraday` | instrumentId |
-| `market` | `equity_intraday_5d` | `market.equity_intraday_5d` | `tencent.finance.qq.intraday` | instrumentId |
-| `market` | `fund_flow_daily` | `market.fund_flow_daily` | `tencent.finance.qq.fund_flow` | instrumentId |
-| `market` | `fund_flow_intraday` | `market.fund_flow_intraday` | `tencent.finance.qq.fund_flow` | instrumentId |
-| `market` | `fund_flow_snapshot` | `market.fund_flow_snapshot` | `tencent.finance.qq.fund_flow` | instrumentId |
-| `market` | `index_intraday` | `market.index_intraday` | `tencent.finance.qq.intraday` | instrumentId |
-| `market` | `index_intraday_5d` | `market.index_intraday_5d` | `tencent.finance.qq.intraday` | instrumentId |
-| `market` | `industry_comparison` | `market.industry_comparison` | `tencent.finance.qq.industry` | instrumentId |
-| `market` | `instrument_sector_snapshot` | `market.instrument_sector_snapshot` | `tencent.finance.qq.sector` | instrumentId |
-| `market` | `stock_keyword` | `market.stock_keyword` | `eastmoney.stockrank` | instrumentId |
-| `market` | `limit_down_pool` | `market.limit_down_pool` | `eastmoney.push2ex.limit_down_pool` | tradeDate |
-| `market` | `limit_up_pool` | `market.limit_up_pool` | `eastmoney.push2ex.limit_up_pool` | tradeDate |
-| `market` | `ohlcv` | `market.klines` | `tencent.finance.qq.klines`, `sohu.finance.klines` | instrumentId, startDate, endDate |
-| `market` | `orderbook` | `market.orderbook` | `tencent.finance.qq.quote` | instrumentId |
-| `market` | `quote` | `market.quote` | `tencent.finance.qq.market` | universe |
-| `market` | `quote_snapshot` | `market.quote_snapshot` | `tencent.finance.qq.quote` | instrumentId |
-| `market` | `ranking` | `market.ranking` | `tencent.finance.qq.market` | universe, criterion, direction, limit |
-| `market` | `sentiment` | `market.sentiment_snapshot` | `aigupiao.market_sentiment` | — |
-| `market` | `strong_pool` | `market.strong_pool` | `eastmoney.push2ex.strong_pool` | tradeDate |
-| `market` | `yesterday_limit_up_pool` | `market.yesterday_limit_up_pool` | `eastmoney.push2ex.yesterday_limit_up_pool` | tradeDate |
-| `fundamental` | `company_profile` | `fundamental.company_profile` | `tencent.finance.qq.f10` | instrumentId |
-| `fundamental` | `financial_summary` | `fundamental.financial_summary` | `tencent.finance.qq.f10` | instrumentId |
-| `fundamental` | `industry_comparison` | `fundamental.industry_comparison` | `tencent.finance.qq.f10` | instrumentId |
-| `fundamental` | `revenue_breakdown` | `fundamental.revenue_breakdown` | `tencent.finance.qq.f10` | instrumentId |
-| `financial` | `statements` | `financial.statement` | `tonghuashun.financial` | instrumentId, statementType |
-| `news` | `search` | `news.document` | `eastmoney.news`, `eastmoney.market_news`, `aigupiao.market_news`, `baidu.finscope.market_news` | instrumentId |
-| `disclosure` | `search` | `disclosure.document` | `eastmoney.disclosure` | instrumentId |
-| `ownership` | `capital_snapshot` | `ownership.capital_snapshot` | `tencent.finance.qq.f10` | instrumentId |
-| `ownership` | `float_holder` | `ownership.float_holder` | `tencent.finance.qq.float_holder` | instrumentId |
-| `ownership` | `holder_summary_snapshot` | `ownership.holder_summary_snapshot` | `tencent.finance.qq.f10` | instrumentId |
-| `company` | `executive_share_change` | `company.executive_share_change` | `tencent.finance.qq.f10` | instrumentId |
-| `company` | `executive_snapshot` | `company.executive_snapshot` | `tencent.finance.qq.f10` | instrumentId |
-| `corporate_action` | `dividend` | `corporate_action.dividend` | `tencent.finance.qq.f10` | instrumentId |
-| `corporate_action` | `repurchase` | `corporate_action.repurchase` | `tencent.finance.qq.f10` | instrumentId |
-| `market` | `deviation` | `market.deviation` (computed) | — | `instrument_id` |
+| reference | instrument | instrument | tencent.finance.qq.market | instrument_id or request |
+| reference | trading_calendar | trading_calendar | szse.official.calendar, pandas_market_calendars | start_date and end_date together, or request |
+| market | breadth | market.breadth | eastmoney.push2ex.breadth | none |
+| market | broken_limit_pool | market.broken_limit_pool | eastmoney.push2ex.broken_limit_pool | request |
+| market | consecutive_limit_up | market.consecutive_limit_up_snapshot | aigupiao.series_limit_up | none |
+| market | daily_replay | market.daily_replay | jiuyangongshe.daily_replay | request |
+| market | dragon_tiger_detail | market.dragon_tiger_detail | aigupiao.dragon_tiger | request (instrumentId, tradeDate, tradeId) |
+| market | dragon_tiger_list | market.dragon_tiger_list | aigupiao.dragon_tiger | request |
+| market | equity_intraday | market.equity_intraday | tencent.finance.qq.intraday | request (equity instrumentId) |
+| market | equity_intraday_5d | market.equity_intraday_5d | tencent.finance.qq.intraday | request (equity instrumentId) |
+| market | fund_flow_daily | market.fund_flow_daily | tencent.finance.qq.fund_flow | request (instrumentId) |
+| market | fund_flow_intraday | market.fund_flow_intraday | tencent.finance.qq.fund_flow | request (instrumentId) |
+| market | fund_flow_snapshot | market.fund_flow_snapshot | tencent.finance.qq.fund_flow | request (instrumentId) |
+| market | index_intraday | market.index_intraday | tencent.finance.qq.intraday | request (index instrumentId) |
+| market | index_intraday_5d | market.index_intraday_5d | tencent.finance.qq.intraday | request (index instrumentId) |
+| market | industry_comparison | market.industry_comparison | tencent.finance.qq.industry | request (instrumentId) |
+| market | instrument_sector_snapshot | market.instrument_sector_snapshot | tencent.finance.qq.sector | request (instrumentId) |
+| market | stock_keyword | market.stock_keyword | eastmoney.stockrank | request (instrumentId) |
+| market | limit_down_pool | market.limit_down_pool | eastmoney.push2ex.limit_down_pool | request |
+| market | limit_up_pool | market.limit_up_pool | eastmoney.push2ex.limit_up_pool | request |
+| market | ohlcv | market.klines | tencent.finance.qq.klines, sohu.finance.klines | instrument_id, start_date, end_date, and adjustment for equity |
+| market | orderbook | market.orderbook | tencent.finance.qq.quote | request (instrumentId) |
+| market | quote | market.quote | tencent.finance.qq.market | none; the default universe is CN_A_SHARE |
+| market | quote_snapshot | market.quote_snapshot | tencent.finance.qq.quote | request (instrumentId) |
+| market | ranking | market.ranking | tencent.finance.qq.market | request (universe, criterion, direction, limit) |
+| market | sentiment | market.sentiment_snapshot | aigupiao.market_sentiment | none |
+| market | strong_pool | market.strong_pool | eastmoney.push2ex.strong_pool | request |
+| market | yesterday_limit_up_pool | market.yesterday_limit_up_pool | eastmoney.push2ex.yesterday_limit_up_pool | request |
+| fundamental | company_profile | fundamental.company_profile | tencent.finance.qq.f10 | instrument_id or request |
+| fundamental | financial_summary | fundamental.financial_summary | tencent.finance.qq.f10 | request (instrumentId) |
+| fundamental | industry_comparison | fundamental.industry_comparison | tencent.finance.qq.f10 | request (instrumentId) |
+| fundamental | revenue_breakdown | fundamental.revenue_breakdown | tencent.finance.qq.f10 | request (instrumentId) |
+| financial | statements | financial.statement | tonghuashun.financial | instrument_id and statement_type, or request |
+| news | search | news.document | eastmoney.news, eastmoney.market_news, aigupiao.market_news, baidu.finscope.market_news | instrument (InstrumentId or six-digit equity code), or request |
+| disclosure | search | disclosure.document | eastmoney.disclosure | instrument (InstrumentId or six-digit equity code), or request |
+| ownership | capital_snapshot | ownership.capital_snapshot | tencent.finance.qq.f10 | request (instrumentId) |
+| ownership | float_holder | ownership.float_holder | tencent.finance.qq.float_holder | request (instrumentId; optional asOf) |
+| ownership | holder_summary_snapshot | ownership.holder_summary_snapshot | tencent.finance.qq.f10 | request (instrumentId) |
+| company | executive_share_change | company.executive_share_change | tencent.finance.qq.f10 | request (instrumentId) |
+| company | executive_snapshot | company.executive_snapshot | tencent.finance.qq.f10 | request (instrumentId) |
+| corporate_action | dividend | corporate_action.dividend | tencent.finance.qq.f10 | request (instrumentId) |
+| corporate_action | repurchase | corporate_action.repurchase | tencent.finance.qq.f10 | request (instrumentId) |
+| market | deviation | market.deviation (computed) | — | instrument_id |
 
 ## Endpoint reference
 
 ## `reference`
 
-Canonical instrument identity and trading-day calendars.
-
 ### `fx.reference.instrument(...)`
 
-Look up canonical identity and display name for one instrument, or return the selected A-share universe when the instrument is omitted.
+Fetch instrument identity data and return it in a FetchResult.
 
 **Dataset:** `instrument`
 **Schema version:** `1.0`
 **Implemented Providers:** `tencent.finance.qq.market`
-**Routing semantics:** `multi_provider`. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
+**Routing semantics:** `multi_provider`
 
 #### Method signature
 
@@ -172,47 +88,42 @@ fx.reference.instrument(instrument_id: 'InstrumentId | None' = None, *, request:
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| instrument_id | InstrumentId \| None | No | None | Complete InstrumentId for the target instrument. |
-| request | InstrumentRequest \| None | No | None | Typed request model. It cannot be combined with the convenience business parameters. |
-| provider | str \| None | No | None | Strict Provider id pin. Only the named Provider is used. (keyword-only) |
-| use_cache | bool \| None | No | None | Whether the configured cache may be used; None follows the configured CachePolicy. (keyword-only) |
+| instrument_id | InstrumentId \| None | Required in convenience mode | None | Complete InstrumentId. |
+| request | InstrumentRequest \| None | Conditional request alternative | None | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
+| use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-The typed request model is `InstrumentRequest`. Its fields are:
+**Minimum business input:** instrument_id or request.
 
-| Request field | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | Complete instrument identity: code, market, kind and optional exchange. |
+#### Request model `InstrumentRequest`
 
-#### Return value
-
-The public method annotation is `FetchResult[InstrumentData]`. FetchResult.data: tuple[StandardRecord, ...]. The `data` payload inside each StandardRecord is the `InstrumentData` schema below.
-
-#### Returned data fields
-
-| Field | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | Complete instrument identity: code, market, kind and optional exchange. |
-| name | str | No | Provider-normalized display name. |
-
-#### Nested record types
-
-The following object types are used by the fields above. Enum values are shown inline in the type column.
-
-**`InstrumentId`**
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | Exchange-specific instrument code. |
-| market | Market | Yes | — | FinchX market identifier. |
-| kind | InstrumentKind | Yes | — | Instrument kind. |
-| exchange | Exchange \| None | No | None | Exchange identity when required by the dataset. |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
 
+The public return annotation is `FetchResult[InstrumentData]`.
+
+#### Returned data model `InstrumentData`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
+| name | str | Yes | — | Declared by the Pydantic model. |
+
+#### Nested model `InstrumentId`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| code | str | Yes | — | Declared by the Pydantic model. |
+| market | Market | Yes | — | Declared by the Pydantic model. |
+| kind | InstrumentKind | Yes | — | Declared by the Pydantic model. |
+| exchange | Exchange \| None | No | None | Declared by the Pydantic model. |
 
 #### Example
 
+<!-- api-example: reference.instrument -->
 ```python
-from datetime import date
 from finchx import FinchX
-from finchx.datasets import KlineAdjustment
 from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
 
 fx = FinchX()
@@ -222,27 +133,17 @@ instrument_id = InstrumentId(
     kind=InstrumentKind.EQUITY,
     exchange=Exchange.SSE,
 )
-index_id = InstrumentId(
-    code="000001",
-    market=Market.CN_A,
-    kind=InstrumentKind.INDEX,
-    exchange=Exchange.SSE,
-)
-instrument = fx.reference.instrument(instrument_id)
+result = fx.reference.instrument(instrument_id)
 ```
-
-#### Provider behavior and notes
-
-The registry currently implements: `tencent.finance.qq.market`. Provider selection is controlled by runtime policy unless `provider=` is supplied. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
 
 ### `fx.reference.trading_calendar(...)`
 
-Return one row for every natural date in a requested range, with the canonical trading-day flag.
+Return canonical natural-date trading-day flags.
 
 **Dataset:** `trading_calendar`
 **Schema version:** `1.0`
 **Implemented Providers:** `szse.official.calendar`, `pandas_market_calendars`
-**Routing semantics:** `multi_provider`. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
+**Routing semantics:** `multi_provider`
 
 #### Method signature
 
@@ -254,76 +155,56 @@ fx.reference.trading_calendar(start_date: 'date | None' = None, end_date: 'date 
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| start_date | date \| None | No | None | Inclusive start date. |
-| end_date | date \| None | No | None | Inclusive end date. |
-| market | Market | No | <Market.CN_A: 'cn_a'> | Market enum; the public calendar contract defaults to Market.CN_A. |
-| request | TradingCalendarRequest \| None | No | None | Typed request model. It cannot be combined with the convenience business parameters. |
-| provider | str \| None | No | None | Strict Provider id pin. Only the named Provider is used. (keyword-only) |
-| use_cache | bool \| None | No | None | Whether the configured cache may be used; None follows the configured CachePolicy. (keyword-only) |
+| start_date | date \| None | Required in convenience mode | None | Inclusive start date. |
+| end_date | date \| None | Required in convenience mode | None | Inclusive end date. |
+| market | Market | No | Market.CN_A | Market enum; trading_calendar currently supports Market.CN_A only. |
+| request | TradingCalendarRequest \| None | Conditional request alternative | None | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
+| use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-The typed request model is `TradingCalendarRequest`. Its fields are:
+**Minimum business input:** start_date and end_date together, or request.
 
-| Request field | Type | Required | Default | Description |
+#### Request model `TradingCalendarRequest`
+
+| Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| market | Literal['cn_a'] | Yes | — | FinchX market identifier. |
-| startDate | date | Yes | — | Inclusive start date of the requested range or selected window. |
-| endDate | date | Yes | — | Inclusive end date of the requested range or selected window. |
+| market | Market | Yes | — | Declared by the Pydantic model. |
+| startDate | date | Yes | — | Declared by the Pydantic model. |
+| endDate | date | Yes | — | Declared by the Pydantic model. |
 
-#### Return value
+The public return annotation is `FetchResult[TradingCalendarData]`.
 
-The public method annotation is `FetchResult[TradingCalendarData]`. FetchResult.data: tuple[StandardRecord, ...]. The `data` payload inside each StandardRecord is the `TradingCalendarData` schema below.
+#### Returned data model `TradingCalendarData`
 
-#### Returned data fields
-
-| Field | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| date | date | No | Natural calendar date represented by the row. |
-| isTradingDay | bool | No | Normalized is trading day field. |
-
-
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| date | date | Yes | — | Declared by the Pydantic model. |
+| isTradingDay | bool | Yes | — | Declared by the Pydantic model. |
 
 #### Example
 
+<!-- api-example: reference.trading_calendar -->
 ```python
 from datetime import date
 from finchx import FinchX
-from finchx.datasets import KlineAdjustment
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
+result = fx.reference.trading_calendar(
+    date(2026, 9, 1),
+    date(2026, 9, 30),
 )
-index_id = InstrumentId(
-    code="000001",
-    market=Market.CN_A,
-    kind=InstrumentKind.INDEX,
-    exchange=Exchange.SSE,
-)
-result = fx.reference.trading_calendar(date(2026, 9, 1), date(2026, 9, 30))
 ```
-
-#### Provider behavior and notes
-
-The registry currently implements: `szse.official.calendar`, `pandas_market_calendars`. Provider selection is controlled by runtime policy unless `provider=` is supplied. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
-
-**Optional dependency:** install the source extra for pandas_market_calendars. From a source checkout use `python -m pip install ".[calendar]"`; after PyPI publication use the equivalent `finchx[calendar]` extra.
 
 ## `market`
 
-Quotes, rankings, pools, flows, intraday data, klines, sectors and market intelligence.
-
 ### `fx.market.breadth(...)`
 
-Return the EastMoney market breadth snapshot, including advancing, declining and limit-up/limit-down counts.
+Fetch the current market breadth snapshot in a FetchResult.
 
 **Dataset:** `market.breadth`
 **Schema version:** `1.0`
 **Implemented Providers:** `eastmoney.push2ex.breadth`
-**Routing semantics:** `single_source`. The registry marks this Dataset as `single_source`; the listed Provider is the implemented source-specific contract.
+**Routing semantics:** `single_source`
 
 #### Method signature
 
@@ -335,82 +216,58 @@ fx.market.breadth(request: 'MarketBreadthRequest | None' = None, *, provider: 's
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | MarketBreadthRequest \| None | No | None | Typed request model. It cannot be combined with the convenience business parameters. |
-| provider | str \| None | No | None | Strict Provider id pin. Only the named Provider is used. (keyword-only) |
-| use_cache | bool \| None | No | None | Whether the configured cache may be used; None follows the configured CachePolicy. (keyword-only) |
+| request | MarketBreadthRequest \| None | No | None | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
+| use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-The typed request model is `MarketBreadthRequest`. Its fields are:
+**Minimum business input:** none.
 
-This request model has no fields; call the endpoint without a request object or use the default request behavior.
+#### Request model `MarketBreadthRequest`
 
-#### Return value
+No fields; instantiate this model without arguments.
 
-The public method annotation is `FetchResult[MarketBreadthData]`. FetchResult.data: StandardRecord. The `data` payload inside each StandardRecord is the `MarketBreadthData` schema below.
+The public return annotation is `FetchResult[MarketBreadthData]`.
 
-#### Returned data fields
+#### Returned data model `MarketBreadthData`
 
-| Field | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| tradeDate | date | No | Source trading-date label; it is not FinchX capture time. |
-| advancing | int | No | Number or value of advancing instruments in the breadth snapshot. |
-| declining | int | No | Number or value of declining instruments in the breadth snapshot. |
-| unchanged | int | No | Number or value of unchanged instruments in the breadth snapshot. |
-| total | int | No | Total instrument count represented by the snapshot. |
-| limitUpCount | int | No | Number of limit-up instruments. |
-| limitDownCount | int | No | Number of limit-down instruments. |
-| upOver10PercentCount | int | No | Count of instruments up more than 10%. |
-| downOver10PercentCount | int | No | Count of instruments down more than 10%. |
-| distribution | list[MarketBreadthDistributionEntry] | No | Breadth distribution buckets supplied by EastMoney. |
-
-#### Nested record types
-
-The following object types are used by the fields above. Enum values are shown inline in the type column.
-
-**`MarketBreadthDistributionEntry`**
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| bucket | MarketBreadthBucket | Yes | — | Normalized bucket field. |
-| count | int | Yes | — | Number of listed stocks in this return bucket. |
+| tradeDate | date | Yes | — | Trade date reported by EastMoney. |
+| advancing | int | Yes | — | Declared by the Pydantic model. |
+| declining | int | Yes | — | Declared by the Pydantic model. |
+| unchanged | int | Yes | — | Declared by the Pydantic model. |
+| total | int | Yes | — | Declared by the Pydantic model. |
+| limitUpCount | int | Yes | — | Declared by the Pydantic model. |
+| limitDownCount | int | Yes | — | Declared by the Pydantic model. |
+| upOver10PercentCount | int | Yes | — | Declared by the Pydantic model. |
+| downOver10PercentCount | int | Yes | — | Declared by the Pydantic model. |
+| distribution | list[MarketBreadthDistributionEntry] | Yes | — | Declared by the Pydantic model. |
 
+#### Nested model `MarketBreadthDistributionEntry`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| bucket | MarketBreadthBucket | Yes | — | Declared by the Pydantic model. |
+| count | int | Yes | — | Number of listed stocks in this return bucket. |
 
 #### Example
 
+<!-- api-example: market.breadth -->
 ```python
-from datetime import date
 from finchx import FinchX
-from finchx.datasets import KlineAdjustment
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-index_id = InstrumentId(
-    code="000001",
-    market=Market.CN_A,
-    kind=InstrumentKind.INDEX,
-    exchange=Exchange.SSE,
-)
-from finchx.datasets import MarketBreadthRequest
-request = MarketBreadthRequest()
-result = fx.market.breadth(request)
+result = fx.market.breadth()
 ```
-
-#### Provider behavior and notes
-
-The registry currently implements: `eastmoney.push2ex.breadth`. Provider selection is controlled by runtime policy unless `provider=` is supplied. The registry marks this Dataset as `single_source`; the listed Provider is the implemented source-specific contract.
 
 ### `fx.market.broken_limit_pool(...)`
 
-Return stocks that broke a limit-up during the requested trading date, together with the source-defined break statistics.
+Fetch the broken-limit pool in a FetchResult.
 
 **Dataset:** `market.broken_limit_pool`
 **Schema version:** `1.0`
 **Implemented Providers:** `eastmoney.push2ex.broken_limit_pool`
-**Routing semantics:** `single_source`. The registry marks this Dataset as `single_source`; the listed Provider is the implemented source-specific contract.
+**Routing semantics:** `single_source`
 
 #### Method signature
 
@@ -422,97 +279,77 @@ fx.market.broken_limit_pool(request: 'MarketBrokenLimitPoolRequest', *, provider
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | MarketBrokenLimitPoolRequest | Yes | — | Typed request model. It cannot be combined with the convenience business parameters. |
-| provider | str \| None | No | None | Strict Provider id pin. Only the named Provider is used. (keyword-only) |
-| use_cache | bool \| None | No | None | Whether the configured cache may be used; None follows the configured CachePolicy. (keyword-only) |
+| request | MarketBrokenLimitPoolRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
+| use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-The typed request model is `MarketBrokenLimitPoolRequest`. Its fields are:
+**Minimum business input:** request.
 
-| Request field | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| tradeDate | date | Yes | — | Source trading-date label; it is not FinchX capture time. |
+#### Request model `MarketBrokenLimitPoolRequest`
 
-#### Return value
-
-The public method annotation is `FetchResult[MarketBrokenLimitPoolData]`. FetchResult.data: tuple[StandardRecord, ...]. The `data` payload inside each StandardRecord is the `MarketBrokenLimitPoolData` schema below.
-
-#### Returned data fields
-
-| Field | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | Complete instrument identity: code, market, kind and optional exchange. |
-| tradeDate | date | No | Source trading-date label; it is not FinchX capture time. |
-| name | str | No | Provider-normalized display name. |
-| price | Decimal | No | Latest or observed price in CNY per share unless the dataset is an index series. |
-| limitUpPrice | Decimal | No | Current-session limit-up price in CNY per share. |
-| changeRate | Decimal | No | Change ratio; 10% is represented as 0.10. |
-| amount | Decimal | No | Traded amount in CNY. |
-| floatMarketCapitalization | Decimal | No | Floating market capitalization in CNY. |
-| marketCapitalization | Decimal | No | Total market capitalization in CNY. |
-| turnoverRate | Decimal | No | Turnover ratio; percentage values are represented as fractions. |
-| amplitude | Decimal | No | Intraday price amplitude as a ratio fraction. |
-| firstLimitUpTime | str \| None | Yes | First limit-up time in the source market-local time format. |
-| limitUpBreakCount | int | No | Number of limit-up breaks observed by the source. |
-| industry | str | No | Source-provided industry label. |
-| limitUpStats | MarketBrokenLimitPoolStats | No | Source-defined limit-up history statistics. |
-
-#### Nested record types
-
-The following object types are used by the fields above. Enum values are shown inline in the type column.
-
-**`InstrumentId`**
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | Exchange-specific instrument code. |
-| market | Market | Yes | — | FinchX market identifier. |
-| kind | InstrumentKind | Yes | — | Instrument kind. |
-| exchange | Exchange \| None | No | None | Exchange identity when required by the dataset. |
+| tradeDate | date | Yes | — | Declared by the Pydantic model. |
 
-**`MarketBrokenLimitPoolStats`**
+The public return annotation is `FetchResult[MarketBrokenLimitPoolData]`.
+
+#### Returned data model `MarketBrokenLimitPoolData`
+
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| lookbackDays | int | Yes | — | Normalized lookback days field. |
-| limitUpCount | int | Yes | — | Number of limit-up instruments. |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
+| tradeDate | date | Yes | — | Declared by the Pydantic model. |
+| name | str | Yes | — | Declared by the Pydantic model. |
+| price | Decimal | Yes | — | Latest price in CNY per share. |
+| limitUpPrice | Decimal | Yes | — | Current-session limit-up price in CNY per share. |
+| changeRate | Decimal | Yes | — | Ratio fraction. |
+| amount | Decimal | Yes | — | Current-session traded amount in CNY. |
+| floatMarketCapitalization | Decimal | Yes | — | Monetary amount in CNY. |
+| marketCapitalization | Decimal | Yes | — | Monetary amount in CNY. |
+| turnoverRate | Decimal | Yes | — | Ratio fraction. |
+| amplitude | Decimal | Yes | — | Current-session amplitude as a ratio fraction. |
+| firstLimitUpTime | str \| None | No | None | Declared by the Pydantic model. |
+| limitUpBreakCount | int | Yes | — | Declared by the Pydantic model. |
+| industry | str | Yes | — | Declared by the Pydantic model. |
+| limitUpStats | MarketBrokenLimitPoolStats | Yes | — | Declared by the Pydantic model. |
 
+#### Nested model `InstrumentId`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| code | str | Yes | — | Declared by the Pydantic model. |
+| market | Market | Yes | — | Declared by the Pydantic model. |
+| kind | InstrumentKind | Yes | — | Declared by the Pydantic model. |
+| exchange | Exchange \| None | No | None | Declared by the Pydantic model. |
+
+#### Nested model `MarketBrokenLimitPoolStats`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| lookbackDays | int | Yes | — | Declared by the Pydantic model. |
+| limitUpCount | int | Yes | — | Declared by the Pydantic model. |
 
 #### Example
 
+<!-- api-example: market.broken_limit_pool -->
 ```python
 from datetime import date
 from finchx import FinchX
-from finchx.datasets import KlineAdjustment
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
+from finchx.datasets import MarketBrokenLimitPoolRequest
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-index_id = InstrumentId(
-    code="000001",
-    market=Market.CN_A,
-    kind=InstrumentKind.INDEX,
-    exchange=Exchange.SSE,
-)
-from finchx.datasets import MarketBrokenLimitPoolRequest
 request = MarketBrokenLimitPoolRequest(tradeDate=date(2026, 9, 18))
 result = fx.market.broken_limit_pool(request)
 ```
 
-#### Provider behavior and notes
-
-The registry currently implements: `eastmoney.push2ex.broken_limit_pool`. Provider selection is controlled by runtime policy unless `provider=` is supplied. The registry marks this Dataset as `single_source`; the listed Provider is the implemented source-specific contract.
-
 ### `fx.market.consecutive_limit_up(...)`
 
-Return the Aigupiao snapshot of stocks with consecutive limit-up behavior and their associated theme fields.
+Fetch the consecutive-limit-up snapshot in a FetchResult.
 
 **Dataset:** `market.consecutive_limit_up_snapshot`
 **Schema version:** `1.0`
 **Implemented Providers:** `aigupiao.series_limit_up`
-**Routing semantics:** `single_source`. The registry marks this Dataset as `single_source`; the listed Provider is the implemented source-specific contract.
+**Routing semantics:** `single_source`
 
 #### Method signature
 
@@ -524,92 +361,68 @@ fx.market.consecutive_limit_up(request: 'MarketConsecutiveLimitUpRequest | None'
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | MarketConsecutiveLimitUpRequest \| None | No | None | Typed request model. It cannot be combined with the convenience business parameters. |
-| provider | str \| None | No | None | Strict Provider id pin. Only the named Provider is used. (keyword-only) |
-| use_cache | bool \| None | No | None | Whether the configured cache may be used; None follows the configured CachePolicy. (keyword-only) |
+| request | MarketConsecutiveLimitUpRequest \| None | No | None | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
+| use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-The typed request model is `MarketConsecutiveLimitUpRequest`. Its fields are:
+**Minimum business input:** none.
 
-This request model has no fields; call the endpoint without a request object or use the default request behavior.
+#### Request model `MarketConsecutiveLimitUpRequest`
 
-#### Return value
+No fields; instantiate this model without arguments.
 
-The public method annotation is `FetchResult[MarketConsecutiveLimitUpData]`. FetchResult.data: tuple[StandardRecord, ...]. The `data` payload inside each StandardRecord is the `MarketConsecutiveLimitUpData` schema below.
+The public return annotation is `FetchResult[MarketConsecutiveLimitUpData]`.
 
-#### Returned data fields
+#### Returned data model `MarketConsecutiveLimitUpData`
 
-| Field | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | Complete instrument identity: code, market, kind and optional exchange. |
-| name | str | No | Provider-normalized display name. |
-| tradeDate | date | No | Source trading-date label; it is not FinchX capture time. |
-| lastPrice | Decimal | No | Latest price in CNY per share. |
-| change | Decimal | No | Signed price change in CNY per share. |
-| changeRatio | Decimal | No | Change ratio; 10% is represented as 0.10. |
-| turnoverRatio | Decimal | No | Ratio fraction; 12% is 0.12. |
-| amount | Decimal | No | Traded amount in CNY. |
-| limitUpTime | str | No | Normalized limit up time field. |
-| state | str | No | Source-defined state label. |
-| isConsecutiveLimitUp | bool | No | Whether the source marks the row as consecutive limit-up. |
-| consecutiveLimitUpCount | int \| None | Yes | Normalized consecutive limit up count field. |
-| previousConsecutiveLimitUpCount | int \| None | Yes | Prior consecutive limit-up count reported by the source. |
-| themeId | int \| None | Yes | Source theme identifier. |
-| themeName | str \| None | Yes | Source theme name. |
-| floatShares | int | No | Floating shares outstanding. |
-| totalShares | int | No | Total shares outstanding. |
-| marketCap | Decimal | No | Total market capitalization in CNY. |
-
-#### Nested record types
-
-The following object types are used by the fields above. Enum values are shown inline in the type column.
-
-**`InstrumentId`**
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | Exchange-specific instrument code. |
-| market | Market | Yes | — | FinchX market identifier. |
-| kind | InstrumentKind | Yes | — | Instrument kind. |
-| exchange | Exchange \| None | No | None | Exchange identity when required by the dataset. |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
+| name | str | Yes | — | Declared by the Pydantic model. |
+| tradeDate | date | Yes | — | Declared by the Pydantic model. |
+| lastPrice | Decimal | Yes | — | Price per share; currency is CNY. |
+| change | Decimal | Yes | — | Signed price change in CNY per share. |
+| changeRatio | Decimal | Yes | — | Ratio fraction; 10% is 0.10. |
+| turnoverRatio | Decimal | Yes | — | Ratio fraction; 12% is 0.12. |
+| amount | Decimal | Yes | — | Monetary amount in CNY. |
+| limitUpTime | str | Yes | — | Declared by the Pydantic model. |
+| state | str | Yes | — | Declared by the Pydantic model. |
+| isConsecutiveLimitUp | bool | Yes | — | Declared by the Pydantic model. |
+| consecutiveLimitUpCount | int \| None | No | None | Declared by the Pydantic model. |
+| previousConsecutiveLimitUpCount | int \| None | No | None | Declared by the Pydantic model. |
+| themeId | int \| None | No | None | Declared by the Pydantic model. |
+| themeName | str \| None | No | None | Declared by the Pydantic model. |
+| floatShares | int | Yes | — | A non-negative whole number of shares. |
+| totalShares | int | Yes | — | A non-negative whole number of shares. |
+| marketCap | Decimal | Yes | — | Total market capitalization in CNY. |
 
+#### Nested model `InstrumentId`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| code | str | Yes | — | Declared by the Pydantic model. |
+| market | Market | Yes | — | Declared by the Pydantic model. |
+| kind | InstrumentKind | Yes | — | Declared by the Pydantic model. |
+| exchange | Exchange \| None | No | None | Declared by the Pydantic model. |
 
 #### Example
 
+<!-- api-example: market.consecutive_limit_up -->
 ```python
-from datetime import date
 from finchx import FinchX
-from finchx.datasets import KlineAdjustment
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-index_id = InstrumentId(
-    code="000001",
-    market=Market.CN_A,
-    kind=InstrumentKind.INDEX,
-    exchange=Exchange.SSE,
-)
-from finchx.datasets import MarketConsecutiveLimitUpRequest
-request = MarketConsecutiveLimitUpRequest()
-result = fx.market.consecutive_limit_up(request)
+result = fx.market.consecutive_limit_up()
 ```
-
-#### Provider behavior and notes
-
-The registry currently implements: `aigupiao.series_limit_up`. Provider selection is controlled by runtime policy unless `provider=` is supplied. The registry marks this Dataset as `single_source`; the listed Provider is the implemented source-specific contract.
 
 ### `fx.market.daily_replay(...)`
 
-Return a daily replay of Jiyangongshe themes and stock observations for a requested date.
+Fetch one daily replay request in a FetchResult.
 
 **Dataset:** `market.daily_replay`
 **Schema version:** `1.0`
 **Implemented Providers:** `jiuyangongshe.daily_replay`
-**Routing semantics:** `single_source`. The registry marks this Dataset as `single_source`; the listed Provider is the implemented source-specific contract.
+**Routing semantics:** `single_source`
 
 #### Method signature
 
@@ -621,105 +434,82 @@ fx.market.daily_replay(request: 'MarketDailyReplayRequest', *, provider: 'str | 
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | MarketDailyReplayRequest | Yes | — | Typed request model. It cannot be combined with the convenience business parameters. |
-| provider | str \| None | No | None | Strict Provider id pin. Only the named Provider is used. (keyword-only) |
-| use_cache | bool \| None | No | None | Whether the configured cache may be used; None follows the configured CachePolicy. (keyword-only) |
+| request | MarketDailyReplayRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
+| use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-The typed request model is `MarketDailyReplayRequest`. Its fields are:
+**Minimum business input:** request.
 
-| Request field | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| requestedDate | date | Yes | — | Date requested from the daily-replay source. |
+#### Request model `MarketDailyReplayRequest`
 
-#### Return value
-
-The public method annotation is `FetchResult[MarketDailyReplayData]`. FetchResult.data: StandardRecord. The `data` payload inside each StandardRecord is the `MarketDailyReplayData` schema below.
-
-#### Returned data fields
-
-| Field | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| requestedDate | date | No | Date requested from the daily-replay source. |
-| tradeDate | date | No | Source trading-date label; it is not FinchX capture time. |
-| themes | list[ReplayTheme] | No | Daily replay themes and their stock observations. |
-
-#### Nested record types
-
-The following object types are used by the fields above. Enum values are shown inline in the type column.
-
-**`InstrumentId`**
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | Exchange-specific instrument code. |
-| market | Market | Yes | — | FinchX market identifier. |
-| kind | InstrumentKind | Yes | — | Instrument kind. |
-| exchange | Exchange \| None | No | None | Exchange identity when required by the dataset. |
+| requestedDate | date | Yes | — | Declared by the Pydantic model. |
 
-**`ReplayStock`**
+The public return annotation is `FetchResult[MarketDailyReplayData]`.
+
+#### Returned data model `MarketDailyReplayData`
+
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | Complete instrument identity: code, market, kind and optional exchange. |
-| name | str | Yes | — | Provider-normalized display name. |
-| limitUpTime | str \| None | No | None | Normalized limit up time field. |
-| streakText | str \| None | No | None | Normalized streak text field. |
-| price | Decimal \| None | No | None | Latest or observed price in CNY per share unless the dataset is an index series. |
-| changeRatio | Decimal \| None | No | None | Change ratio; 10% is represented as 0.10. |
-| day | int \| None | No | None | Normalized day field. |
-| edition | int \| None | No | None | Normalized edition field. |
-| expound | str \| None | No | None | Normalized expound field. |
+| requestedDate | date | Yes | — | Declared by the Pydantic model. |
+| tradeDate | date | Yes | — | Declared by the Pydantic model. |
+| themes | list[ReplayTheme] | Yes | — | Declared by the Pydantic model. |
 
-**`ReplayTheme`**
+#### Nested model `ReplayTheme`
+
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| themeName | str | Yes | — | Source theme name. |
-| reason | str \| None | No | None | Normalized reason field. |
-| stockCount | int | Yes | — | Normalized stock count field. |
-| sourceThemeId | str \| None | No | None | Normalized source theme id field. |
-| stocks | list[ReplayStock] | No | — | Stocks associated with the theme or replay row. |
+| themeName | str | Yes | — | Declared by the Pydantic model. |
+| reason | str \| None | No | None | Declared by the Pydantic model. |
+| stockCount | int | Yes | — | Declared by the Pydantic model. |
+| sourceThemeId | str \| None | No | None | Declared by the Pydantic model. |
+| stocks | list[ReplayStock] | No | default_factory=list | Declared by the Pydantic model. |
 
+#### Nested model `ReplayStock`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
+| name | str | Yes | — | Declared by the Pydantic model. |
+| limitUpTime | time \| None | No | None | Declared by the Pydantic model. |
+| streakText | str \| None | No | None | Declared by the Pydantic model. |
+| price | Decimal \| None | No | None | Declared by the Pydantic model. |
+| changeRatio | Decimal \| None | No | None | Declared by the Pydantic model. |
+| day | int \| None | No | None | Declared by the Pydantic model. |
+| edition | int \| None | No | None | Declared by the Pydantic model. |
+| expound | str \| None | No | None | Declared by the Pydantic model. |
+
+#### Nested model `InstrumentId`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| code | str | Yes | — | Declared by the Pydantic model. |
+| market | Market | Yes | — | Declared by the Pydantic model. |
+| kind | InstrumentKind | Yes | — | Declared by the Pydantic model. |
+| exchange | Exchange \| None | No | None | Declared by the Pydantic model. |
 
 #### Example
 
+<!-- api-example: market.daily_replay -->
 ```python
 from datetime import date
 from finchx import FinchX
-from finchx.datasets import KlineAdjustment
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
+from finchx.datasets import MarketDailyReplayRequest
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-index_id = InstrumentId(
-    code="000001",
-    market=Market.CN_A,
-    kind=InstrumentKind.INDEX,
-    exchange=Exchange.SSE,
-)
-from finchx.datasets import MarketDailyReplayRequest
 request = MarketDailyReplayRequest(requestedDate=date(2026, 9, 18))
 result = fx.market.daily_replay(request)
 ```
 
-#### Provider behavior and notes
-
-The registry currently implements: `jiuyangongshe.daily_replay`. Provider selection is controlled by runtime policy unless `provider=` is supplied. The registry marks this Dataset as `single_source`; the listed Provider is the implemented source-specific contract.
-
-**Optional dependency:** install the source extra for playwright. From a source checkout use `python -m pip install ".[jygs]"`; after PyPI publication use the equivalent `finchx[jygs]` extra.
-
-**Authentication:** the selected Provider requires an authenticated session. For the Jiyangongshe Provider, set `JYGS_SESSION` and install the `jygs` extra.
-
 ### `fx.market.dragon_tiger_detail(...)`
 
-Return the buy/sell seat detail for one Dragon-Tiger list trade record.
+Fetch Dragon-Tiger detail data in a FetchResult.
 
 **Dataset:** `market.dragon_tiger_detail`
 **Schema version:** `1.0`
 **Implemented Providers:** `aigupiao.dragon_tiger`
-**Routing semantics:** `single_source`. The registry marks this Dataset as `single_source`; the listed Provider is the implemented source-specific contract.
+**Routing semantics:** `single_source`
 
 #### Method signature
 
@@ -731,73 +521,71 @@ fx.market.dragon_tiger_detail(request: 'MarketDragonTigerDetailRequest', *, prov
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | MarketDragonTigerDetailRequest | Yes | — | Typed request model. It cannot be combined with the convenience business parameters. |
-| provider | str \| None | No | None | Strict Provider id pin. Only the named Provider is used. (keyword-only) |
-| use_cache | bool \| None | No | None | Whether the configured cache may be used; None follows the configured CachePolicy. (keyword-only) |
+| request | MarketDragonTigerDetailRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
+| use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-The typed request model is `MarketDragonTigerDetailRequest`. Its fields are:
+**Minimum business input:** request (instrumentId, tradeDate, tradeId).
 
-| Request field | Type | Required | Default | Description |
+#### Request model `MarketDragonTigerDetailRequest`
+
+| Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | Complete instrument identity: code, market, kind and optional exchange. |
-| tradeDate | date | Yes | — | Source trading-date label; it is not FinchX capture time. |
-| tradeId | str | Yes | — | Normalized trade id field. |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
+| tradeDate | date | Yes | — | Declared by the Pydantic model. |
+| tradeId | str | Yes | — | Declared by the Pydantic model. |
 
-#### Return value
+The public return annotation is `FetchResult[MarketDragonTigerDetailData]`.
 
-The public method annotation is `FetchResult[MarketDragonTigerDetailData]`. FetchResult.data: StandardRecord. The `data` payload inside each StandardRecord is the `MarketDragonTigerDetailData` schema below.
+#### Returned data model `MarketDragonTigerDetailData`
 
-#### Returned data fields
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
+| name | str | Yes | — | Declared by the Pydantic model. |
+| tradeDate | date | Yes | — | Declared by the Pydantic model. |
+| tradeId | str | Yes | — | Declared by the Pydantic model. |
+| closePrice | Decimal | Yes | — | Price per share; currency is CNY. |
+| changeRatio | Decimal | Yes | — | A ratio fraction, not percentage points: 4.24% is 0.0424. |
+| amount | Decimal | Yes | — | Monetary amount in CNY. |
+| totalBuy | Decimal | Yes | — | Monetary amount in CNY. |
+| totalSell | Decimal | Yes | — | Monetary amount in CNY. |
+| totalNet | Decimal | Yes | — | Monetary amount in CNY. |
+| explanation | str | Yes | — | Declared by the Pydantic model. |
+| commentKind | str \| None | No | None | Declared by the Pydantic model. |
+| commentObjectId | str \| None | No | None | Declared by the Pydantic model. |
+| buySeats | list[DragonTigerSeat] | Yes | — | Declared by the Pydantic model. |
+| sellSeats | list[DragonTigerSeat] | Yes | — | Declared by the Pydantic model. |
 
-| Field | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | Complete instrument identity: code, market, kind and optional exchange. |
-| name | str | No | Provider-normalized display name. |
-| tradeDate | date | No | Source trading-date label; it is not FinchX capture time. |
-| tradeId | str | No | Normalized trade id field. |
-| closePrice | Decimal | No | Price per share; currency is CNY. |
-| changeRatio | Decimal | No | Change ratio; 10% is represented as 0.10. |
-| amount | Decimal | No | Traded amount in CNY. |
-| totalBuy | Decimal | No | Monetary amount in CNY. |
-| totalSell | Decimal | No | Monetary amount in CNY. |
-| totalNet | Decimal | No | Monetary amount in CNY. |
-| explanation | str | No | Normalized explanation field. |
-| commentKind | str \| None | Yes | Normalized comment kind field. |
-| commentObjectId | str \| None | Yes | Normalized comment object id field. |
-| buySeats | list[DragonTigerSeat] | No | Normalized buy seats field. |
-| sellSeats | list[DragonTigerSeat] | No | Normalized sell seats field. |
+#### Nested model `InstrumentId`
 
-#### Nested record types
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| code | str | Yes | — | Declared by the Pydantic model. |
+| market | Market | Yes | — | Declared by the Pydantic model. |
+| kind | InstrumentKind | Yes | — | Declared by the Pydantic model. |
+| exchange | Exchange \| None | No | None | Declared by the Pydantic model. |
 
-The following object types are used by the fields above. Enum values are shown inline in the type column.
+#### Nested model `DragonTigerSeat`
 
-**`DragonTigerSeat`**
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
 | rank | int | Yes | — | Derived from the source array order. |
-| seatName | str | Yes | — | Normalized seat name field. |
-| sourceSeatCode | str \| None | No | None | Normalized source seat code field. |
-| hasDetails | bool \| None | No | None | Normalized has details field. |
+| seatName | str | Yes | — | Declared by the Pydantic model. |
+| sourceSeatCode | str \| None | No | None | Declared by the Pydantic model. |
+| hasDetails | bool \| None | No | None | Declared by the Pydantic model. |
 | buyAmount | Decimal | Yes | — | Monetary amount in CNY. |
 | sellAmount | Decimal | Yes | — | Monetary amount in CNY. |
 | netAmount | Decimal | Yes | — | Monetary amount in CNY. |
 
-**`InstrumentId`**
-| Field | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| code | str | Yes | — | Exchange-specific instrument code. |
-| market | Market | Yes | — | FinchX market identifier. |
-| kind | InstrumentKind | Yes | — | Instrument kind. |
-| exchange | Exchange \| None | No | None | Exchange identity when required by the dataset. |
-
-
 #### Example
 
+<!-- api-example: market.dragon_tiger_detail -->
 ```python
 from datetime import date
 from finchx import FinchX
-from finchx.datasets import KlineAdjustment
 from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
+from finchx.datasets import MarketDragonTigerDetailRequest
 
 fx = FinchX()
 instrument_id = InstrumentId(
@@ -806,31 +594,22 @@ instrument_id = InstrumentId(
     kind=InstrumentKind.EQUITY,
     exchange=Exchange.SSE,
 )
-index_id = InstrumentId(
-    code="000001",
-    market=Market.CN_A,
-    kind=InstrumentKind.INDEX,
-    exchange=Exchange.SSE,
-)
-from finchx.datasets import MarketDragonTigerDetailRequest
 request = MarketDragonTigerDetailRequest(
-    instrumentId=instrument_id, tradeDate=date(2026, 9, 18), tradeId="demo-trade-id"
+    instrumentId=instrument_id,
+    tradeDate=date(2026, 9, 18),
+    tradeId="example-trade-id",
 )
 result = fx.market.dragon_tiger_detail(request)
 ```
 
-#### Provider behavior and notes
-
-The registry currently implements: `aigupiao.dragon_tiger`. Provider selection is controlled by runtime policy unless `provider=` is supplied. The registry marks this Dataset as `single_source`; the listed Provider is the implemented source-specific contract.
-
 ### `fx.market.dragon_tiger_list(...)`
 
-Return the Aigupiao Dragon-Tiger list for one trading date.
+Fetch Dragon-Tiger list data in a FetchResult.
 
 **Dataset:** `market.dragon_tiger_list`
 **Schema version:** `1.0`
 **Implemented Providers:** `aigupiao.dragon_tiger`
-**Routing semantics:** `single_source`. The registry marks this Dataset as `single_source`; the listed Provider is the implemented source-specific contract.
+**Routing semantics:** `single_source`
 
 #### Method signature
 
@@ -842,89 +621,68 @@ fx.market.dragon_tiger_list(request: 'MarketDragonTigerListRequest', *, provider
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | MarketDragonTigerListRequest | Yes | — | Typed request model. It cannot be combined with the convenience business parameters. |
-| provider | str \| None | No | None | Strict Provider id pin. Only the named Provider is used. (keyword-only) |
-| use_cache | bool \| None | No | None | Whether the configured cache may be used; None follows the configured CachePolicy. (keyword-only) |
+| request | MarketDragonTigerListRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
+| use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-The typed request model is `MarketDragonTigerListRequest`. Its fields are:
+**Minimum business input:** request.
 
-| Request field | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| tradeDate | date | Yes | — | Source trading-date label; it is not FinchX capture time. |
+#### Request model `MarketDragonTigerListRequest`
 
-#### Return value
-
-The public method annotation is `FetchResult[MarketDragonTigerListData]`. FetchResult.data: tuple[StandardRecord, ...]. The `data` payload inside each StandardRecord is the `MarketDragonTigerListData` schema below.
-
-#### Returned data fields
-
-| Field | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | Complete instrument identity: code, market, kind and optional exchange. |
-| name | str | No | Provider-normalized display name. |
-| tradeDate | date | No | Source trading-date label; it is not FinchX capture time. |
-| tradeId | str | No | Normalized trade id field. |
-| closePrice | Decimal | No | Price per share; currency is CNY. |
-| changeRatio | Decimal | No | Change ratio; 10% is represented as 0.10. |
-| amount | Decimal | No | Traded amount in CNY. |
-| totalBuy | Decimal | No | Monetary amount in CNY. |
-| totalNet | Decimal | No | Monetary amount in CNY. |
-| explanation | str | No | Normalized explanation field. |
-| threeDayFlag | str \| None | Yes | Normalized three day flag field. |
-| themeId | int \| None | Yes | Source theme identifier. |
-| themeName | str \| None | Yes | Source theme name. |
-
-#### Nested record types
-
-The following object types are used by the fields above. Enum values are shown inline in the type column.
-
-**`InstrumentId`**
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | Exchange-specific instrument code. |
-| market | Market | Yes | — | FinchX market identifier. |
-| kind | InstrumentKind | Yes | — | Instrument kind. |
-| exchange | Exchange \| None | No | None | Exchange identity when required by the dataset. |
+| tradeDate | date | Yes | — | Declared by the Pydantic model. |
 
+The public return annotation is `FetchResult[MarketDragonTigerListData]`.
+
+#### Returned data model `MarketDragonTigerListData`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
+| name | str | Yes | — | Declared by the Pydantic model. |
+| tradeDate | date | Yes | — | Declared by the Pydantic model. |
+| tradeId | str | Yes | — | Declared by the Pydantic model. |
+| closePrice | Decimal | Yes | — | Price per share; currency is CNY. |
+| changeRatio | Decimal | Yes | — | Ratio fraction; 10% is 0.10. |
+| amount | Decimal | Yes | — | Monetary amount in CNY. |
+| totalBuy | Decimal | Yes | — | Monetary amount in CNY. |
+| totalNet | Decimal | Yes | — | Monetary amount in CNY. |
+| explanation | str | Yes | — | Declared by the Pydantic model. |
+| threeDayFlag | str \| None | No | None | Declared by the Pydantic model. |
+| themeId | int \| None | No | None | Declared by the Pydantic model. |
+| themeName | str \| None | No | None | Declared by the Pydantic model. |
+
+#### Nested model `InstrumentId`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| code | str | Yes | — | Declared by the Pydantic model. |
+| market | Market | Yes | — | Declared by the Pydantic model. |
+| kind | InstrumentKind | Yes | — | Declared by the Pydantic model. |
+| exchange | Exchange \| None | No | None | Declared by the Pydantic model. |
 
 #### Example
 
+<!-- api-example: market.dragon_tiger_list -->
 ```python
 from datetime import date
 from finchx import FinchX
-from finchx.datasets import KlineAdjustment
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
+from finchx.datasets import MarketDragonTigerListRequest
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-index_id = InstrumentId(
-    code="000001",
-    market=Market.CN_A,
-    kind=InstrumentKind.INDEX,
-    exchange=Exchange.SSE,
-)
-from finchx.datasets import MarketDragonTigerListRequest
 request = MarketDragonTigerListRequest(tradeDate=date(2026, 9, 18))
 result = fx.market.dragon_tiger_list(request)
 ```
 
-#### Provider behavior and notes
-
-The registry currently implements: `aigupiao.dragon_tiger`. Provider selection is controlled by runtime policy unless `provider=` is supplied. The registry marks this Dataset as `single_source`; the listed Provider is the implemented source-specific contract.
-
 ### `fx.market.equity_intraday(...)`
 
-Return intraday equity observations for one instrument and session.
+Fetch one equity intraday session in a FetchResult.
 
 **Dataset:** `market.equity_intraday`
 **Schema version:** `1.0`
 **Implemented Providers:** `tencent.finance.qq.intraday`
-**Routing semantics:** `multi_provider`. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
+**Routing semantics:** `multi_provider`
 
 #### Method signature
 
@@ -936,53 +694,49 @@ fx.market.equity_intraday(request: 'EquityIntradayRequest', *, provider: 'str | 
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | EquityIntradayRequest | Yes | — | Typed request model. It cannot be combined with the convenience business parameters. |
-| provider | str \| None | No | None | Strict Provider id pin. Only the named Provider is used. (keyword-only) |
-| use_cache | bool \| None | No | None | Whether the configured cache may be used; None follows the configured CachePolicy. (keyword-only) |
+| request | EquityIntradayRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
+| use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-The typed request model is `EquityIntradayRequest`. Its fields are:
+**Minimum business input:** request (equity instrumentId).
 
-| Request field | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | Complete instrument identity: code, market, kind and optional exchange. |
+#### Request model `EquityIntradayRequest`
 
-#### Return value
-
-The public method annotation is `FetchResult[EquityIntradayData]`. FetchResult.data: tuple[StandardRecord, ...]. The `data` payload inside each StandardRecord is the `EquityIntradayData` schema below.
-
-#### Returned data fields
-
-| Field | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | Complete instrument identity: code, market, kind and optional exchange. |
-| tradeDate | date | No | Source trading-date label; it is not FinchX capture time. |
-| time | str | No | Source market-local time for the observation, normally HH:MM. |
-| price | str | No | Latest or observed price in CNY per share unless the dataset is an index series. |
-| volume | int | No | Traded volume in whole shares. |
-| amount | str | No | Traded amount in CNY. |
-| cumulativeVolume | int | No | Cumulative session volume in whole shares. |
-| cumulativeAmount | str | No | Cumulative traded amount in CNY. |
-
-#### Nested record types
-
-The following object types are used by the fields above. Enum values are shown inline in the type column.
-
-**`InstrumentId`**
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | Exchange-specific instrument code. |
-| market | Market | Yes | — | FinchX market identifier. |
-| kind | InstrumentKind | Yes | — | Instrument kind. |
-| exchange | Exchange \| None | No | None | Exchange identity when required by the dataset. |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
 
+The public return annotation is `FetchResult[EquityIntradayData]`.
+
+#### Returned data model `EquityIntradayData`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
+| tradeDate | date | Yes | — | Source trading-date label; not FinchX capturedAt. |
+| time | str | Yes | — | Source trading time in HHMM normalized to HH:MM; not capturedAt. |
+| price | Decimal | Yes | — | Exact decimal in the source price unit (CNY per share for equities; index points for indices). |
+| volume | int | Yes | — | Volume traded during this minute, in whole shares. |
+| amount | Decimal | Yes | — | Amount traded during this minute, in CNY. |
+| cumulativeVolume | int | Yes | — | Tencent source cumulative traded volume, normalized to whole shares from lots (source lots multiplied by 100). |
+| cumulativeAmount | Decimal | Yes | — | Tencent source cumulative traded amount in CNY, unchanged from source. |
+
+#### Nested model `InstrumentId`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| code | str | Yes | — | Declared by the Pydantic model. |
+| market | Market | Yes | — | Declared by the Pydantic model. |
+| kind | InstrumentKind | Yes | — | Declared by the Pydantic model. |
+| exchange | Exchange \| None | No | None | Declared by the Pydantic model. |
 
 #### Example
 
+<!-- api-example: market.equity_intraday -->
 ```python
-from datetime import date
 from finchx import FinchX
-from finchx.datasets import KlineAdjustment
 from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
+from finchx.datasets import EquityIntradayRequest
 
 fx = FinchX()
 instrument_id = InstrumentId(
@@ -991,29 +745,18 @@ instrument_id = InstrumentId(
     kind=InstrumentKind.EQUITY,
     exchange=Exchange.SSE,
 )
-index_id = InstrumentId(
-    code="000001",
-    market=Market.CN_A,
-    kind=InstrumentKind.INDEX,
-    exchange=Exchange.SSE,
-)
-from finchx.datasets import EquityIntradayRequest
 request = EquityIntradayRequest(instrumentId=instrument_id)
 result = fx.market.equity_intraday(request)
 ```
 
-#### Provider behavior and notes
-
-The registry currently implements: `tencent.finance.qq.intraday`. Provider selection is controlled by runtime policy unless `provider=` is supplied. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
-
 ### `fx.market.equity_intraday_5d(...)`
 
-Return the provider's five-day intraday equity series for one instrument.
+Fetch five-day equity intraday data in a FetchResult.
 
 **Dataset:** `market.equity_intraday_5d`
 **Schema version:** `1.0`
 **Implemented Providers:** `tencent.finance.qq.intraday`
-**Routing semantics:** `multi_provider`. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
+**Routing semantics:** `multi_provider`
 
 #### Method signature
 
@@ -1025,53 +768,49 @@ fx.market.equity_intraday_5d(request: 'EquityIntraday5dRequest', *, provider: 's
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | EquityIntraday5dRequest | Yes | — | Typed request model. It cannot be combined with the convenience business parameters. |
-| provider | str \| None | No | None | Strict Provider id pin. Only the named Provider is used. (keyword-only) |
-| use_cache | bool \| None | No | None | Whether the configured cache may be used; None follows the configured CachePolicy. (keyword-only) |
+| request | EquityIntraday5dRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
+| use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-The typed request model is `EquityIntraday5dRequest`. Its fields are:
+**Minimum business input:** request (equity instrumentId).
 
-| Request field | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | Complete instrument identity: code, market, kind and optional exchange. |
+#### Request model `EquityIntraday5dRequest`
 
-#### Return value
-
-The public method annotation is `FetchResult[EquityIntradayData]`. FetchResult.data: tuple[StandardRecord, ...]. The `data` payload inside each StandardRecord is the `EquityIntradayData` schema below.
-
-#### Returned data fields
-
-| Field | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | Complete instrument identity: code, market, kind and optional exchange. |
-| tradeDate | date | No | Source trading-date label; it is not FinchX capture time. |
-| time | str | No | Source market-local time for the observation, normally HH:MM. |
-| price | str | No | Latest or observed price in CNY per share unless the dataset is an index series. |
-| volume | int | No | Traded volume in whole shares. |
-| amount | str | No | Traded amount in CNY. |
-| cumulativeVolume | int | No | Cumulative session volume in whole shares. |
-| cumulativeAmount | str | No | Cumulative traded amount in CNY. |
-
-#### Nested record types
-
-The following object types are used by the fields above. Enum values are shown inline in the type column.
-
-**`InstrumentId`**
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | Exchange-specific instrument code. |
-| market | Market | Yes | — | FinchX market identifier. |
-| kind | InstrumentKind | Yes | — | Instrument kind. |
-| exchange | Exchange \| None | No | None | Exchange identity when required by the dataset. |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
 
+The public return annotation is `FetchResult[EquityIntradayData]`.
+
+#### Returned data model `EquityIntradayData`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
+| tradeDate | date | Yes | — | Source trading-date label; not FinchX capturedAt. |
+| time | str | Yes | — | Source trading time in HHMM normalized to HH:MM; not capturedAt. |
+| price | Decimal | Yes | — | Exact decimal in the source price unit (CNY per share for equities; index points for indices). |
+| volume | int | Yes | — | Volume traded during this minute, in whole shares. |
+| amount | Decimal | Yes | — | Amount traded during this minute, in CNY. |
+| cumulativeVolume | int | Yes | — | Tencent source cumulative traded volume, normalized to whole shares from lots (source lots multiplied by 100). |
+| cumulativeAmount | Decimal | Yes | — | Tencent source cumulative traded amount in CNY, unchanged from source. |
+
+#### Nested model `InstrumentId`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| code | str | Yes | — | Declared by the Pydantic model. |
+| market | Market | Yes | — | Declared by the Pydantic model. |
+| kind | InstrumentKind | Yes | — | Declared by the Pydantic model. |
+| exchange | Exchange \| None | No | None | Declared by the Pydantic model. |
 
 #### Example
 
+<!-- api-example: market.equity_intraday_5d -->
 ```python
-from datetime import date
 from finchx import FinchX
-from finchx.datasets import KlineAdjustment
 from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
+from finchx.datasets import EquityIntraday5dRequest
 
 fx = FinchX()
 instrument_id = InstrumentId(
@@ -1080,29 +819,18 @@ instrument_id = InstrumentId(
     kind=InstrumentKind.EQUITY,
     exchange=Exchange.SSE,
 )
-index_id = InstrumentId(
-    code="000001",
-    market=Market.CN_A,
-    kind=InstrumentKind.INDEX,
-    exchange=Exchange.SSE,
-)
-from finchx.datasets import EquityIntraday5dRequest
 request = EquityIntraday5dRequest(instrumentId=instrument_id)
 result = fx.market.equity_intraday_5d(request)
 ```
 
-#### Provider behavior and notes
-
-The registry currently implements: `tencent.finance.qq.intraday`. Provider selection is controlled by runtime policy unless `provider=` is supplied. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
-
 ### `fx.market.fund_flow_daily(...)`
 
-Return daily main-fund net inflow observations for one instrument.
+Fetch daily fund-flow data in a FetchResult.
 
 **Dataset:** `market.fund_flow_daily`
 **Schema version:** `1.0`
 **Implemented Providers:** `tencent.finance.qq.fund_flow`
-**Routing semantics:** `multi_provider`. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
+**Routing semantics:** `multi_provider`
 
 #### Method signature
 
@@ -1114,49 +842,45 @@ fx.market.fund_flow_daily(request: 'MarketFundFlowRequest', *, provider: 'str | 
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | MarketFundFlowRequest | Yes | — | Typed request model. It cannot be combined with the convenience business parameters. |
-| provider | str \| None | No | None | Strict Provider id pin. Only the named Provider is used. (keyword-only) |
-| use_cache | bool \| None | No | None | Whether the configured cache may be used; None follows the configured CachePolicy. (keyword-only) |
+| request | MarketFundFlowRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
+| use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-The typed request model is `MarketFundFlowRequest`. Its fields are:
+**Minimum business input:** request (instrumentId).
 
-| Request field | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | Complete instrument identity: code, market, kind and optional exchange. |
+#### Request model `MarketFundFlowRequest`
 
-#### Return value
-
-The public method annotation is `FetchResult[MarketFundFlowDailyData]`. FetchResult.data: tuple[StandardRecord, ...]. The `data` payload inside each StandardRecord is the `MarketFundFlowDailyData` schema below.
-
-#### Returned data fields
-
-| Field | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | Complete instrument identity: code, market, kind and optional exchange. |
-| tradeDate | date | No | Source trading-date label; it is not FinchX capture time. |
-| mainNetInflow | Decimal | No | Main-fund net inflow in CNY. |
-| close | Decimal | No | Closing price in CNY per share or index points, according to the instrument. |
-
-#### Nested record types
-
-The following object types are used by the fields above. Enum values are shown inline in the type column.
-
-**`InstrumentId`**
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | Exchange-specific instrument code. |
-| market | Market | Yes | — | FinchX market identifier. |
-| kind | InstrumentKind | Yes | — | Instrument kind. |
-| exchange | Exchange \| None | No | None | Exchange identity when required by the dataset. |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
 
+The public return annotation is `FetchResult[MarketFundFlowDailyData]`.
+
+#### Returned data model `MarketFundFlowDailyData`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
+| tradeDate | date | Yes | — | Trading date reported by Tencent, not FinchX capture time. |
+| mainNetInflow | Decimal | Yes | — | Monetary amount in CNY. |
+| close | Decimal | Yes | — | Daily close in CNY per share. |
+
+#### Nested model `InstrumentId`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| code | str | Yes | — | Declared by the Pydantic model. |
+| market | Market | Yes | — | Declared by the Pydantic model. |
+| kind | InstrumentKind | Yes | — | Declared by the Pydantic model. |
+| exchange | Exchange \| None | No | None | Declared by the Pydantic model. |
 
 #### Example
 
+<!-- api-example: market.fund_flow_daily -->
 ```python
-from datetime import date
 from finchx import FinchX
-from finchx.datasets import KlineAdjustment
 from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
+from finchx.datasets import MarketFundFlowRequest
 
 fx = FinchX()
 instrument_id = InstrumentId(
@@ -1165,29 +889,18 @@ instrument_id = InstrumentId(
     kind=InstrumentKind.EQUITY,
     exchange=Exchange.SSE,
 )
-index_id = InstrumentId(
-    code="000001",
-    market=Market.CN_A,
-    kind=InstrumentKind.INDEX,
-    exchange=Exchange.SSE,
-)
-from finchx.datasets import MarketFundFlowRequest
 request = MarketFundFlowRequest(instrumentId=instrument_id)
 result = fx.market.fund_flow_daily(request)
 ```
 
-#### Provider behavior and notes
-
-The registry currently implements: `tencent.finance.qq.fund_flow`. Provider selection is controlled by runtime policy unless `provider=` is supplied. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
-
 ### `fx.market.fund_flow_intraday(...)`
 
-Return cumulative intraday fund-flow observations for one instrument.
+Fetch intraday fund-flow data in a FetchResult.
 
 **Dataset:** `market.fund_flow_intraday`
 **Schema version:** `1.0`
 **Implemented Providers:** `tencent.finance.qq.fund_flow`
-**Routing semantics:** `multi_provider`. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
+**Routing semantics:** `multi_provider`
 
 #### Method signature
 
@@ -1199,57 +912,53 @@ fx.market.fund_flow_intraday(request: 'MarketFundFlowRequest', *, provider: 'str
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | MarketFundFlowRequest | Yes | — | Typed request model. It cannot be combined with the convenience business parameters. |
-| provider | str \| None | No | None | Strict Provider id pin. Only the named Provider is used. (keyword-only) |
-| use_cache | bool \| None | No | None | Whether the configured cache may be used; None follows the configured CachePolicy. (keyword-only) |
+| request | MarketFundFlowRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
+| use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-The typed request model is `MarketFundFlowRequest`. Its fields are:
+**Minimum business input:** request (instrumentId).
 
-| Request field | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | Complete instrument identity: code, market, kind and optional exchange. |
+#### Request model `MarketFundFlowRequest`
 
-#### Return value
-
-The public method annotation is `FetchResult[MarketFundFlowIntradayData]`. FetchResult.data: tuple[StandardRecord, ...]. The `data` payload inside each StandardRecord is the `MarketFundFlowIntradayData` schema below.
-
-#### Returned data fields
-
-| Field | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | Complete instrument identity: code, market, kind and optional exchange. |
-| tradeDate | date | No | Source trading-date label; it is not FinchX capture time. |
-| time | str | No | Source market-local time for the observation, normally HH:MM. |
-| price | Decimal | No | Latest or observed price in CNY per share unless the dataset is an index series. |
-| cumulativeMainNetInflow | Decimal | No | Cumulative main-fund net inflow in CNY. |
-| cumulativeRetailNetInflow | Decimal | No | Cumulative retail-fund net inflow in CNY. |
-| cumulativeSuperLargeNetInflow | Decimal | No | Cumulative super-large-order net inflow in CNY. |
-| cumulativeLargeNetInflow | Decimal | No | Cumulative large-order net inflow in CNY. |
-| cumulativeMediumNetInflow | Decimal | No | Cumulative medium-order net inflow in CNY. |
-| cumulativeSmallNetInflow | Decimal | No | Cumulative small-order net inflow in CNY. |
-| cumulativeMainInflow | Decimal | No | Cumulative main-fund inflow in CNY. |
-| cumulativeMainOutflow | Decimal | No | Cumulative main-fund outflow in CNY. |
-
-#### Nested record types
-
-The following object types are used by the fields above. Enum values are shown inline in the type column.
-
-**`InstrumentId`**
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | Exchange-specific instrument code. |
-| market | Market | Yes | — | FinchX market identifier. |
-| kind | InstrumentKind | Yes | — | Instrument kind. |
-| exchange | Exchange \| None | No | None | Exchange identity when required by the dataset. |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
 
+The public return annotation is `FetchResult[MarketFundFlowIntradayData]`.
+
+#### Returned data model `MarketFundFlowIntradayData`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
+| tradeDate | date | Yes | — | Trading date reported by Tencent, not FinchX capture time. |
+| time | str | Yes | — | Source market-local time, HH:MM; values are cumulative from open. |
+| price | Decimal | Yes | — | Source price in CNY per share. |
+| cumulativeMainNetInflow | Decimal | Yes | — | Monetary amount in CNY. |
+| cumulativeRetailNetInflow | Decimal | Yes | — | Monetary amount in CNY. |
+| cumulativeSuperLargeNetInflow | Decimal | Yes | — | Monetary amount in CNY. |
+| cumulativeLargeNetInflow | Decimal | Yes | — | Monetary amount in CNY. |
+| cumulativeMediumNetInflow | Decimal | Yes | — | Monetary amount in CNY. |
+| cumulativeSmallNetInflow | Decimal | Yes | — | Monetary amount in CNY. |
+| cumulativeMainInflow | Decimal | Yes | — | Monetary amount in CNY. |
+| cumulativeMainOutflow | Decimal | Yes | — | Monetary amount in CNY. |
+
+#### Nested model `InstrumentId`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| code | str | Yes | — | Declared by the Pydantic model. |
+| market | Market | Yes | — | Declared by the Pydantic model. |
+| kind | InstrumentKind | Yes | — | Declared by the Pydantic model. |
+| exchange | Exchange \| None | No | None | Declared by the Pydantic model. |
 
 #### Example
 
+<!-- api-example: market.fund_flow_intraday -->
 ```python
-from datetime import date
 from finchx import FinchX
-from finchx.datasets import KlineAdjustment
 from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
+from finchx.datasets import MarketFundFlowRequest
 
 fx = FinchX()
 instrument_id = InstrumentId(
@@ -1258,29 +967,18 @@ instrument_id = InstrumentId(
     kind=InstrumentKind.EQUITY,
     exchange=Exchange.SSE,
 )
-index_id = InstrumentId(
-    code="000001",
-    market=Market.CN_A,
-    kind=InstrumentKind.INDEX,
-    exchange=Exchange.SSE,
-)
-from finchx.datasets import MarketFundFlowRequest
 request = MarketFundFlowRequest(instrumentId=instrument_id)
 result = fx.market.fund_flow_intraday(request)
 ```
 
-#### Provider behavior and notes
-
-The registry currently implements: `tencent.finance.qq.fund_flow`. Provider selection is controlled by runtime policy unless `provider=` is supplied. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
-
 ### `fx.market.fund_flow_snapshot(...)`
 
-Return the current fund-flow snapshot and category-level inflow/outflow amounts.
+Fetch the fund-flow snapshot in a FetchResult.
 
 **Dataset:** `market.fund_flow_snapshot`
 **Schema version:** `1.0`
 **Implemented Providers:** `tencent.finance.qq.fund_flow`
-**Routing semantics:** `multi_provider`. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
+**Routing semantics:** `multi_provider`
 
 #### Method signature
 
@@ -1292,60 +990,56 @@ fx.market.fund_flow_snapshot(request: 'MarketFundFlowRequest', *, provider: 'str
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | MarketFundFlowRequest | Yes | — | Typed request model. It cannot be combined with the convenience business parameters. |
-| provider | str \| None | No | None | Strict Provider id pin. Only the named Provider is used. (keyword-only) |
-| use_cache | bool \| None | No | None | Whether the configured cache may be used; None follows the configured CachePolicy. (keyword-only) |
+| request | MarketFundFlowRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
+| use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-The typed request model is `MarketFundFlowRequest`. Its fields are:
+**Minimum business input:** request (instrumentId).
 
-| Request field | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | Complete instrument identity: code, market, kind and optional exchange. |
+#### Request model `MarketFundFlowRequest`
 
-#### Return value
-
-The public method annotation is `FetchResult[MarketFundFlowSnapshotData]`. FetchResult.data: StandardRecord. The `data` payload inside each StandardRecord is the `MarketFundFlowSnapshotData` schema below.
-
-#### Returned data fields
-
-| Field | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | Complete instrument identity: code, market, kind and optional exchange. |
-| tradeDate | date | No | Source trading-date label; it is not FinchX capture time. |
-| mainNetInflow | Decimal | No | Main-fund net inflow in CNY. |
-| mainInflow | Decimal | No | Main-fund inflow in CNY. |
-| mainOutflow | Decimal | No | Main-fund outflow in CNY. |
-| mainInflowRate | Decimal | No | Main-fund inflow ratio. |
-| mainOutflowRate | Decimal | No | Main-fund outflow ratio. |
-| retailInflow | Decimal | No | Retail-fund inflow in CNY. |
-| retailOutflow | Decimal | No | Retail-fund outflow in CNY. |
-| retailInflowRate | Decimal | No | Retail-fund inflow ratio. |
-| retailOutflowRate | Decimal | No | Retail-fund outflow ratio. |
-| superLargeNetInflow | Decimal | No | Super-large-order net inflow in CNY. |
-| largeNetInflow | Decimal | No | Large-order net inflow in CNY. |
-| mediumNetInflow | Decimal | No | Medium-order net inflow in CNY. |
-| smallNetInflow | Decimal | No | Small-order net inflow in CNY. |
-
-#### Nested record types
-
-The following object types are used by the fields above. Enum values are shown inline in the type column.
-
-**`InstrumentId`**
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | Exchange-specific instrument code. |
-| market | Market | Yes | — | FinchX market identifier. |
-| kind | InstrumentKind | Yes | — | Instrument kind. |
-| exchange | Exchange \| None | No | None | Exchange identity when required by the dataset. |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
 
+The public return annotation is `FetchResult[MarketFundFlowSnapshotData]`.
+
+#### Returned data model `MarketFundFlowSnapshotData`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
+| tradeDate | date | Yes | — | Trading date reported by Tencent, not FinchX capture time. |
+| mainNetInflow | Decimal | Yes | — | Monetary amount in CNY. |
+| mainInflow | Decimal | Yes | — | Monetary amount in CNY. |
+| mainOutflow | Decimal | Yes | — | Monetary amount in CNY. |
+| mainInflowRate | Decimal | Yes | — | Ratio fraction; 15% is 0.15. |
+| mainOutflowRate | Decimal | Yes | — | Ratio fraction; 19% is 0.19. |
+| retailInflow | Decimal | Yes | — | Monetary amount in CNY. |
+| retailOutflow | Decimal | Yes | — | Monetary amount in CNY. |
+| retailInflowRate | Decimal | Yes | — | Ratio fraction; 35% is 0.35. |
+| retailOutflowRate | Decimal | Yes | — | Ratio fraction; 31% is 0.31. |
+| superLargeNetInflow | Decimal | Yes | — | Monetary amount in CNY. |
+| largeNetInflow | Decimal | Yes | — | Monetary amount in CNY. |
+| mediumNetInflow | Decimal | Yes | — | Monetary amount in CNY. |
+| smallNetInflow | Decimal | Yes | — | Monetary amount in CNY. |
+
+#### Nested model `InstrumentId`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| code | str | Yes | — | Declared by the Pydantic model. |
+| market | Market | Yes | — | Declared by the Pydantic model. |
+| kind | InstrumentKind | Yes | — | Declared by the Pydantic model. |
+| exchange | Exchange \| None | No | None | Declared by the Pydantic model. |
 
 #### Example
 
+<!-- api-example: market.fund_flow_snapshot -->
 ```python
-from datetime import date
 from finchx import FinchX
-from finchx.datasets import KlineAdjustment
 from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
+from finchx.datasets import MarketFundFlowRequest
 
 fx = FinchX()
 instrument_id = InstrumentId(
@@ -1354,29 +1048,18 @@ instrument_id = InstrumentId(
     kind=InstrumentKind.EQUITY,
     exchange=Exchange.SSE,
 )
-index_id = InstrumentId(
-    code="000001",
-    market=Market.CN_A,
-    kind=InstrumentKind.INDEX,
-    exchange=Exchange.SSE,
-)
-from finchx.datasets import MarketFundFlowRequest
 request = MarketFundFlowRequest(instrumentId=instrument_id)
 result = fx.market.fund_flow_snapshot(request)
 ```
 
-#### Provider behavior and notes
-
-The registry currently implements: `tencent.finance.qq.fund_flow`. Provider selection is controlled by runtime policy unless `provider=` is supplied. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
-
 ### `fx.market.index_intraday(...)`
 
-Return intraday index observations for one index instrument and session.
+Fetch one index intraday session in a FetchResult.
 
 **Dataset:** `market.index_intraday`
 **Schema version:** `1.0`
 **Implemented Providers:** `tencent.finance.qq.intraday`
-**Routing semantics:** `multi_provider`. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
+**Routing semantics:** `multi_provider`
 
 #### Method signature
 
@@ -1388,84 +1071,69 @@ fx.market.index_intraday(request: 'IndexIntradayRequest', *, provider: 'str | No
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | IndexIntradayRequest | Yes | — | Typed request model. It cannot be combined with the convenience business parameters. |
-| provider | str \| None | No | None | Strict Provider id pin. Only the named Provider is used. (keyword-only) |
-| use_cache | bool \| None | No | None | Whether the configured cache may be used; None follows the configured CachePolicy. (keyword-only) |
+| request | IndexIntradayRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
+| use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-The typed request model is `IndexIntradayRequest`. Its fields are:
+**Minimum business input:** request (index instrumentId).
 
-| Request field | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | Complete instrument identity: code, market, kind and optional exchange. |
+#### Request model `IndexIntradayRequest`
 
-#### Return value
-
-The public method annotation is `FetchResult[IndexIntradayData]`. FetchResult.data: tuple[StandardRecord, ...]. The `data` payload inside each StandardRecord is the `IndexIntradayData` schema below.
-
-#### Returned data fields
-
-| Field | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | Complete instrument identity: code, market, kind and optional exchange. |
-| tradeDate | date | No | Source trading-date label; it is not FinchX capture time. |
-| time | str | No | Source market-local time for the observation, normally HH:MM. |
-| price | str | No | Latest or observed price in CNY per share unless the dataset is an index series. |
-| volume | int | No | Traded volume in whole shares. |
-| amount | str | No | Traded amount in CNY. |
-| cumulativeVolume | int | No | Cumulative session volume in whole shares. |
-| cumulativeAmount | str | No | Cumulative traded amount in CNY. |
-
-#### Nested record types
-
-The following object types are used by the fields above. Enum values are shown inline in the type column.
-
-**`InstrumentId`**
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | Exchange-specific instrument code. |
-| market | Market | Yes | — | FinchX market identifier. |
-| kind | InstrumentKind | Yes | — | Instrument kind. |
-| exchange | Exchange \| None | No | None | Exchange identity when required by the dataset. |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
 
+The public return annotation is `FetchResult[IndexIntradayData]`.
+
+#### Returned data model `IndexIntradayData`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
+| tradeDate | date | Yes | — | Source trading-date label; not FinchX capturedAt. |
+| time | str | Yes | — | Source trading time in HHMM normalized to HH:MM; not capturedAt. |
+| price | Decimal | Yes | — | Exact decimal in the source price unit (CNY per share for equities; index points for indices). |
+| volume | int | Yes | — | Volume traded during this minute, in whole shares. |
+| amount | Decimal | Yes | — | Amount traded during this minute, in CNY. |
+| cumulativeVolume | int | Yes | — | Tencent source cumulative traded volume, normalized to whole shares from lots (source lots multiplied by 100). |
+| cumulativeAmount | Decimal | Yes | — | Tencent source cumulative traded amount in CNY, unchanged from source. |
+
+#### Nested model `InstrumentId`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| code | str | Yes | — | Declared by the Pydantic model. |
+| market | Market | Yes | — | Declared by the Pydantic model. |
+| kind | InstrumentKind | Yes | — | Declared by the Pydantic model. |
+| exchange | Exchange \| None | No | None | Declared by the Pydantic model. |
 
 #### Example
 
+<!-- api-example: market.index_intraday -->
 ```python
-from datetime import date
 from finchx import FinchX
-from finchx.datasets import KlineAdjustment
 from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
+from finchx.datasets import IndexIntradayRequest
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
 index_id = InstrumentId(
     code="000001",
     market=Market.CN_A,
     kind=InstrumentKind.INDEX,
     exchange=Exchange.SSE,
 )
-from finchx.datasets import IndexIntradayRequest
 request = IndexIntradayRequest(instrumentId=index_id)
 result = fx.market.index_intraday(request)
 ```
 
-#### Provider behavior and notes
-
-The registry currently implements: `tencent.finance.qq.intraday`. Provider selection is controlled by runtime policy unless `provider=` is supplied. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
-
 ### `fx.market.index_intraday_5d(...)`
 
-Return the provider's five-day intraday index series for one index instrument.
+Fetch five-day index intraday data in a FetchResult.
 
 **Dataset:** `market.index_intraday_5d`
 **Schema version:** `1.0`
 **Implemented Providers:** `tencent.finance.qq.intraday`
-**Routing semantics:** `multi_provider`. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
+**Routing semantics:** `multi_provider`
 
 #### Method signature
 
@@ -1477,84 +1145,69 @@ fx.market.index_intraday_5d(request: 'IndexIntraday5dRequest', *, provider: 'str
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | IndexIntraday5dRequest | Yes | — | Typed request model. It cannot be combined with the convenience business parameters. |
-| provider | str \| None | No | None | Strict Provider id pin. Only the named Provider is used. (keyword-only) |
-| use_cache | bool \| None | No | None | Whether the configured cache may be used; None follows the configured CachePolicy. (keyword-only) |
+| request | IndexIntraday5dRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
+| use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-The typed request model is `IndexIntraday5dRequest`. Its fields are:
+**Minimum business input:** request (index instrumentId).
 
-| Request field | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | Complete instrument identity: code, market, kind and optional exchange. |
+#### Request model `IndexIntraday5dRequest`
 
-#### Return value
-
-The public method annotation is `FetchResult[IndexIntradayData]`. FetchResult.data: tuple[StandardRecord, ...]. The `data` payload inside each StandardRecord is the `IndexIntradayData` schema below.
-
-#### Returned data fields
-
-| Field | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | Complete instrument identity: code, market, kind and optional exchange. |
-| tradeDate | date | No | Source trading-date label; it is not FinchX capture time. |
-| time | str | No | Source market-local time for the observation, normally HH:MM. |
-| price | str | No | Latest or observed price in CNY per share unless the dataset is an index series. |
-| volume | int | No | Traded volume in whole shares. |
-| amount | str | No | Traded amount in CNY. |
-| cumulativeVolume | int | No | Cumulative session volume in whole shares. |
-| cumulativeAmount | str | No | Cumulative traded amount in CNY. |
-
-#### Nested record types
-
-The following object types are used by the fields above. Enum values are shown inline in the type column.
-
-**`InstrumentId`**
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | Exchange-specific instrument code. |
-| market | Market | Yes | — | FinchX market identifier. |
-| kind | InstrumentKind | Yes | — | Instrument kind. |
-| exchange | Exchange \| None | No | None | Exchange identity when required by the dataset. |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
 
+The public return annotation is `FetchResult[IndexIntradayData]`.
+
+#### Returned data model `IndexIntradayData`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
+| tradeDate | date | Yes | — | Source trading-date label; not FinchX capturedAt. |
+| time | str | Yes | — | Source trading time in HHMM normalized to HH:MM; not capturedAt. |
+| price | Decimal | Yes | — | Exact decimal in the source price unit (CNY per share for equities; index points for indices). |
+| volume | int | Yes | — | Volume traded during this minute, in whole shares. |
+| amount | Decimal | Yes | — | Amount traded during this minute, in CNY. |
+| cumulativeVolume | int | Yes | — | Tencent source cumulative traded volume, normalized to whole shares from lots (source lots multiplied by 100). |
+| cumulativeAmount | Decimal | Yes | — | Tencent source cumulative traded amount in CNY, unchanged from source. |
+
+#### Nested model `InstrumentId`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| code | str | Yes | — | Declared by the Pydantic model. |
+| market | Market | Yes | — | Declared by the Pydantic model. |
+| kind | InstrumentKind | Yes | — | Declared by the Pydantic model. |
+| exchange | Exchange \| None | No | None | Declared by the Pydantic model. |
 
 #### Example
 
+<!-- api-example: market.index_intraday_5d -->
 ```python
-from datetime import date
 from finchx import FinchX
-from finchx.datasets import KlineAdjustment
 from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
+from finchx.datasets import IndexIntraday5dRequest
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
 index_id = InstrumentId(
     code="000001",
     market=Market.CN_A,
     kind=InstrumentKind.INDEX,
     exchange=Exchange.SSE,
 )
-from finchx.datasets import IndexIntraday5dRequest
 request = IndexIntraday5dRequest(instrumentId=index_id)
 result = fx.market.index_intraday_5d(request)
 ```
 
-#### Provider behavior and notes
-
-The registry currently implements: `tencent.finance.qq.intraday`. Provider selection is controlled by runtime policy unless `provider=` is supplied. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
-
 ### `fx.market.industry_comparison(...)`
 
-Compare one instrument with its industry aggregate and the broader market using the Tencent industry contract.
+Fetch the market industry comparison in a FetchResult.
 
 **Dataset:** `market.industry_comparison`
 **Schema version:** `1.0`
 **Implemented Providers:** `tencent.finance.qq.industry`
-**Routing semantics:** `single_source`. The registry marks this Dataset as `single_source`; the listed Provider is the implemented source-specific contract.
+**Routing semantics:** `single_source`
 
 #### Method signature
 
@@ -1566,87 +1219,88 @@ fx.market.industry_comparison(request: 'MarketIndustryComparisonRequest', *, pro
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | MarketIndustryComparisonRequest | Yes | — | Typed request model. It cannot be combined with the convenience business parameters. |
-| provider | str \| None | No | None | Strict Provider id pin. Only the named Provider is used. (keyword-only) |
-| use_cache | bool \| None | No | None | Whether the configured cache may be used; None follows the configured CachePolicy. (keyword-only) |
+| request | MarketIndustryComparisonRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
+| use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-The typed request model is `MarketIndustryComparisonRequest`. Its fields are:
+**Minimum business input:** request (instrumentId).
 
-| Request field | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | Complete instrument identity: code, market, kind and optional exchange. |
+#### Request model `MarketIndustryComparisonRequest`
 
-#### Return value
-
-The public method annotation is `FetchResult[MarketIndustryComparisonData]`. FetchResult.data: StandardRecord. The `data` payload inside each StandardRecord is the `MarketIndustryComparisonData` schema below.
-
-#### Returned data fields
-
-| Field | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | Complete instrument identity: code, market, kind and optional exchange. |
-| industry | IndustryIdentity | No | Source-provided industry label. |
-| instrumentValues | IndustryComparisonValues | No | Instrument values used in the comparison. |
-| industryRanks | IndustryComparisonRanks | No | Industry-relative ranks supplied by the source. |
-| industryAggregate | IndustryAggregate | No | Industry aggregate values supplied by the source. |
-| marketAggregate | MarketAggregate | No | Broad-market aggregate values supplied by the source. |
-
-#### Nested record types
-
-The following object types are used by the fields above. Enum values are shown inline in the type column.
-
-**`IndustryAggregate`**
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| priceEarnings | Decimal \| None | No | None | Normalized price earnings field. |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
+
+The public return annotation is `FetchResult[MarketIndustryComparisonData]`.
+
+#### Returned data model `MarketIndustryComparisonData`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
+| industry | IndustryIdentity | Yes | — | Declared by the Pydantic model. |
+| instrumentValues | IndustryComparisonValues | Yes | — | Declared by the Pydantic model. |
+| industryRanks | IndustryComparisonRanks | Yes | — | Declared by the Pydantic model. |
+| industryAggregate | IndustryAggregate | Yes | — | Declared by the Pydantic model. |
+| marketAggregate | MarketAggregate | Yes | — | Declared by the Pydantic model. |
+
+#### Nested model `InstrumentId`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| code | str | Yes | — | Declared by the Pydantic model. |
+| market | Market | Yes | — | Declared by the Pydantic model. |
+| kind | InstrumentKind | Yes | — | Declared by the Pydantic model. |
+| exchange | Exchange \| None | No | None | Declared by the Pydantic model. |
+
+#### Nested model `IndustryIdentity`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| providerNamespace | Literal['tencent_hypm'] | Yes | — | Declared by the Pydantic model. |
+| providerIndustryId | str | Yes | — | Declared by the Pydantic model. |
+| name | str | Yes | — | Declared by the Pydantic model. |
+
+#### Nested model `IndustryComparisonValues`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| priceEarnings | Decimal \| None | No | None | Declared by the Pydantic model. |
 | earningsPerShare | Decimal \| None | No | None | Tencent mgsy, in CNY per share; reporting-period semantics are not supplied here. |
-| marketCapitalization | Decimal \| None | No | None | Total market capitalization in CNY. |
-| count | int \| None | No | None | Normalized count field. |
+| marketCapitalization | Decimal \| None | No | None | Tencent zsz converted from 100 million CNY to CNY. |
 
-**`IndustryComparisonRanks`**
+#### Nested model `IndustryComparisonRanks`
+
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| priceEarningsRank | int \| None | No | None | Normalized price earnings rank field. |
-| earningsPerShareRank | int \| None | No | None | Normalized earnings per share rank field. |
-| marketCapitalizationRank | int \| None | No | None | Normalized market capitalization rank field. |
+| priceEarningsRank | int \| None | No | None | Declared by the Pydantic model. |
+| earningsPerShareRank | int \| None | No | None | Declared by the Pydantic model. |
+| marketCapitalizationRank | int \| None | No | None | Declared by the Pydantic model. |
 
-**`IndustryComparisonValues`**
+#### Nested model `IndustryAggregate`
+
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| priceEarnings | Decimal \| None | No | None | Normalized price earnings field. |
+| priceEarnings | Decimal \| None | No | None | Declared by the Pydantic model. |
 | earningsPerShare | Decimal \| None | No | None | Tencent mgsy, in CNY per share; reporting-period semantics are not supplied here. |
-| marketCapitalization | Decimal \| None | No | None | Total market capitalization in CNY. |
+| marketCapitalization | Decimal \| None | No | None | Tencent zsz converted from 100 million CNY to CNY. |
+| count | int \| None | No | None | Declared by the Pydantic model. |
 
-**`IndustryIdentity`**
+#### Nested model `MarketAggregate`
+
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| providerNamespace | 'tencent_hypm' | Yes | — | Source-specific namespace retained as public identity. |
-| providerIndustryId | str | Yes | — | Normalized provider industry id field. |
-| name | str | Yes | — | Provider-normalized display name. |
-
-**`InstrumentId`**
-| Field | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| code | str | Yes | — | Exchange-specific instrument code. |
-| market | Market | Yes | — | FinchX market identifier. |
-| kind | InstrumentKind | Yes | — | Instrument kind. |
-| exchange | Exchange \| None | No | None | Exchange identity when required by the dataset. |
-
-**`MarketAggregate`**
-| Field | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| priceEarnings | Decimal \| None | No | None | Normalized price earnings field. |
+| priceEarnings | Decimal \| None | No | None | Declared by the Pydantic model. |
 | earningsPerShare | Decimal \| None | No | None | Tencent mgsy, in CNY per share; reporting-period semantics are not supplied here. |
-| marketCapitalization | Decimal \| None | No | None | Total market capitalization in CNY. |
-
+| marketCapitalization | Decimal \| None | No | None | Tencent zsz converted from 100 million CNY to CNY. |
 
 #### Example
 
+<!-- api-example: market.industry_comparison -->
 ```python
-from datetime import date
 from finchx import FinchX
-from finchx.datasets import KlineAdjustment
 from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
+from finchx.datasets import MarketIndustryComparisonRequest
 
 fx = FinchX()
 instrument_id = InstrumentId(
@@ -1655,29 +1309,18 @@ instrument_id = InstrumentId(
     kind=InstrumentKind.EQUITY,
     exchange=Exchange.SSE,
 )
-index_id = InstrumentId(
-    code="000001",
-    market=Market.CN_A,
-    kind=InstrumentKind.INDEX,
-    exchange=Exchange.SSE,
-)
-from finchx.datasets import MarketIndustryComparisonRequest
 request = MarketIndustryComparisonRequest(instrumentId=instrument_id)
 result = fx.market.industry_comparison(request)
 ```
 
-#### Provider behavior and notes
-
-The registry currently implements: `tencent.finance.qq.industry`. Provider selection is controlled by runtime policy unless `provider=` is supplied. The registry marks this Dataset as `single_source`; the listed Provider is the implemented source-specific contract.
-
 ### `fx.market.instrument_sector_snapshot(...)`
 
-Return Tencent area, industry and concept tags attached to one instrument.
+Fetch sector tags and snapshots for an instrument in a FetchResult.
 
 **Dataset:** `market.instrument_sector_snapshot`
 **Schema version:** `1.0`
 **Implemented Providers:** `tencent.finance.qq.sector`
-**Routing semantics:** `single_source`. The registry marks this Dataset as `single_source`; the listed Provider is the implemented source-specific contract.
+**Routing semantics:** `single_source`
 
 #### Method signature
 
@@ -1689,58 +1332,55 @@ fx.market.instrument_sector_snapshot(request: 'MarketInstrumentSectorSnapshotReq
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | MarketInstrumentSectorSnapshotRequest | Yes | — | Typed request model. It cannot be combined with the convenience business parameters. |
-| provider | str \| None | No | None | Strict Provider id pin. Only the named Provider is used. (keyword-only) |
-| use_cache | bool \| None | No | None | Whether the configured cache may be used; None follows the configured CachePolicy. (keyword-only) |
+| request | MarketInstrumentSectorSnapshotRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
+| use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-The typed request model is `MarketInstrumentSectorSnapshotRequest`. Its fields are:
+**Minimum business input:** request (instrumentId).
 
-| Request field | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | Complete instrument identity: code, market, kind and optional exchange. |
+#### Request model `MarketInstrumentSectorSnapshotRequest`
 
-#### Return value
-
-The public method annotation is `FetchResult[MarketInstrumentSectorSnapshotData]`. FetchResult.data: StandardRecord. The `data` payload inside each StandardRecord is the `MarketInstrumentSectorSnapshotData` schema below.
-
-#### Returned data fields
-
-| Field | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | Complete instrument identity: code, market, kind and optional exchange. |
-| sectors | list[InstrumentSectorEntry] | No | Sector-tag entries attached to the instrument. |
-
-#### Nested record types
-
-The following object types are used by the fields above. Enum values are shown inline in the type column.
-
-**`InstrumentId`**
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | Exchange-specific instrument code. |
-| market | Market | Yes | — | FinchX market identifier. |
-| kind | InstrumentKind | Yes | — | Instrument kind. |
-| exchange | Exchange \| None | No | None | Exchange identity when required by the dataset. |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
 
-**`InstrumentSectorEntry`**
+The public return annotation is `FetchResult[MarketInstrumentSectorSnapshotData]`.
+
+#### Returned data model `MarketInstrumentSectorSnapshotData`
+
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| sectorType | Literal['area', 'industry', 'concept'] | Yes | — | Sector tag type: area, industry or concept. |
-| sectorName | str | Yes | — | Provider sector name. |
-| providerNamespace | 'tencent_plate' | Yes | — | Source-specific namespace retained as public identity. |
-| providerSectorId | str | Yes | — | Source-specific sector identifier. |
-| level | int \| None | No | None | Order-book level number or sector hierarchy level, depending on the model. |
-| tag | str \| None | No | None | Optional source tag. |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
+| sectors | list[InstrumentSectorEntry] | Yes | — | Declared by the Pydantic model. |
+
+#### Nested model `InstrumentId`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| code | str | Yes | — | Declared by the Pydantic model. |
+| market | Market | Yes | — | Declared by the Pydantic model. |
+| kind | InstrumentKind | Yes | — | Declared by the Pydantic model. |
+| exchange | Exchange \| None | No | None | Declared by the Pydantic model. |
+
+#### Nested model `InstrumentSectorEntry`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| sectorType | Literal['area', 'industry', 'concept'] | Yes | — | Declared by the Pydantic model. |
+| sectorName | str | Yes | — | Declared by the Pydantic model. |
+| providerNamespace | Literal['tencent_plate'] | Yes | — | Declared by the Pydantic model. |
+| providerSectorId | str | Yes | — | Declared by the Pydantic model. |
+| level | int \| None | No | None | Declared by the Pydantic model. |
+| tag | str \| None | No | None | Declared by the Pydantic model. |
 | changePct | Decimal \| None | No | None | Tencent zdf converted from percentage points to a ratio fraction. |
-
 
 #### Example
 
+<!-- api-example: market.instrument_sector_snapshot -->
 ```python
-from datetime import date
 from finchx import FinchX
-from finchx.datasets import KlineAdjustment
 from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
+from finchx.datasets import MarketInstrumentSectorSnapshotRequest
 
 fx = FinchX()
 instrument_id = InstrumentId(
@@ -1749,29 +1389,18 @@ instrument_id = InstrumentId(
     kind=InstrumentKind.EQUITY,
     exchange=Exchange.SSE,
 )
-index_id = InstrumentId(
-    code="000001",
-    market=Market.CN_A,
-    kind=InstrumentKind.INDEX,
-    exchange=Exchange.SSE,
-)
-from finchx.datasets import MarketInstrumentSectorSnapshotRequest
 request = MarketInstrumentSectorSnapshotRequest(instrumentId=instrument_id)
 result = fx.market.instrument_sector_snapshot(request)
 ```
 
-#### Provider behavior and notes
-
-The registry currently implements: `tencent.finance.qq.sector`. Provider selection is controlled by runtime policy unless `provider=` is supplied. The registry marks this Dataset as `single_source`; the listed Provider is the implemented source-specific contract.
-
 ### `fx.market.stock_keyword(...)`
 
-Return the source-provided hot keyword/concept snapshot for one equity; this is structured source ranking data, not NLP extraction.
+Fetch EastMoney source-ranked hot keywords for an instrument.
 
 **Dataset:** `market.stock_keyword`
 **Schema version:** `1.0`
 **Implemented Providers:** `eastmoney.stockrank`
-**Routing semantics:** `single_source`. The registry marks this Dataset as `single_source`; the listed Provider is the implemented source-specific contract.
+**Routing semantics:** `single_source`
 
 #### Method signature
 
@@ -1783,56 +1412,53 @@ fx.market.stock_keyword(request: 'MarketStockKeywordRequest', *, provider: 'str 
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | MarketStockKeywordRequest | Yes | — | Typed request model. It cannot be combined with the convenience business parameters. |
-| provider | str \| None | No | None | Strict Provider id pin. Only the named Provider is used. (keyword-only) |
-| use_cache | bool \| None | No | None | Whether the configured cache may be used; None follows the configured CachePolicy. (keyword-only) |
+| request | MarketStockKeywordRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
+| use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-The typed request model is `MarketStockKeywordRequest`. Its fields are:
+**Minimum business input:** request (instrumentId).
 
-| Request field | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | Complete instrument identity: code, market, kind and optional exchange. |
+#### Request model `MarketStockKeywordRequest`
 
-#### Return value
-
-The public method annotation is `FetchResult[MarketStockKeywordData]`. FetchResult.data: StandardRecord. The `data` payload inside each StandardRecord is the `MarketStockKeywordData` schema below.
-
-#### Returned data fields
-
-| Field | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | Complete instrument identity: code, market, kind and optional exchange. |
-| keywords | list[StockKeywordEntry] | No | Source-ranked hot keyword/concept entries. |
-
-#### Nested record types
-
-The following object types are used by the fields above. Enum values are shown inline in the type column.
-
-**`InstrumentId`**
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | Exchange-specific instrument code. |
-| market | Market | Yes | — | FinchX market identifier. |
-| kind | InstrumentKind | Yes | — | Instrument kind. |
-| exchange | Exchange \| None | No | None | Exchange identity when required by the dataset. |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
 
-**`StockKeywordEntry`**
+The public return annotation is `FetchResult[MarketStockKeywordData]`.
+
+#### Returned data model `MarketStockKeywordData`
+
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| keywordName | str | Yes | — | Source-provided keyword or concept name. |
-| providerNamespace | 'eastmoney_stockrank' | Yes | — | Source-specific namespace retained as public identity. |
-| providerKeywordId | str | Yes | — | Source-scoped keyword/concept identifier. |
-| hitCount | int | Yes | — | EastMoney source hit count; it is not an inferred NLP heat score. |
-| calculatedAt | datetime | Yes | — | Source-reported time at which the keyword observation was calculated. |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
+| keywords | list[StockKeywordEntry] | Yes | — | Declared by the Pydantic model. |
 
+#### Nested model `InstrumentId`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| code | str | Yes | — | Declared by the Pydantic model. |
+| market | Market | Yes | — | Declared by the Pydantic model. |
+| kind | InstrumentKind | Yes | — | Declared by the Pydantic model. |
+| exchange | Exchange \| None | No | None | Declared by the Pydantic model. |
+
+#### Nested model `StockKeywordEntry`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| keywordName | str | Yes | — | Declared by the Pydantic model. |
+| providerNamespace | Literal['eastmoney_stockrank'] | Yes | — | Declared by the Pydantic model. |
+| providerKeywordId | str | Yes | — | Declared by the Pydantic model. |
+| hitCount | int | Yes | — | Declared by the Pydantic model. |
+| calculatedAt | datetime | Yes | — | Declared by the Pydantic model. |
 
 #### Example
 
+<!-- api-example: market.stock_keyword -->
 ```python
-from datetime import date
 from finchx import FinchX
-from finchx.datasets import KlineAdjustment
 from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
+from finchx.datasets import MarketStockKeywordRequest
 
 fx = FinchX()
 instrument_id = InstrumentId(
@@ -1841,31 +1467,18 @@ instrument_id = InstrumentId(
     kind=InstrumentKind.EQUITY,
     exchange=Exchange.SSE,
 )
-index_id = InstrumentId(
-    code="000001",
-    market=Market.CN_A,
-    kind=InstrumentKind.INDEX,
-    exchange=Exchange.SSE,
-)
-from finchx.datasets import MarketStockKeywordRequest
-result = fx.market.stock_keyword(MarketStockKeywordRequest(instrumentId=instrument_id))
-print(result.data.data["keywords"])
+request = MarketStockKeywordRequest(instrumentId=instrument_id)
+result = fx.market.stock_keyword(request)
 ```
-
-#### Provider behavior and notes
-
-The registry currently implements: `eastmoney.stockrank`. Provider selection is controlled by runtime policy unless `provider=` is supplied. The registry marks this Dataset as `single_source`; the listed Provider is the implemented source-specific contract.
-
-**Keyword semantics:** pass a complete `InstrumentId` (with exchange where required); this endpoint has no bare-code shortcut. The Provider supports SSE, SZSE, and BSE routing, and a legal empty BSE keyword list is still a successful result. This is source-ranked structured keyword/concept data: `keywordName`, `providerKeywordId`, `hitCount` and `calculatedAt` retain EastMoney meaning. It is not NLP keyword extraction and `hitCount` is not an inferred heat score.
 
 ### `fx.market.limit_down_pool(...)`
 
-Return the EastMoney limit-down pool for one trading date.
+Fetch the limit-down pool in a FetchResult.
 
 **Dataset:** `market.limit_down_pool`
 **Schema version:** `1.0`
 **Implemented Providers:** `eastmoney.push2ex.limit_down_pool`
-**Routing semantics:** `single_source`. The registry marks this Dataset as `single_source`; the listed Provider is the implemented source-specific contract.
+**Routing semantics:** `single_source`
 
 #### Method signature
 
@@ -1877,92 +1490,71 @@ fx.market.limit_down_pool(request: 'MarketLimitDownPoolRequest', *, provider: 's
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | MarketLimitDownPoolRequest | Yes | — | Typed request model. It cannot be combined with the convenience business parameters. |
-| provider | str \| None | No | None | Strict Provider id pin. Only the named Provider is used. (keyword-only) |
-| use_cache | bool \| None | No | None | Whether the configured cache may be used; None follows the configured CachePolicy. (keyword-only) |
+| request | MarketLimitDownPoolRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
+| use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-The typed request model is `MarketLimitDownPoolRequest`. Its fields are:
+**Minimum business input:** request.
 
-| Request field | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| tradeDate | date | Yes | — | Source trading-date label; it is not FinchX capture time. |
+#### Request model `MarketLimitDownPoolRequest`
 
-#### Return value
-
-The public method annotation is `FetchResult[MarketLimitDownPoolData]`. FetchResult.data: tuple[StandardRecord, ...]. The `data` payload inside each StandardRecord is the `MarketLimitDownPoolData` schema below.
-
-#### Returned data fields
-
-| Field | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | Complete instrument identity: code, market, kind and optional exchange. |
-| tradeDate | date | No | Source trading-date label; it is not FinchX capture time. |
-| name | str | No | Provider-normalized display name. |
-| price | Decimal | No | Latest or observed price in CNY per share unless the dataset is an index series. |
-| changeRate | Decimal | No | Change ratio; 10% is represented as 0.10. |
-| amount | Decimal | No | Traded amount in CNY. |
-| floatMarketCapitalization | Decimal | No | Floating market capitalization in CNY. |
-| marketCapitalization | Decimal | No | Total market capitalization in CNY. |
-| priceEarningsRatio | Decimal \| None | Yes | Source-reported dynamic price/earnings multiple. |
-| turnoverRate | Decimal | No | Turnover ratio; percentage values are represented as fractions. |
-| limitDownQueueAmount | Decimal \| None | Yes | Amount queued at the limit-down price in CNY. |
-| lastLimitDownTime | str \| None | Yes | Last limit-down time in the source market-local time format. |
-| boardTradedAmount | Decimal \| None | Yes | Amount traded at the limit-down price in CNY. |
-| consecutiveLimitDownDays | int | No | Consecutive limit-down count reported by the source. |
-| limitDownOpenCount | int | No | Number of limit-down openings recorded by the source. |
-| industry | str | No | Source-provided industry label. |
-
-#### Nested record types
-
-The following object types are used by the fields above. Enum values are shown inline in the type column.
-
-**`InstrumentId`**
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | Exchange-specific instrument code. |
-| market | Market | Yes | — | FinchX market identifier. |
-| kind | InstrumentKind | Yes | — | Instrument kind. |
-| exchange | Exchange \| None | No | None | Exchange identity when required by the dataset. |
+| tradeDate | date | Yes | — | Declared by the Pydantic model. |
 
+The public return annotation is `FetchResult[MarketLimitDownPoolData]`.
+
+#### Returned data model `MarketLimitDownPoolData`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
+| tradeDate | date | Yes | — | Declared by the Pydantic model. |
+| name | str | Yes | — | Declared by the Pydantic model. |
+| price | Decimal | Yes | — | Latest price in CNY per share. |
+| changeRate | Decimal | Yes | — | Ratio fraction; -10% is -0.10. |
+| amount | Decimal | Yes | — | Current-session traded amount in CNY. |
+| floatMarketCapitalization | Decimal | Yes | — | Monetary amount in CNY. |
+| marketCapitalization | Decimal | Yes | — | Monetary amount in CNY. |
+| priceEarningsRatio | Decimal \| None | No | None | EastMoney-reported dynamic P/E; source calculation details are unspecified. |
+| turnoverRate | Decimal | Yes | — | Ratio fraction. |
+| limitDownQueueAmount | Decimal \| None | No | None | EastMoney-reported limit-down queued amount in CNY. |
+| lastLimitDownTime | str \| None | No | None | Declared by the Pydantic model. |
+| boardTradedAmount | Decimal \| None | No | None | Amount traded at the limit-down price in CNY. |
+| consecutiveLimitDownDays | int | Yes | — | Declared by the Pydantic model. |
+| limitDownOpenCount | int | Yes | — | Declared by the Pydantic model. |
+| industry | str | Yes | — | Declared by the Pydantic model. |
+
+#### Nested model `InstrumentId`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| code | str | Yes | — | Declared by the Pydantic model. |
+| market | Market | Yes | — | Declared by the Pydantic model. |
+| kind | InstrumentKind | Yes | — | Declared by the Pydantic model. |
+| exchange | Exchange \| None | No | None | Declared by the Pydantic model. |
 
 #### Example
 
+<!-- api-example: market.limit_down_pool -->
 ```python
 from datetime import date
 from finchx import FinchX
-from finchx.datasets import KlineAdjustment
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
+from finchx.datasets import MarketLimitDownPoolRequest
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-index_id = InstrumentId(
-    code="000001",
-    market=Market.CN_A,
-    kind=InstrumentKind.INDEX,
-    exchange=Exchange.SSE,
-)
-from finchx.datasets import MarketLimitDownPoolRequest
 request = MarketLimitDownPoolRequest(tradeDate=date(2026, 9, 18))
 result = fx.market.limit_down_pool(request)
 ```
 
-#### Provider behavior and notes
-
-The registry currently implements: `eastmoney.push2ex.limit_down_pool`. Provider selection is controlled by runtime policy unless `provider=` is supplied. The registry marks this Dataset as `single_source`; the listed Provider is the implemented source-specific contract.
-
 ### `fx.market.limit_up_pool(...)`
 
-Return the EastMoney limit-up pool for one trading date.
+Fetch the limit-up pool in a FetchResult.
 
 **Dataset:** `market.limit_up_pool`
 **Schema version:** `1.0`
 **Implemented Providers:** `eastmoney.push2ex.limit_up_pool`
-**Routing semantics:** `single_source`. The registry marks this Dataset as `single_source`; the listed Provider is the implemented source-specific contract.
+**Routing semantics:** `single_source`
 
 #### Method signature
 
@@ -1974,98 +1566,78 @@ fx.market.limit_up_pool(request: 'MarketLimitUpPoolRequest', *, provider: 'str |
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | MarketLimitUpPoolRequest | Yes | — | Typed request model. It cannot be combined with the convenience business parameters. |
-| provider | str \| None | No | None | Strict Provider id pin. Only the named Provider is used. (keyword-only) |
-| use_cache | bool \| None | No | None | Whether the configured cache may be used; None follows the configured CachePolicy. (keyword-only) |
+| request | MarketLimitUpPoolRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
+| use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-The typed request model is `MarketLimitUpPoolRequest`. Its fields are:
+**Minimum business input:** request.
 
-| Request field | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| tradeDate | date | Yes | — | Source trading-date label; it is not FinchX capture time. |
+#### Request model `MarketLimitUpPoolRequest`
 
-#### Return value
-
-The public method annotation is `FetchResult[MarketLimitUpPoolData]`. FetchResult.data: tuple[StandardRecord, ...]. The `data` payload inside each StandardRecord is the `MarketLimitUpPoolData` schema below.
-
-#### Returned data fields
-
-| Field | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | Complete instrument identity: code, market, kind and optional exchange. |
-| tradeDate | date | No | Source trading-date label; it is not FinchX capture time. |
-| name | str | No | Provider-normalized display name. |
-| price | Decimal | No | Latest or observed price in CNY per share unless the dataset is an index series. |
-| changeRate | Decimal | No | Change ratio; 10% is represented as 0.10. |
-| amount | Decimal | No | Traded amount in CNY. |
-| floatMarketCapitalization | Decimal | No | Floating market capitalization in CNY. |
-| marketCapitalization | Decimal | No | Total market capitalization in CNY. |
-| turnoverRate | Decimal | No | Turnover ratio; percentage values are represented as fractions. |
-| consecutiveLimitUpDays | int | No | Consecutive limit-up count reported by the source. |
-| firstLimitUpTime | str \| None | Yes | First limit-up time in the source market-local time format. |
-| lastLimitUpTime | str \| None | Yes | Last limit-up time in the source market-local time format. |
-| limitUpQueueAmount | Decimal \| None | Yes | Amount queued at the limit-up price in CNY. |
-| limitUpBreakCount | int | No | Number of limit-up breaks observed by the source. |
-| industry | str | No | Source-provided industry label. |
-| limitUpStats | MarketLimitUpStats | No | Source-defined limit-up history statistics. |
-
-#### Nested record types
-
-The following object types are used by the fields above. Enum values are shown inline in the type column.
-
-**`InstrumentId`**
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | Exchange-specific instrument code. |
-| market | Market | Yes | — | FinchX market identifier. |
-| kind | InstrumentKind | Yes | — | Instrument kind. |
-| exchange | Exchange \| None | No | None | Exchange identity when required by the dataset. |
+| tradeDate | date | Yes | — | Declared by the Pydantic model. |
 
-**`MarketLimitUpStats`**
+The public return annotation is `FetchResult[MarketLimitUpPoolData]`.
+
+#### Returned data model `MarketLimitUpPoolData`
+
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| lookbackDays | int | Yes | — | Normalized lookback days field. |
-| limitUpCount | int | Yes | — | Number of limit-up instruments. |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
+| tradeDate | date | Yes | — | Declared by the Pydantic model. |
+| name | str | Yes | — | Declared by the Pydantic model. |
+| price | Decimal | Yes | — | Latest price in CNY per share. |
+| changeRate | Decimal | Yes | — | Ratio fraction; 10% is 0.10. |
+| amount | Decimal | Yes | — | Current-session traded amount in CNY. |
+| floatMarketCapitalization | Decimal | Yes | — | Monetary amount in CNY. |
+| marketCapitalization | Decimal | Yes | — | Monetary amount in CNY. |
+| turnoverRate | Decimal | Yes | — | Ratio fraction; 5% is 0.05. |
+| consecutiveLimitUpDays | int | Yes | — | Declared by the Pydantic model. |
+| firstLimitUpTime | str \| None | No | None | Declared by the Pydantic model. |
+| lastLimitUpTime | str \| None | No | None | Declared by the Pydantic model. |
+| limitUpQueueAmount | Decimal \| None | No | None | Declared by the Pydantic model. |
+| limitUpBreakCount | int | Yes | — | Declared by the Pydantic model. |
+| industry | str | Yes | — | Declared by the Pydantic model. |
+| limitUpStats | MarketLimitUpStats | Yes | — | Declared by the Pydantic model. |
 
+#### Nested model `InstrumentId`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| code | str | Yes | — | Declared by the Pydantic model. |
+| market | Market | Yes | — | Declared by the Pydantic model. |
+| kind | InstrumentKind | Yes | — | Declared by the Pydantic model. |
+| exchange | Exchange \| None | No | None | Declared by the Pydantic model. |
+
+#### Nested model `MarketLimitUpStats`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| lookbackDays | int | Yes | — | Declared by the Pydantic model. |
+| limitUpCount | int | Yes | — | Declared by the Pydantic model. |
 
 #### Example
 
+<!-- api-example: market.limit_up_pool -->
 ```python
 from datetime import date
 from finchx import FinchX
-from finchx.datasets import KlineAdjustment
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
+from finchx.datasets import MarketLimitUpPoolRequest
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-index_id = InstrumentId(
-    code="000001",
-    market=Market.CN_A,
-    kind=InstrumentKind.INDEX,
-    exchange=Exchange.SSE,
-)
-from finchx.datasets import MarketLimitUpPoolRequest
 request = MarketLimitUpPoolRequest(tradeDate=date(2026, 9, 18))
 result = fx.market.limit_up_pool(request)
 ```
 
-#### Provider behavior and notes
-
-The registry currently implements: `eastmoney.push2ex.limit_up_pool`. Provider selection is controlled by runtime policy unless `provider=` is supplied. The registry marks this Dataset as `single_source`; the listed Provider is the implemented source-specific contract.
-
 ### `fx.market.ohlcv(...)`
 
-Return daily OHLCV bars for one instrument and date range.
+Fetch OHLCV history for one instrument in a FetchResult.
 
 **Dataset:** `market.klines`
 **Schema version:** `1.0`
 **Implemented Providers:** `tencent.finance.qq.klines`, `sohu.finance.klines`
-**Routing semantics:** `multi_provider`. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
+**Routing semantics:** `multi_provider`
 
 #### Method signature
 
@@ -2077,56 +1649,53 @@ fx.market.ohlcv(instrument_id: 'InstrumentId | None' = None, start_date: 'date |
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| instrument_id | InstrumentId \| None | No | None | Complete InstrumentId for the target instrument. |
-| start_date | date \| None | No | None | Inclusive start date. |
-| end_date | date \| None | No | None | Inclusive end date. |
-| adjustment | KlineAdjustment \| None | No | None | Optional KlineAdjustment; the default is None unless the computed deviation capability selects QFQ internally. |
-| request | KlinesRequest \| None | No | None | Typed request model. It cannot be combined with the convenience business parameters. |
-| provider | str \| None | No | None | Strict Provider id pin. Only the named Provider is used. (keyword-only) |
-| use_cache | bool \| None | No | None | Whether the configured cache may be used; None follows the configured CachePolicy. (keyword-only) |
+| instrument_id | InstrumentId \| None | Required in convenience mode | None | Complete InstrumentId. |
+| start_date | date \| None | Required in convenience mode | None | Inclusive start date. |
+| end_date | date \| None | Required in convenience mode | None | Inclusive end date. |
+| adjustment | KlineAdjustment \| None | Required for equities; omit for indexes | None | Kline adjustment; required for equity calls and omitted for index calls. |
+| request | KlinesRequest \| None | Conditional request alternative | None | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
+| use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-The typed request model is `KlinesRequest`. Its fields are:
+**Minimum business input:** instrument_id, start_date, end_date, and adjustment for equity.
 
-| Request field | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | Complete instrument identity: code, market, kind and optional exchange. |
-| startDate | date | Yes | — | Inclusive start date of the requested range or selected window. |
-| endDate | date | Yes | — | Inclusive end date of the requested range or selected window. |
-| adjustment | Literal['none', 'qfq', 'hfq', 'not_applicable'] \| None | No | None | Kline adjustment mode used for the bar series. |
+#### Request model `KlinesRequest`
 
-#### Return value
-
-The public method annotation is `FetchResult[MarketKlineData]`. FetchResult.data: tuple[StandardRecord, ...]. The `data` payload inside each StandardRecord is the `MarketKlineData` schema below.
-
-#### Returned data fields
-
-| Field | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | Complete instrument identity: code, market, kind and optional exchange. |
-| barDate | date | No | Trading date represented by the OHLCV bar. |
-| open | Decimal | No | Session open price in CNY per share. |
-| high | Decimal | No | Session high price in CNY per share. |
-| low | Decimal | No | Session low price in CNY per share. |
-| close | Decimal | No | Closing price in CNY per share or index points, according to the instrument. |
-| volume | int | No | Traded volume in whole shares. |
-| amount | Decimal \| None | Yes | Traded amount in CNY. |
-| adjustment | Literal['none', 'qfq', 'hfq', 'not_applicable'] | No | Kline adjustment mode used for the bar series. |
-
-#### Nested record types
-
-The following object types are used by the fields above. Enum values are shown inline in the type column.
-
-**`InstrumentId`**
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | Exchange-specific instrument code. |
-| market | Market | Yes | — | FinchX market identifier. |
-| kind | InstrumentKind | Yes | — | Instrument kind. |
-| exchange | Exchange \| None | No | None | Exchange identity when required by the dataset. |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
+| startDate | date | Yes | — | Declared by the Pydantic model. |
+| endDate | date | Yes | — | Declared by the Pydantic model. |
+| adjustment | KlineAdjustment \| None | No | None | Declared by the Pydantic model. |
 
+The public return annotation is `FetchResult[MarketKlineData]`.
+
+#### Returned data model `MarketKlineData`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
+| barDate | date | Yes | — | Declared by the Pydantic model. |
+| open | Decimal | Yes | — | Price per share; currency is CNY. |
+| high | Decimal | Yes | — | Price per share; currency is CNY. |
+| low | Decimal | Yes | — | Price per share; currency is CNY. |
+| close | Decimal | Yes | — | Price per share; currency is CNY. |
+| volume | int | Yes | — | A non-negative whole number of shares. |
+| amount | Decimal \| None | No | None | Declared by the Pydantic model. |
+| adjustment | KlineAdjustment | Yes | — | Declared by the Pydantic model. |
+
+#### Nested model `InstrumentId`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| code | str | Yes | — | Declared by the Pydantic model. |
+| market | Market | Yes | — | Declared by the Pydantic model. |
+| kind | InstrumentKind | Yes | — | Declared by the Pydantic model. |
+| exchange | Exchange \| None | No | None | Declared by the Pydantic model. |
 
 #### Example
 
+<!-- api-example: market.ohlcv -->
 ```python
 from datetime import date
 from finchx import FinchX
@@ -2140,29 +1709,22 @@ instrument_id = InstrumentId(
     kind=InstrumentKind.EQUITY,
     exchange=Exchange.SSE,
 )
-index_id = InstrumentId(
-    code="000001",
-    market=Market.CN_A,
-    kind=InstrumentKind.INDEX,
-    exchange=Exchange.SSE,
-)
 result = fx.market.ohlcv(
-    instrument_id, date(2026, 9, 1), date(2026, 9, 18), adjustment=KlineAdjustment.QFQ
+    instrument_id,
+    date(2026, 9, 1),
+    date(2026, 9, 18),
+    adjustment=KlineAdjustment.QFQ,
 )
 ```
 
-#### Provider behavior and notes
-
-The registry currently implements: `tencent.finance.qq.klines`, `sohu.finance.klines`. Provider selection is controlled by runtime policy unless `provider=` is supplied. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
-
 ### `fx.market.orderbook(...)`
 
-Return the current bid and ask levels for one instrument.
+Fetch the order book in a FetchResult.
 
 **Dataset:** `market.orderbook`
 **Schema version:** `1.0`
 **Implemented Providers:** `tencent.finance.qq.quote`
-**Routing semantics:** `multi_provider`. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
+**Routing semantics:** `multi_provider`
 
 #### Method signature
 
@@ -2174,55 +1736,52 @@ fx.market.orderbook(request: 'MarketOrderbookRequest', *, provider: 'str | None'
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | MarketOrderbookRequest | Yes | — | Typed request model. It cannot be combined with the convenience business parameters. |
-| provider | str \| None | No | None | Strict Provider id pin. Only the named Provider is used. (keyword-only) |
-| use_cache | bool \| None | No | None | Whether the configured cache may be used; None follows the configured CachePolicy. (keyword-only) |
+| request | MarketOrderbookRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
+| use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-The typed request model is `MarketOrderbookRequest`. Its fields are:
+**Minimum business input:** request (instrumentId).
 
-| Request field | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | Complete instrument identity: code, market, kind and optional exchange. |
+#### Request model `MarketOrderbookRequest`
 
-#### Return value
-
-The public method annotation is `FetchResult[MarketOrderbookData]`. FetchResult.data: StandardRecord. The `data` payload inside each StandardRecord is the `MarketOrderbookData` schema below.
-
-#### Returned data fields
-
-| Field | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | Complete instrument identity: code, market, kind and optional exchange. |
-| bids | list[OrderbookLevel] | No | Bid-side order-book levels. |
-| asks | list[OrderbookLevel] | No | Ask-side order-book levels. |
-
-#### Nested record types
-
-The following object types are used by the fields above. Enum values are shown inline in the type column.
-
-**`InstrumentId`**
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | Exchange-specific instrument code. |
-| market | Market | Yes | — | FinchX market identifier. |
-| kind | InstrumentKind | Yes | — | Instrument kind. |
-| exchange | Exchange \| None | No | None | Exchange identity when required by the dataset. |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
 
-**`OrderbookLevel`**
+The public return annotation is `FetchResult[MarketOrderbookData]`.
+
+#### Returned data model `MarketOrderbookData`
+
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| level | int | Yes | — | Order-book level number or sector hierarchy level, depending on the model. |
-| price | Decimal | Yes | — | Latest or observed price in CNY per share unless the dataset is an index series. |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
+| bids | list[OrderbookLevel] | Yes | — | Declared by the Pydantic model. |
+| asks | list[OrderbookLevel] | Yes | — | Declared by the Pydantic model. |
+
+#### Nested model `InstrumentId`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| code | str | Yes | — | Declared by the Pydantic model. |
+| market | Market | Yes | — | Declared by the Pydantic model. |
+| kind | InstrumentKind | Yes | — | Declared by the Pydantic model. |
+| exchange | Exchange \| None | No | None | Declared by the Pydantic model. |
+
+#### Nested model `OrderbookLevel`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| level | int | Yes | — | Declared by the Pydantic model. |
+| price | Decimal | Yes | — | Price per share; currency is CNY. |
 | size | int | Yes | — | A non-negative whole number of shares. |
-
 
 #### Example
 
+<!-- api-example: market.orderbook -->
 ```python
-from datetime import date
 from finchx import FinchX
-from finchx.datasets import KlineAdjustment
 from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
+from finchx.datasets import MarketOrderbookRequest
 
 fx = FinchX()
 instrument_id = InstrumentId(
@@ -2231,29 +1790,18 @@ instrument_id = InstrumentId(
     kind=InstrumentKind.EQUITY,
     exchange=Exchange.SSE,
 )
-index_id = InstrumentId(
-    code="000001",
-    market=Market.CN_A,
-    kind=InstrumentKind.INDEX,
-    exchange=Exchange.SSE,
-)
-from finchx.datasets import MarketOrderbookRequest
 request = MarketOrderbookRequest(instrumentId=instrument_id)
 result = fx.market.orderbook(request)
 ```
 
-#### Provider behavior and notes
-
-The registry currently implements: `tencent.finance.qq.quote`. Provider selection is controlled by runtime policy unless `provider=` is supplied. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
-
 ### `fx.market.quote(...)`
 
-Return the selected A-share quote universe as one standardized record per instrument.
+Fetch the selected quote universe in a FetchResult.
 
 **Dataset:** `market.quote`
 **Schema version:** `1.0`
 **Implemented Providers:** `tencent.finance.qq.market`
-**Routing semantics:** `multi_provider`. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
+**Routing semantics:** `multi_provider`
 
 #### Method signature
 
@@ -2265,101 +1813,77 @@ fx.market.quote(*, universe: 'InstrumentUniverse' = <InstrumentUniverse.CN_A_SHA
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| universe | InstrumentUniverse | No | <InstrumentUniverse.CN_A_SHARE: 'cn_a_share'> | InstrumentUniverse selection; the public quote convenience method defaults to CN_A_SHARE. |
-| request | MarketQuoteUniverseRequest \| None | No | None | Typed request model. It cannot be combined with the convenience business parameters. |
-| provider | str \| None | No | None | Strict Provider id pin. Only the named Provider is used. (keyword-only) |
-| use_cache | bool \| None | No | None | Whether the configured cache may be used; None follows the configured CachePolicy. (keyword-only) |
+| universe | InstrumentUniverse | No | InstrumentUniverse.CN_A_SHARE | Selection scope. |
+| request | MarketQuoteUniverseRequest \| None | No | None | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
+| use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-The typed request model is `MarketQuoteUniverseRequest`. Its fields are:
+**Minimum business input:** none; the default universe is CN_A_SHARE.
 
-| Request field | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| universe | Literal['cn_a_share'] | Yes | — | Instrument universe to query. |
+#### Request model `MarketQuoteUniverseRequest`
 
-#### Return value
-
-The public method annotation is `FetchResult[MarketQuoteData]`. FetchResult.data: tuple[StandardRecord, ...]. The `data` payload inside each StandardRecord is the `MarketQuoteData` schema below.
-
-#### Returned data fields
-
-| Field | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | Complete instrument identity: code, market, kind and optional exchange. |
-| name | str \| None | Yes | Provider-normalized display name. |
-| price | Decimal | No | Latest or observed price in CNY per share unless the dataset is an index series. |
-| priceChange | Decimal \| None | Yes | Signed absolute price change in CNY per share. |
-| changeRate | Decimal \| None | Yes | Change ratio; 10% is represented as 0.10. |
-| changeRate5d | Decimal \| None | Yes | Source-designated five-day price change ratio. |
-| changeRate10d | Decimal \| None | Yes | Source-designated ten-day price change ratio. |
-| changeRate20d | Decimal \| None | Yes | Source-designated twenty-day price change ratio. |
-| changeRate60d | Decimal \| None | Yes | Source-designated sixty-day price change ratio. |
-| changeRate52w | Decimal \| None | Yes | Source-designated 52-week price change ratio. |
-| changeRateYtd | Decimal \| None | Yes | Year-to-date price change ratio. |
-| amplitude | Decimal \| None | Yes | Intraday price amplitude as a ratio fraction. |
-| volumeRatio | Decimal \| None | Yes | Source volume ratio as a dimensionless multiple; 2.35 means 2.35x. |
-| volume | int \| None | Yes | Traded volume in whole shares. |
-| amount | Decimal \| None | Yes | Traded amount in CNY. |
-| turnoverRate | Decimal \| None | Yes | Turnover ratio; percentage values are represented as fractions. |
-| marketCap | Decimal \| None | Yes | Total market capitalization in CNY. |
-| floatMarketCap | Decimal \| None | Yes | Floating market capitalization in CNY. |
-| peTtm | Decimal \| None | Yes | Trailing price/earnings multiple when supplied by the source. |
-| mainNetInflow | Decimal \| None | Yes | Main-fund net inflow in CNY. |
-| mainInflow | Decimal \| None | Yes | Main-fund inflow in CNY. |
-| mainOutflow | Decimal \| None | Yes | Main-fund outflow in CNY. |
-| mainInflow5d | Decimal \| None | Yes | Normalized main inflow5d field. |
-| mainOutflow5d | Decimal \| None | Yes | Normalized main outflow5d field. |
-
-#### Nested record types
-
-The following object types are used by the fields above. Enum values are shown inline in the type column.
-
-**`InstrumentId`**
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | Exchange-specific instrument code. |
-| market | Market | Yes | — | FinchX market identifier. |
-| kind | InstrumentKind | Yes | — | Instrument kind. |
-| exchange | Exchange \| None | No | None | Exchange identity when required by the dataset. |
+| universe | InstrumentUniverse | Yes | — | Declared by the Pydantic model. |
 
+The public return annotation is `FetchResult[MarketQuoteData]`.
+
+#### Returned data model `MarketQuoteData`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
+| name | str \| None | No | None | Declared by the Pydantic model. |
+| price | Decimal | Yes | — | Price per share; currency is CNY. |
+| priceChange | Decimal \| None | No | None | Signed absolute price change in CNY per share. |
+| changeRate | Decimal \| None | No | None | Declared by the Pydantic model. |
+| changeRate5d | Decimal \| None | No | None | Source-designated 5d price change, stored as a ratio fraction. |
+| changeRate10d | Decimal \| None | No | None | Source-designated 10d price change, stored as a ratio fraction. |
+| changeRate20d | Decimal \| None | No | None | Source-designated 20d price change, stored as a ratio fraction. |
+| changeRate60d | Decimal \| None | No | None | Source-designated 60d price change, stored as a ratio fraction. |
+| changeRate52w | Decimal \| None | No | None | Price change over the source-designated 52-week period, as a ratio fraction. |
+| changeRateYtd | Decimal \| None | No | None | Year-to-date price change, stored as a ratio fraction. |
+| amplitude | Decimal \| None | No | None | Intraday price amplitude, stored as a ratio fraction. |
+| volumeRatio | Decimal \| None | No | None | Non-negative volume ratio in times; 2.35 represents 2.35x. |
+| volume | int \| None | No | None | Declared by the Pydantic model. |
+| amount | Decimal \| None | No | None | Declared by the Pydantic model. |
+| turnoverRate | Decimal \| None | No | None | Declared by the Pydantic model. |
+| marketCap | Decimal \| None | No | None | Declared by the Pydantic model. |
+| floatMarketCap | Decimal \| None | No | None | Declared by the Pydantic model. |
+| peTtm | Decimal \| None | No | None | Declared by the Pydantic model. |
+| mainNetInflow | Decimal \| None | No | None | Declared by the Pydantic model. |
+| mainInflow | Decimal \| None | No | None | Declared by the Pydantic model. |
+| mainOutflow | Decimal \| None | No | None | Declared by the Pydantic model. |
+| mainInflow5d | Decimal \| None | No | None | Declared by the Pydantic model. |
+| mainOutflow5d | Decimal \| None | No | None | Declared by the Pydantic model. |
+
+#### Nested model `InstrumentId`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| code | str | Yes | — | Declared by the Pydantic model. |
+| market | Market | Yes | — | Declared by the Pydantic model. |
+| kind | InstrumentKind | Yes | — | Declared by the Pydantic model. |
+| exchange | Exchange \| None | No | None | Declared by the Pydantic model. |
 
 #### Example
 
+<!-- api-example: market.quote -->
 ```python
-from datetime import date
 from finchx import FinchX
-from finchx.datasets import KlineAdjustment
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-index_id = InstrumentId(
-    code="000001",
-    market=Market.CN_A,
-    kind=InstrumentKind.INDEX,
-    exchange=Exchange.SSE,
-)
 result = fx.market.quote()
-for record in result.data:
-    print(record.data["instrumentId"], record.data["price"])
 ```
-
-#### Provider behavior and notes
-
-The registry currently implements: `tencent.finance.qq.market`. Provider selection is controlled by runtime policy unless `provider=` is supplied. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
 
 ### `fx.market.quote_snapshot(...)`
 
-Return one quote snapshot for one instrument, including source-reported timestamp.
+Fetch one quote snapshot in a FetchResult.
 
 **Dataset:** `market.quote_snapshot`
 **Schema version:** `1.0`
 **Implemented Providers:** `tencent.finance.qq.quote`
-**Routing semantics:** `multi_provider`. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
+**Routing semantics:** `multi_provider`
 
 #### Method signature
 
@@ -2371,56 +1895,52 @@ fx.market.quote_snapshot(request: 'MarketQuoteSnapshotRequest', *, provider: 'st
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | MarketQuoteSnapshotRequest | Yes | — | Typed request model. It cannot be combined with the convenience business parameters. |
-| provider | str \| None | No | None | Strict Provider id pin. Only the named Provider is used. (keyword-only) |
-| use_cache | bool \| None | No | None | Whether the configured cache may be used; None follows the configured CachePolicy. (keyword-only) |
+| request | MarketQuoteSnapshotRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
+| use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-The typed request model is `MarketQuoteSnapshotRequest`. Its fields are:
+**Minimum business input:** request (instrumentId).
 
-| Request field | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | Complete instrument identity: code, market, kind and optional exchange. |
+#### Request model `MarketQuoteSnapshotRequest`
 
-#### Return value
-
-The public method annotation is `FetchResult[MarketQuoteSnapshotData]`. FetchResult.data: StandardRecord. The `data` payload inside each StandardRecord is the `MarketQuoteSnapshotData` schema below.
-
-#### Returned data fields
-
-| Field | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | Complete instrument identity: code, market, kind and optional exchange. |
-| price | Decimal | No | Latest or observed price in CNY per share unless the dataset is an index series. |
-| previousClose | Decimal \| None | Yes | Previous-session close in CNY per share. |
-| open | Decimal \| None | Yes | Session open price in CNY per share. |
-| high | Decimal \| None | Yes | Session high price in CNY per share. |
-| low | Decimal \| None | Yes | Session low price in CNY per share. |
-| priceChange | Decimal \| None | Yes | Signed absolute price change in CNY per share. |
-| changeRate | Decimal \| None | Yes | Change ratio; 10% is represented as 0.10. |
-| volume | int \| None | Yes | Traded volume in whole shares. |
-| amount | Decimal \| None | Yes | Traded amount in CNY. |
-| sourceTimestamp | datetime | No | Source-reported quote timestamp; it is distinct from FinchX capturedAt. |
-
-#### Nested record types
-
-The following object types are used by the fields above. Enum values are shown inline in the type column.
-
-**`InstrumentId`**
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | Exchange-specific instrument code. |
-| market | Market | Yes | — | FinchX market identifier. |
-| kind | InstrumentKind | Yes | — | Instrument kind. |
-| exchange | Exchange \| None | No | None | Exchange identity when required by the dataset. |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
 
+The public return annotation is `FetchResult[MarketQuoteSnapshotData]`.
+
+#### Returned data model `MarketQuoteSnapshotData`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
+| price | Decimal | Yes | — | Latest price in CNY per share. |
+| previousClose | Decimal \| None | No | None | Declared by the Pydantic model. |
+| open | Decimal \| None | No | None | Session open in CNY per share. |
+| high | Decimal \| None | No | None | Session high in CNY per share. |
+| low | Decimal \| None | No | None | Session low in CNY per share. |
+| priceChange | Decimal \| None | No | None | Declared by the Pydantic model. |
+| changeRate | Decimal \| None | No | None | Change from previous close as a ratio fraction; 3% is 0.03. |
+| volume | int \| None | No | None | Cumulative session volume in shares. |
+| amount | Decimal \| None | No | None | Cumulative session amount in CNY. |
+| sourceTimestamp | datetime | Yes | — | Source-reported quote time, separate from FinchX capturedAt. |
+
+#### Nested model `InstrumentId`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| code | str | Yes | — | Declared by the Pydantic model. |
+| market | Market | Yes | — | Declared by the Pydantic model. |
+| kind | InstrumentKind | Yes | — | Declared by the Pydantic model. |
+| exchange | Exchange \| None | No | None | Declared by the Pydantic model. |
 
 #### Example
 
+<!-- api-example: market.quote_snapshot -->
 ```python
-from datetime import date
 from finchx import FinchX
-from finchx.datasets import KlineAdjustment
 from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
+from finchx.datasets import MarketQuoteSnapshotRequest
 
 fx = FinchX()
 instrument_id = InstrumentId(
@@ -2429,29 +1949,18 @@ instrument_id = InstrumentId(
     kind=InstrumentKind.EQUITY,
     exchange=Exchange.SSE,
 )
-index_id = InstrumentId(
-    code="000001",
-    market=Market.CN_A,
-    kind=InstrumentKind.INDEX,
-    exchange=Exchange.SSE,
-)
-from finchx.datasets import MarketQuoteSnapshotRequest
 request = MarketQuoteSnapshotRequest(instrumentId=instrument_id)
 result = fx.market.quote_snapshot(request)
 ```
 
-#### Provider behavior and notes
-
-The registry currently implements: `tencent.finance.qq.quote`. Provider selection is controlled by runtime policy unless `provider=` is supplied. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
-
 ### `fx.market.ranking(...)`
 
-Rank the selected quote universe by one supported market metric and direction.
+Fetch the requested market ranking in a FetchResult.
 
 **Dataset:** `market.ranking`
 **Schema version:** `1.0`
 **Implemented Providers:** `tencent.finance.qq.market`
-**Routing semantics:** `multi_provider`. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
+**Routing semantics:** `multi_provider`
 
 #### Method signature
 
@@ -2463,128 +1972,111 @@ fx.market.ranking(request: 'MarketRankingRequest', *, provider: 'str | None' = N
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | MarketRankingRequest | Yes | — | Typed request model. It cannot be combined with the convenience business parameters. |
-| provider | str \| None | No | None | Strict Provider id pin. Only the named Provider is used. (keyword-only) |
-| use_cache | bool \| None | No | None | Whether the configured cache may be used; None follows the configured CachePolicy. (keyword-only) |
+| request | MarketRankingRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
+| use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-The typed request model is `MarketRankingRequest`. Its fields are:
+**Minimum business input:** request (universe, criterion, direction, limit).
 
-| Request field | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| universe | Literal['cn_a_share'] | Yes | — | Instrument universe to query. |
-| criterion | Literal['turnover', 'change_percent', 'volume'] | Yes | — | Ranking criterion used to select the metric. |
-| direction | Literal['ascending', 'descending'] | Yes | — | Ranking direction. |
-| limit | int \| None | Yes | — | Maximum number of ranking rows requested. |
+#### Request model `MarketRankingRequest`
 
-#### Return value
-
-The public method annotation is `FetchResult[MarketRankingData]`. FetchResult.data: tuple[StandardRecord, ...]. The `data` payload inside each StandardRecord is the `MarketRankingData` schema below.
-
-#### Returned data fields
-
-| Field | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | Complete instrument identity: code, market, kind and optional exchange. |
-| name | str \| None | Yes | Provider-normalized display name. |
-| price | Decimal | No | Latest or observed price in CNY per share unless the dataset is an index series. |
-| priceChange | Decimal \| None | Yes | Signed absolute price change in CNY per share. |
-| changeRate | Decimal \| None | Yes | Change ratio; 10% is represented as 0.10. |
-| changeRate5d | Decimal \| None | Yes | Source-designated five-day price change ratio. |
-| changeRate10d | Decimal \| None | Yes | Source-designated ten-day price change ratio. |
-| changeRate20d | Decimal \| None | Yes | Source-designated twenty-day price change ratio. |
-| changeRate60d | Decimal \| None | Yes | Source-designated sixty-day price change ratio. |
-| changeRate52w | Decimal \| None | Yes | Source-designated 52-week price change ratio. |
-| changeRateYtd | Decimal \| None | Yes | Year-to-date price change ratio. |
-| amplitude | Decimal \| None | Yes | Intraday price amplitude as a ratio fraction. |
-| volumeRatio | Decimal \| None | Yes | Source volume ratio as a dimensionless multiple; 2.35 means 2.35x. |
-| volume | int \| None | Yes | Traded volume in whole shares. |
-| amount | Decimal \| None | Yes | Traded amount in CNY. |
-| turnoverRate | Decimal \| None | Yes | Turnover ratio; percentage values are represented as fractions. |
-| marketCap | Decimal \| None | Yes | Total market capitalization in CNY. |
-| floatMarketCap | Decimal \| None | Yes | Floating market capitalization in CNY. |
-| peTtm | Decimal \| None | Yes | Trailing price/earnings multiple when supplied by the source. |
-| mainNetInflow | Decimal \| None | Yes | Main-fund net inflow in CNY. |
-| mainInflow | Decimal \| None | Yes | Main-fund inflow in CNY. |
-| mainOutflow | Decimal \| None | Yes | Main-fund outflow in CNY. |
-| mainInflow5d | Decimal \| None | Yes | Normalized main inflow5d field. |
-| mainOutflow5d | Decimal \| None | Yes | Normalized main outflow5d field. |
-| universe | Literal['cn_a_share'] | No | Instrument universe to query. |
-| direction | Literal['ascending', 'descending'] | No | Ranking direction. |
-| position | int | No | One-based position in the returned ranking. |
-| metric | Any | No | Ranking metric used for the row. |
-
-#### Nested record types
-
-The following object types are used by the fields above. Enum values are shown inline in the type column.
-
-**`ChangePercentRankingMetric`**
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| criterion | 'change_percent' | Yes | — | Ranking criterion used to select the metric. |
+| universe | InstrumentUniverse | Yes | — | Declared by the Pydantic model. |
+| criterion | RankingCriterion | Yes | — | Declared by the Pydantic model. |
+| direction | RankingDirection | Yes | — | Declared by the Pydantic model. |
+| limit | int \| None | Yes | — | Declared by the Pydantic model. |
+
+The public return annotation is `FetchResult[MarketRankingData]`.
+
+#### Returned data model `MarketRankingData`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
+| name | str \| None | No | None | Declared by the Pydantic model. |
+| price | Decimal | Yes | — | Price per share; currency is CNY. |
+| priceChange | Decimal \| None | No | None | Signed absolute price change in CNY per share. |
+| changeRate | Decimal \| None | No | None | Declared by the Pydantic model. |
+| changeRate5d | Decimal \| None | No | None | Source-designated 5d price change, stored as a ratio fraction. |
+| changeRate10d | Decimal \| None | No | None | Source-designated 10d price change, stored as a ratio fraction. |
+| changeRate20d | Decimal \| None | No | None | Source-designated 20d price change, stored as a ratio fraction. |
+| changeRate60d | Decimal \| None | No | None | Source-designated 60d price change, stored as a ratio fraction. |
+| changeRate52w | Decimal \| None | No | None | Price change over the source-designated 52-week period, as a ratio fraction. |
+| changeRateYtd | Decimal \| None | No | None | Year-to-date price change, stored as a ratio fraction. |
+| amplitude | Decimal \| None | No | None | Intraday price amplitude, stored as a ratio fraction. |
+| volumeRatio | Decimal \| None | No | None | Non-negative volume ratio in times; 2.35 represents 2.35x. |
+| volume | int \| None | No | None | Declared by the Pydantic model. |
+| amount | Decimal \| None | No | None | Declared by the Pydantic model. |
+| turnoverRate | Decimal \| None | No | None | Declared by the Pydantic model. |
+| marketCap | Decimal \| None | No | None | Declared by the Pydantic model. |
+| floatMarketCap | Decimal \| None | No | None | Declared by the Pydantic model. |
+| peTtm | Decimal \| None | No | None | Declared by the Pydantic model. |
+| mainNetInflow | Decimal \| None | No | None | Declared by the Pydantic model. |
+| mainInflow | Decimal \| None | No | None | Declared by the Pydantic model. |
+| mainOutflow | Decimal \| None | No | None | Declared by the Pydantic model. |
+| mainInflow5d | Decimal \| None | No | None | Declared by the Pydantic model. |
+| mainOutflow5d | Decimal \| None | No | None | Declared by the Pydantic model. |
+| universe | InstrumentUniverse | Yes | — | Declared by the Pydantic model. |
+| direction | RankingDirection | Yes | — | Declared by the Pydantic model. |
+| position | int | Yes | — | Declared by the Pydantic model. |
+| metric | TurnoverRankingMetric \| ChangePercentRankingMetric \| VolumeRankingMetric | Yes | — | Declared by the Pydantic model. |
+
+#### Nested model `InstrumentId`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| code | str | Yes | — | Declared by the Pydantic model. |
+| market | Market | Yes | — | Declared by the Pydantic model. |
+| kind | InstrumentKind | Yes | — | Declared by the Pydantic model. |
+| exchange | Exchange \| None | No | None | Declared by the Pydantic model. |
+
+#### Nested model `ChangePercentRankingMetric`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| criterion | Literal['change_percent'] | Yes | — | Declared by the Pydantic model. |
 | value | Decimal | Yes | — | A ratio fraction, not percentage points: 4.24% is 0.0424. |
 
-**`InstrumentId`**
-| Field | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| code | str | Yes | — | Exchange-specific instrument code. |
-| market | Market | Yes | — | FinchX market identifier. |
-| kind | InstrumentKind | Yes | — | Instrument kind. |
-| exchange | Exchange \| None | No | None | Exchange identity when required by the dataset. |
+#### Nested model `TurnoverRankingMetric`
 
-**`TurnoverRankingMetric`**
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| criterion | 'turnover' | Yes | — | Ranking criterion used to select the metric. |
+| criterion | Literal['turnover'] | Yes | — | Declared by the Pydantic model. |
 | value | Decimal | Yes | — | Monetary amount in CNY. |
 
-**`VolumeRankingMetric`**
+#### Nested model `VolumeRankingMetric`
+
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| criterion | 'volume' | Yes | — | Ranking criterion used to select the metric. |
+| criterion | Literal['volume'] | Yes | — | Declared by the Pydantic model. |
 | value | int | Yes | — | A non-negative whole number of shares. |
-
 
 #### Example
 
+<!-- api-example: market.ranking -->
 ```python
-from datetime import date
 from finchx import FinchX
-from finchx.datasets import KlineAdjustment
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
+from finchx.datasets import InstrumentUniverse, MarketRankingRequest, RankingCriterion, RankingDirection
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-index_id = InstrumentId(
-    code="000001",
-    market=Market.CN_A,
-    kind=InstrumentKind.INDEX,
-    exchange=Exchange.SSE,
-)
-from finchx.datasets import MarketRankingRequest
-from finchx.datasets import MarketRankingRequest
 request = MarketRankingRequest(
-    universe="cn_a_share", criterion="turnover", direction="descending", limit=10
+    universe=InstrumentUniverse.CN_A_SHARE,
+    criterion=RankingCriterion.TURNOVER,
+    direction=RankingDirection.DESCENDING,
+    limit=20,
 )
 result = fx.market.ranking(request)
 ```
 
-#### Provider behavior and notes
-
-The registry currently implements: `tencent.finance.qq.market`. Provider selection is controlled by runtime policy unless `provider=` is supplied. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
-
 ### `fx.market.sentiment(...)`
 
-Return the Aigupiao market-sentiment snapshot and its source-defined ratios/counts.
+Fetch the market sentiment snapshot in a FetchResult.
 
 **Dataset:** `market.sentiment_snapshot`
 **Schema version:** `1.0`
 **Implemented Providers:** `aigupiao.market_sentiment`
-**Routing semantics:** `single_source`. The registry marks this Dataset as `single_source`; the listed Provider is the implemented source-specific contract.
+**Routing semantics:** `single_source`
 
 #### Method signature
 
@@ -2596,79 +2088,57 @@ fx.market.sentiment(request: 'MarketSentimentRequest | None' = None, *, provider
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | MarketSentimentRequest \| None | No | None | Typed request model. It cannot be combined with the convenience business parameters. |
-| provider | str \| None | No | None | Strict Provider id pin. Only the named Provider is used. (keyword-only) |
-| use_cache | bool \| None | No | None | Whether the configured cache may be used; None follows the configured CachePolicy. (keyword-only) |
+| request | MarketSentimentRequest \| None | No | None | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
+| use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-The typed request model is `MarketSentimentRequest`. Its fields are:
+**Minimum business input:** none.
 
-This request model has no fields; call the endpoint without a request object or use the default request behavior.
+#### Request model `MarketSentimentRequest`
 
-#### Return value
+No fields; instantiate this model without arguments.
 
-The public method annotation is `FetchResult[MarketSentimentData]`. FetchResult.data: StandardRecord. The `data` payload inside each StandardRecord is the `MarketSentimentData` schema below.
+The public return annotation is `FetchResult[MarketSentimentData]`.
 
-#### Returned data fields
+#### Returned data model `MarketSentimentData`
 
-| Field | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| marketTemperature | str | No | Aigupiao source-defined market temperature; not a physical temperature or universal ratio. |
-| totalTurnover | Decimal \| None | Yes | Normalized total turnover field. |
-| forecastedTurnover | Decimal \| None | Yes | Source forecast of turnover, not observed turnover. |
-| turnoverChangeAmount | Decimal \| None | Yes | Source-reported turnover amount change versus the prior day. |
-| blastBreakRatio | Decimal \| None | Yes | Source-defined broken-limit ratio; FinchX does not reconstruct its denominator. |
-| previousLimitUpBreakChangeRatio | Decimal \| None | Yes | Source-defined previous broken-limit performance ratio. |
-| stopTradingCount | int | No | Count of stopped-trading observations. |
-| oneLimitUpCount | int | No | Count of one-limit-up observations. |
-| twoLimitUpCount | int | No | Count of two-limit-up observations. |
-| threeLimitUpCount | int | No | Count of three-limit-up observations. |
-| highLimitUpCount | int | No | Count of high limit-up observations. |
-| twoLimitUpPromotionRatio | Decimal \| None | Yes | Source-defined promotion ratio; FinchX does not reproduce the denominator. |
-| threeLimitUpPromotionRatio | Decimal \| None | Yes | Source-defined promotion ratio; FinchX does not reproduce the denominator. |
-| highLimitUpPromotionRatio | Decimal \| None | Yes | Source-defined promotion ratio; FinchX does not reproduce the denominator. |
-| previousLimitUpThemeChangeRatio | Decimal \| None | Yes | Source-defined previous limit-up group performance ratio. |
-| previousConsecutiveLimitUpThemeChangeRatio | Decimal \| None | Yes | Source-defined previous consecutive-limit-up group performance ratio. |
-
-
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| marketTemperature | Decimal | Yes | — | Aigupiao source-defined sentiment temperature; not a physical temperature or ratio. |
+| totalTurnover | Decimal \| None | No | None | Declared by the Pydantic model. |
+| forecastedTurnover | Decimal \| None | No | None | Source forecast, not observed turnover. |
+| turnoverChangeAmount | Decimal \| None | No | None | Source-reported change in turnover amount versus the prior day. |
+| blastBreakRatio | Decimal \| None | No | None | Source-defined ratio; FinchX does not reproduce the denominator. |
+| previousLimitUpBreakChangeRatio | Decimal \| None | No | None | Source-defined previous broken-limit performance ratio. |
+| stopTradingCount | int | Yes | — | Declared by the Pydantic model. |
+| oneLimitUpCount | int | Yes | — | Declared by the Pydantic model. |
+| twoLimitUpCount | int | Yes | — | Declared by the Pydantic model. |
+| threeLimitUpCount | int | Yes | — | Declared by the Pydantic model. |
+| highLimitUpCount | int | Yes | — | Declared by the Pydantic model. |
+| twoLimitUpPromotionRatio | Decimal \| None | No | None | Source-defined promotion ratio; FinchX does not reproduce the denominator. |
+| threeLimitUpPromotionRatio | Decimal \| None | No | None | Source-defined promotion ratio; FinchX does not reproduce the denominator. |
+| highLimitUpPromotionRatio | Decimal \| None | No | None | Source-defined promotion ratio; FinchX does not reproduce the denominator. |
+| previousLimitUpThemeChangeRatio | Decimal \| None | No | None | Source-defined previous limit-up group performance ratio. |
+| previousConsecutiveLimitUpThemeChangeRatio | Decimal \| None | No | None | Source-defined previous consecutive-limit-up group performance ratio. |
 
 #### Example
 
+<!-- api-example: market.sentiment -->
 ```python
-from datetime import date
 from finchx import FinchX
-from finchx.datasets import KlineAdjustment
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-index_id = InstrumentId(
-    code="000001",
-    market=Market.CN_A,
-    kind=InstrumentKind.INDEX,
-    exchange=Exchange.SSE,
-)
-from finchx.datasets import MarketSentimentRequest
-request = MarketSentimentRequest()
-result = fx.market.sentiment(request)
+result = fx.market.sentiment()
 ```
-
-#### Provider behavior and notes
-
-The registry currently implements: `aigupiao.market_sentiment`. Provider selection is controlled by runtime policy unless `provider=` is supplied. The registry marks this Dataset as `single_source`; the listed Provider is the implemented source-specific contract.
 
 ### `fx.market.strong_pool(...)`
 
-Return the EastMoney strong-stock pool for one trading date.
+Fetch the strong pool in a FetchResult.
 
 **Dataset:** `market.strong_pool`
 **Schema version:** `1.0`
 **Implemented Providers:** `eastmoney.push2ex.strong_pool`
-**Routing semantics:** `single_source`. The registry marks this Dataset as `single_source`; the listed Provider is the implemented source-specific contract.
+**Routing semantics:** `single_source`
 
 #### Method signature
 
@@ -2680,97 +2150,77 @@ fx.market.strong_pool(request: 'MarketStrongPoolRequest', *, provider: 'str | No
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | MarketStrongPoolRequest | Yes | — | Typed request model. It cannot be combined with the convenience business parameters. |
-| provider | str \| None | No | None | Strict Provider id pin. Only the named Provider is used. (keyword-only) |
-| use_cache | bool \| None | No | None | Whether the configured cache may be used; None follows the configured CachePolicy. (keyword-only) |
+| request | MarketStrongPoolRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
+| use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-The typed request model is `MarketStrongPoolRequest`. Its fields are:
+**Minimum business input:** request.
 
-| Request field | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| tradeDate | date | Yes | — | Source trading-date label; it is not FinchX capture time. |
+#### Request model `MarketStrongPoolRequest`
 
-#### Return value
-
-The public method annotation is `FetchResult[MarketStrongPoolData]`. FetchResult.data: tuple[StandardRecord, ...]. The `data` payload inside each StandardRecord is the `MarketStrongPoolData` schema below.
-
-#### Returned data fields
-
-| Field | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | Complete instrument identity: code, market, kind and optional exchange. |
-| tradeDate | date | No | Source trading-date label; it is not FinchX capture time. |
-| name | str | No | Provider-normalized display name. |
-| price | Decimal | No | Latest or observed price in CNY per share unless the dataset is an index series. |
-| limitUpPrice | Decimal | No | Current-session limit-up price in CNY per share. |
-| changeRate | Decimal | No | Change ratio; 10% is represented as 0.10. |
-| amount | Decimal | No | Traded amount in CNY. |
-| floatMarketCapitalization | Decimal | No | Floating market capitalization in CNY. |
-| marketCapitalization | Decimal | No | Total market capitalization in CNY. |
-| turnoverRate | Decimal | No | Turnover ratio; percentage values are represented as fractions. |
-| isSixtyDayHigh | bool | No | Whether the source marks the instrument as a 60-day high. |
-| selectionReason | Literal['sixty_day_high', 'recent_multiple_limit_ups', 'sixty_day_high_and_recent_multiple_limit_ups'] | No | Source-defined reason for strong-pool selection. |
-| volumeRatio | Decimal | No | Source volume ratio as a dimensionless multiple; 2.35 means 2.35x. |
-| industry | str | No | Source-provided industry label. |
-| limitUpStats | MarketStrongPoolStats | No | Source-defined limit-up history statistics. |
-
-#### Nested record types
-
-The following object types are used by the fields above. Enum values are shown inline in the type column.
-
-**`InstrumentId`**
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | Exchange-specific instrument code. |
-| market | Market | Yes | — | FinchX market identifier. |
-| kind | InstrumentKind | Yes | — | Instrument kind. |
-| exchange | Exchange \| None | No | None | Exchange identity when required by the dataset. |
+| tradeDate | date | Yes | — | Declared by the Pydantic model. |
 
-**`MarketStrongPoolStats`**
+The public return annotation is `FetchResult[MarketStrongPoolData]`.
+
+#### Returned data model `MarketStrongPoolData`
+
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| lookbackDays | int | Yes | — | Normalized lookback days field. |
-| limitUpCount | int | Yes | — | Number of limit-up instruments. |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
+| tradeDate | date | Yes | — | Declared by the Pydantic model. |
+| name | str | Yes | — | Declared by the Pydantic model. |
+| price | Decimal | Yes | — | Latest price in CNY per share. |
+| limitUpPrice | Decimal | Yes | — | Current limit-up price in CNY per share. |
+| changeRate | Decimal | Yes | — | Ratio fraction; 20% is 0.20. |
+| amount | Decimal | Yes | — | Current-session traded amount in CNY. |
+| floatMarketCapitalization | Decimal | Yes | — | Monetary amount in CNY. |
+| marketCapitalization | Decimal | Yes | — | Monetary amount in CNY. |
+| turnoverRate | Decimal | Yes | — | Ratio fraction. |
+| isSixtyDayHigh | bool | Yes | — | Declared by the Pydantic model. |
+| selectionReason | StrongPoolSelectionReason | Yes | — | Declared by the Pydantic model. |
+| volumeRatio | Decimal | Yes | — | Source volume ratio as a dimensionless multiple. |
+| industry | str | Yes | — | Declared by the Pydantic model. |
+| limitUpStats | MarketStrongPoolStats | Yes | — | Declared by the Pydantic model. |
 
+#### Nested model `InstrumentId`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| code | str | Yes | — | Declared by the Pydantic model. |
+| market | Market | Yes | — | Declared by the Pydantic model. |
+| kind | InstrumentKind | Yes | — | Declared by the Pydantic model. |
+| exchange | Exchange \| None | No | None | Declared by the Pydantic model. |
+
+#### Nested model `MarketStrongPoolStats`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| lookbackDays | int | Yes | — | Declared by the Pydantic model. |
+| limitUpCount | int | Yes | — | Declared by the Pydantic model. |
 
 #### Example
 
+<!-- api-example: market.strong_pool -->
 ```python
 from datetime import date
 from finchx import FinchX
-from finchx.datasets import KlineAdjustment
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
+from finchx.datasets import MarketStrongPoolRequest
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-index_id = InstrumentId(
-    code="000001",
-    market=Market.CN_A,
-    kind=InstrumentKind.INDEX,
-    exchange=Exchange.SSE,
-)
-from finchx.datasets import MarketStrongPoolRequest
 request = MarketStrongPoolRequest(tradeDate=date(2026, 9, 18))
 result = fx.market.strong_pool(request)
 ```
 
-#### Provider behavior and notes
-
-The registry currently implements: `eastmoney.push2ex.strong_pool`. Provider selection is controlled by runtime policy unless `provider=` is supplied. The registry marks this Dataset as `single_source`; the listed Provider is the implemented source-specific contract.
-
 ### `fx.market.yesterday_limit_up_pool(...)`
 
-Return today's observations for stocks that were in the prior-session limit-up pool.
+Fetch the yesterday-limit-up pool in a FetchResult.
 
 **Dataset:** `market.yesterday_limit_up_pool`
 **Schema version:** `1.0`
 **Implemented Providers:** `eastmoney.push2ex.yesterday_limit_up_pool`
-**Routing semantics:** `single_source`. The registry marks this Dataset as `single_source`; the listed Provider is the implemented source-specific contract.
+**Routing semantics:** `single_source`
 
 #### Method signature
 
@@ -2782,94 +2232,71 @@ fx.market.yesterday_limit_up_pool(request: 'MarketYesterdayLimitUpPoolRequest', 
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | MarketYesterdayLimitUpPoolRequest | Yes | — | Typed request model. It cannot be combined with the convenience business parameters. |
-| provider | str \| None | No | None | Strict Provider id pin. Only the named Provider is used. (keyword-only) |
-| use_cache | bool \| None | No | None | Whether the configured cache may be used; None follows the configured CachePolicy. (keyword-only) |
+| request | MarketYesterdayLimitUpPoolRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
+| use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-The typed request model is `MarketYesterdayLimitUpPoolRequest`. Its fields are:
+**Minimum business input:** request.
 
-| Request field | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| tradeDate | date | Yes | — | Source trading-date label; it is not FinchX capture time. |
+#### Request model `MarketYesterdayLimitUpPoolRequest`
 
-#### Return value
-
-The public method annotation is `FetchResult[MarketYesterdayLimitUpPoolData]`. FetchResult.data: tuple[StandardRecord, ...]. The `data` payload inside each StandardRecord is the `MarketYesterdayLimitUpPoolData` schema below.
-
-#### Returned data fields
-
-| Field | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | Complete instrument identity: code, market, kind and optional exchange. |
-| tradeDate | date | No | Source trading-date label; it is not FinchX capture time. |
-| name | str | No | Provider-normalized display name. |
-| currentPrice | Decimal | No | Current-session price in CNY per share. |
-| currentLimitUpPrice | Decimal | No | Current-session limit-up price in CNY per share. |
-| currentChangeRate | Decimal | No | Current-session change ratio; 10% is represented as 0.10. |
-| currentAmount | Decimal | No | Current-session traded amount in CNY. |
-| floatMarketCapitalization | Decimal | No | Floating market capitalization in CNY. |
-| marketCapitalization | Decimal | No | Total market capitalization in CNY. |
-| currentTurnoverRate | Decimal | No | Current-session turnover ratio. |
-| currentAmplitude | Decimal | No | Current-session price amplitude as a ratio fraction. |
-| yesterdayFirstLimitUpTime | str \| None | Yes | Previous-session first limit-up time, market-local HH:MM:SS. |
-| yesterdayConsecutiveLimitUpDays | int | No | Prior-session consecutive limit-up count. |
-| industry | str | No | Source-provided industry label. |
-
-#### Nested record types
-
-The following object types are used by the fields above. Enum values are shown inline in the type column.
-
-**`InstrumentId`**
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | Exchange-specific instrument code. |
-| market | Market | Yes | — | FinchX market identifier. |
-| kind | InstrumentKind | Yes | — | Instrument kind. |
-| exchange | Exchange \| None | No | None | Exchange identity when required by the dataset. |
+| tradeDate | date | Yes | — | Declared by the Pydantic model. |
 
+The public return annotation is `FetchResult[MarketYesterdayLimitUpPoolData]`.
+
+#### Returned data model `MarketYesterdayLimitUpPoolData`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
+| tradeDate | date | Yes | — | Current observed source date, not the prior limit-up event date. |
+| name | str | Yes | — | Declared by the Pydantic model. |
+| currentPrice | Decimal | Yes | — | Current-session price in CNY per share. |
+| currentLimitUpPrice | Decimal | Yes | — | Current-session limit-up price in CNY per share. |
+| currentChangeRate | Decimal | Yes | — | Current-session ratio fraction. |
+| currentAmount | Decimal | Yes | — | Current-session traded amount in CNY. |
+| floatMarketCapitalization | Decimal | Yes | — | Monetary amount in CNY. |
+| marketCapitalization | Decimal | Yes | — | Monetary amount in CNY. |
+| currentTurnoverRate | Decimal | Yes | — | Current-session turnover ratio fraction. |
+| currentAmplitude | Decimal | Yes | — | Current-session amplitude as a ratio fraction. |
+| yesterdayFirstLimitUpTime | str \| None | No | None | Previous-session first limit-up time, market-local HH:MM:SS. |
+| yesterdayConsecutiveLimitUpDays | int | Yes | — | Declared by the Pydantic model. |
+| industry | str | Yes | — | Declared by the Pydantic model. |
+
+#### Nested model `InstrumentId`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| code | str | Yes | — | Declared by the Pydantic model. |
+| market | Market | Yes | — | Declared by the Pydantic model. |
+| kind | InstrumentKind | Yes | — | Declared by the Pydantic model. |
+| exchange | Exchange \| None | No | None | Declared by the Pydantic model. |
 
 #### Example
 
+<!-- api-example: market.yesterday_limit_up_pool -->
 ```python
 from datetime import date
 from finchx import FinchX
-from finchx.datasets import KlineAdjustment
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
+from finchx.datasets import MarketYesterdayLimitUpPoolRequest
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-index_id = InstrumentId(
-    code="000001",
-    market=Market.CN_A,
-    kind=InstrumentKind.INDEX,
-    exchange=Exchange.SSE,
-)
-from finchx.datasets import MarketYesterdayLimitUpPoolRequest
 request = MarketYesterdayLimitUpPoolRequest(tradeDate=date(2026, 9, 18))
 result = fx.market.yesterday_limit_up_pool(request)
 ```
 
-#### Provider behavior and notes
-
-The registry currently implements: `eastmoney.push2ex.yesterday_limit_up_pool`. Provider selection is controlled by runtime policy unless `provider=` is supplied. The registry marks this Dataset as `single_source`; the listed Provider is the implemented source-specific contract.
-
 ## `fundamental`
-
-Company profiles, financial summaries, revenue and industry comparisons.
 
 ### `fx.fundamental.company_profile(...)`
 
-Return the normalized company profile for one instrument.
+Fetch a company's profile in a FetchResult.
 
 **Dataset:** `fundamental.company_profile`
 **Schema version:** `1.0`
 **Implemented Providers:** `tencent.finance.qq.f10`
-**Routing semantics:** `multi_provider`. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
+**Routing semantics:** `multi_provider`
 
 #### Method signature
 
@@ -2881,39 +2308,36 @@ fx.fundamental.company_profile(instrument_id: 'InstrumentId | None' = None, *, r
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| instrument_id | InstrumentId \| None | No | None | Complete InstrumentId for the target instrument. |
-| request | CompanyProfileRequest \| None | No | None | Typed request model. It cannot be combined with the convenience business parameters. |
-| provider | str \| None | No | None | Strict Provider id pin. Only the named Provider is used. (keyword-only) |
-| use_cache | bool \| None | No | None | Whether the configured cache may be used; None follows the configured CachePolicy. (keyword-only) |
+| instrument_id | InstrumentId \| None | Required in convenience mode | None | Complete InstrumentId. |
+| request | CompanyProfileRequest \| None | Conditional request alternative | None | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
+| use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-The typed request model is `CompanyProfileRequest`. Its fields are:
+**Minimum business input:** instrument_id or request.
 
-| Request field | Type | Required | Default | Description |
+#### Request model `CompanyProfileRequest`
+
+| Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | Complete instrument identity: code, market, kind and optional exchange. |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
 
-#### Return value
+The public return annotation is `FetchResult[CompanyProfileData]`.
 
-The public method annotation is `FetchResult[CompanyProfileData]`. FetchResult.data: StandardRecord. The `data` payload inside each StandardRecord is the `CompanyProfileData` schema below.
+#### Returned data model `CompanyProfileData`
 
-#### Returned data fields
-
-| Field | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| symbol | str | No | Provider-normalized symbol string for the instrument. |
-| companyName | str \| None | Yes | Normalized company name field. |
-| businessDescription | str \| None | Yes | Normalized business description field. |
-| issuePrice | Decimal \| None | Yes | CNY per share. Tencent gsjj.jg is retained as the source candidate. |
-| listingDate | date \| None | Yes | Normalized listing date field. |
-
-
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| symbol | str | Yes | — | Declared by the Pydantic model. |
+| companyName | str \| None | No | None | Declared by the Pydantic model. |
+| businessDescription | str \| None | No | None | Declared by the Pydantic model. |
+| issuePrice | Decimal \| None | No | None | CNY per share. Tencent gsjj.jg is retained as the source candidate. |
+| listingDate | date \| None | No | None | Declared by the Pydantic model. |
 
 #### Example
 
+<!-- api-example: fundamental.company_profile -->
 ```python
-from datetime import date
 from finchx import FinchX
-from finchx.datasets import KlineAdjustment
 from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
 
 fx = FinchX()
@@ -2923,29 +2347,17 @@ instrument_id = InstrumentId(
     kind=InstrumentKind.EQUITY,
     exchange=Exchange.SSE,
 )
-index_id = InstrumentId(
-    code="000001",
-    market=Market.CN_A,
-    kind=InstrumentKind.INDEX,
-    exchange=Exchange.SSE,
-)
-from finchx.datasets import CompanyProfileRequest
-request = CompanyProfileRequest(instrumentId=instrument_id)
-result = fx.fundamental.company_profile(request)
+result = fx.fundamental.company_profile(instrument_id)
 ```
-
-#### Provider behavior and notes
-
-The registry currently implements: `tencent.finance.qq.f10`. Provider selection is controlled by runtime policy unless `provider=` is supplied. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
 
 ### `fx.fundamental.financial_summary(...)`
 
-Return normalized summary metrics across available reporting periods for one instrument.
+Fetch a company's financial summary in a FetchResult.
 
 **Dataset:** `fundamental.financial_summary`
 **Schema version:** `1.0`
 **Implemented Providers:** `tencent.finance.qq.f10`
-**Routing semantics:** `multi_provider`. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
+**Routing semantics:** `multi_provider`
 
 #### Method signature
 
@@ -2957,58 +2369,54 @@ fx.fundamental.financial_summary(request: 'FinancialSummaryRequest', *, provider
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | FinancialSummaryRequest | Yes | — | Typed request model. It cannot be combined with the convenience business parameters. |
-| provider | str \| None | No | None | Strict Provider id pin. Only the named Provider is used. (keyword-only) |
-| use_cache | bool \| None | No | None | Whether the configured cache may be used; None follows the configured CachePolicy. (keyword-only) |
+| request | FinancialSummaryRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
+| use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-The typed request model is `FinancialSummaryRequest`. Its fields are:
+**Minimum business input:** request (instrumentId).
 
-| Request field | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | Complete instrument identity: code, market, kind and optional exchange. |
+#### Request model `FinancialSummaryRequest`
 
-#### Return value
-
-The public method annotation is `FetchResult[FinancialSummaryData]`. FetchResult.data: StandardRecord. The `data` payload inside each StandardRecord is the `FinancialSummaryData` schema below.
-
-#### Returned data fields
-
-| Field | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| symbol | str | No | Provider-normalized symbol string for the instrument. |
-| periods | list[FinancialSummaryPeriod] | No | Reporting-period or holder-period rows. |
-
-#### Nested record types
-
-The following object types are used by the fields above. Enum values are shown inline in the type column.
-
-**`FinancialSummaryPeriod`**
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| periodEnd | date \| None | No | None | Optional financial-reporting period end date. |
-| reportedPeriodLabel | str | Yes | — | Source reporting-period label. |
-| periodType | Literal['annual', 'interim', 'unknown'] | Yes | — | Reporting-period classification. |
-| eps | Decimal \| None | No | None | Earnings per share when available. |
-| revenue | Decimal \| None | No | None | Revenue amount when available. |
-| revenueGrowth | Decimal \| None | No | None | Revenue growth ratio. |
-| netProfit | Decimal \| None | No | None | Net-profit amount when available. |
-| netProfitGrowth | Decimal \| None | No | None | Net-profit growth ratio. |
-| bookValuePerShare | Decimal \| None | No | None | Book value per share. |
-| netAssets | Decimal \| None | No | None | Net assets amount. |
-| goodwill | Decimal \| None | No | None | Goodwill amount. |
-| goodwillToNetAssets | Decimal \| None | No | None | Goodwill-to-net-assets ratio. |
-| roe | Decimal \| None | No | None | Return on equity ratio. |
-| debtRatio | Decimal \| None | No | None | Debt ratio. |
-| grossMargin | Decimal \| None | No | None | Gross-margin ratio. |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
 
+The public return annotation is `FetchResult[FinancialSummaryData]`.
+
+#### Returned data model `FinancialSummaryData`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| symbol | str | Yes | — | Declared by the Pydantic model. |
+| periods | list[FinancialSummaryPeriod] | Yes | — | Declared by the Pydantic model. |
+
+#### Nested model `FinancialSummaryPeriod`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| periodEnd | date \| None | No | None | Declared by the Pydantic model. |
+| reportedPeriodLabel | str | Yes | — | Declared by the Pydantic model. |
+| periodType | Literal['annual', 'interim', 'unknown'] | Yes | — | Declared by the Pydantic model. |
+| eps | Decimal \| None | No | None | Declared by the Pydantic model. |
+| revenue | Decimal \| None | No | None | Declared by the Pydantic model. |
+| revenueGrowth | Decimal \| None | No | None | Declared by the Pydantic model. |
+| netProfit | Decimal \| None | No | None | Declared by the Pydantic model. |
+| netProfitGrowth | Decimal \| None | No | None | Declared by the Pydantic model. |
+| bookValuePerShare | Decimal \| None | No | None | Declared by the Pydantic model. |
+| netAssets | Decimal \| None | No | None | Declared by the Pydantic model. |
+| goodwill | Decimal \| None | No | None | Declared by the Pydantic model. |
+| goodwillToNetAssets | Decimal \| None | No | None | Declared by the Pydantic model. |
+| roe | Decimal \| None | No | None | Declared by the Pydantic model. |
+| debtRatio | Decimal \| None | No | None | Declared by the Pydantic model. |
+| grossMargin | Decimal \| None | No | None | Declared by the Pydantic model. |
 
 #### Example
 
+<!-- api-example: fundamental.financial_summary -->
 ```python
-from datetime import date
 from finchx import FinchX
-from finchx.datasets import KlineAdjustment
 from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
+from finchx.datasets import FinancialSummaryRequest
 
 fx = FinchX()
 instrument_id = InstrumentId(
@@ -3017,29 +2425,18 @@ instrument_id = InstrumentId(
     kind=InstrumentKind.EQUITY,
     exchange=Exchange.SSE,
 )
-index_id = InstrumentId(
-    code="000001",
-    market=Market.CN_A,
-    kind=InstrumentKind.INDEX,
-    exchange=Exchange.SSE,
-)
-from finchx.datasets import FinancialSummaryRequest
 request = FinancialSummaryRequest(instrumentId=instrument_id)
 result = fx.fundamental.financial_summary(request)
 ```
 
-#### Provider behavior and notes
-
-The registry currently implements: `tencent.finance.qq.f10`. Provider selection is controlled by runtime policy unless `provider=` is supplied. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
-
 ### `fx.fundamental.industry_comparison(...)`
 
-Return source-provided industry comparison metrics for one instrument.
+Fetch the fundamental industry comparison in a FetchResult.
 
 **Dataset:** `fundamental.industry_comparison`
 **Schema version:** `1.0`
 **Implemented Providers:** `tencent.finance.qq.f10`
-**Routing semantics:** `multi_provider`. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
+**Routing semantics:** `multi_provider`
 
 #### Method signature
 
@@ -3051,53 +2448,51 @@ fx.fundamental.industry_comparison(request: 'FundamentalIndustryComparisonReques
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | FundamentalIndustryComparisonRequest | Yes | — | Typed request model. It cannot be combined with the convenience business parameters. |
-| provider | str \| None | No | None | Strict Provider id pin. Only the named Provider is used. (keyword-only) |
-| use_cache | bool \| None | No | None | Whether the configured cache may be used; None follows the configured CachePolicy. (keyword-only) |
+| request | FundamentalIndustryComparisonRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
+| use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-The typed request model is `IndustryComparisonRequest`. Its fields are:
+**Minimum business input:** request (instrumentId).
 
-| Request field | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | Complete instrument identity: code, market, kind and optional exchange. |
+**Naming note:** The Client annotation spells this local alias as `FundamentalIndustryComparisonRequest`; the real public class and Dataset request type are `finchx.datasets.IndustryComparisonRequest`.
 
-#### Return value
+#### Request model `IndustryComparisonRequest`
 
-The public method annotation is `FetchResult[IndustryComparisonData]`. FetchResult.data: StandardRecord. The `data` payload inside each StandardRecord is the `IndustryComparisonData` schema below.
-
-#### Returned data fields
-
-| Field | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| symbol | str | No | Provider-normalized symbol string for the instrument. |
-| industryName | str \| None | Yes | Normalized industry name field. |
-| metrics | list[IndustryComparisonMetric] | No | Industry comparison metric rows. |
-
-#### Nested record types
-
-The following object types are used by the fields above. Enum values are shown inline in the type column.
-
-**`IndustryComparisonMetric`**
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| metric | Literal['eps', 'revenue', 'net_profit', 'book_value_per_share', 'roe', 'debt_ratio', 'gross_margin', 'revenue_growth', 'net_profit_growth', 'market_cap', 'pe', 'pb', 'dividend_yield'] | Yes | — | Ranking metric used for the row. |
-| metricBasis | Literal['financial_period', 'market_snapshot'] | Yes | — | Allowed values: financial_period, market_snapshot. |
-| companyValue | Decimal \| None | No | None | Normalized company value field. |
-| industryAvg | Decimal \| None | No | None | Normalized industry avg field. |
-| industryMax | Decimal \| None | No | None | Normalized industry max field. |
-| industryMin | Decimal \| None | No | None | Normalized industry min field. |
-| periodEnd | date \| None | No | None | Optional financial-reporting period end date. |
-| reportedPeriodLabel | str | Yes | — | Source reporting-period label. |
-| observationAt | datetime \| None | No | None | Normalized observation at field. |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
 
+The public return annotation is `FetchResult[IndustryComparisonData]`.
+
+#### Returned data model `IndustryComparisonData`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| symbol | str | Yes | — | Declared by the Pydantic model. |
+| industryName | str \| None | No | None | Declared by the Pydantic model. |
+| metrics | list[IndustryComparisonMetric] | Yes | — | Declared by the Pydantic model. |
+
+#### Nested model `IndustryComparisonMetric`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| metric | Literal['eps', 'revenue', 'net_profit', 'book_value_per_share', 'roe', 'debt_ratio', 'gross_margin', 'revenue_growth', 'net_profit_growth', 'market_cap', 'pe', 'pb', 'dividend_yield'] | Yes | — | Declared by the Pydantic model. |
+| metricBasis | Literal['financial_period', 'market_snapshot'] | Yes | — | Declared by the Pydantic model. |
+| companyValue | Decimal \| Decimal \| Decimal \| None | No | None | Declared by the Pydantic model. |
+| industryAvg | Decimal \| Decimal \| Decimal \| None | No | None | Declared by the Pydantic model. |
+| industryMax | Decimal \| Decimal \| Decimal \| None | No | None | Declared by the Pydantic model. |
+| industryMin | Decimal \| Decimal \| Decimal \| None | No | None | Declared by the Pydantic model. |
+| periodEnd | date \| None | No | None | Declared by the Pydantic model. |
+| reportedPeriodLabel | str | Yes | — | Declared by the Pydantic model. |
+| observationAt | datetime \| None | No | None | Declared by the Pydantic model. |
 
 #### Example
 
+<!-- api-example: fundamental.industry_comparison -->
 ```python
-from datetime import date
 from finchx import FinchX
-from finchx.datasets import KlineAdjustment
 from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
+from finchx.datasets import IndustryComparisonRequest
 
 fx = FinchX()
 instrument_id = InstrumentId(
@@ -3106,29 +2501,18 @@ instrument_id = InstrumentId(
     kind=InstrumentKind.EQUITY,
     exchange=Exchange.SSE,
 )
-index_id = InstrumentId(
-    code="000001",
-    market=Market.CN_A,
-    kind=InstrumentKind.INDEX,
-    exchange=Exchange.SSE,
-)
-from finchx.datasets import IndustryComparisonRequest
 request = IndustryComparisonRequest(instrumentId=instrument_id)
 result = fx.fundamental.industry_comparison(request)
 ```
 
-#### Provider behavior and notes
-
-The registry currently implements: `tencent.finance.qq.f10`. Provider selection is controlled by runtime policy unless `provider=` is supplied. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
-
 ### `fx.fundamental.revenue_breakdown(...)`
 
-Return the company's normalized revenue breakdown rows.
+Fetch a company's revenue breakdown in a FetchResult.
 
 **Dataset:** `fundamental.revenue_breakdown`
 **Schema version:** `1.0`
 **Implemented Providers:** `tencent.finance.qq.f10`
-**Routing semantics:** `multi_provider`. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
+**Routing semantics:** `multi_provider`
 
 #### Method signature
 
@@ -3140,52 +2524,48 @@ fx.fundamental.revenue_breakdown(request: 'RevenueBreakdownRequest', *, provider
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | RevenueBreakdownRequest | Yes | — | Typed request model. It cannot be combined with the convenience business parameters. |
-| provider | str \| None | No | None | Strict Provider id pin. Only the named Provider is used. (keyword-only) |
-| use_cache | bool \| None | No | None | Whether the configured cache may be used; None follows the configured CachePolicy. (keyword-only) |
+| request | RevenueBreakdownRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
+| use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-The typed request model is `RevenueBreakdownRequest`. Its fields are:
+**Minimum business input:** request (instrumentId).
 
-| Request field | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | Complete instrument identity: code, market, kind and optional exchange. |
+#### Request model `RevenueBreakdownRequest`
 
-#### Return value
-
-The public method annotation is `FetchResult[RevenueBreakdownData]`. FetchResult.data: StandardRecord. The `data` payload inside each StandardRecord is the `RevenueBreakdownData` schema below.
-
-#### Returned data fields
-
-| Field | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| symbol | str | No | Provider-normalized symbol string for the instrument. |
-| breakdowns | list[RevenueBreakdownRow] | No | Revenue-breakdown rows. |
-
-#### Nested record types
-
-The following object types are used by the fields above. Enum values are shown inline in the type column.
-
-**`RevenueBreakdownRow`**
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| reportedPeriodLabel | str | Yes | — | Source reporting-period label. |
-| periodEnd | date \| None | No | None | Optional financial-reporting period end date. |
-| dimension | Literal['product', 'region', 'industry'] | Yes | — | Allowed values: product, region, industry. |
-| itemName | str | Yes | — | Normalized item name field. |
-| revenue | Decimal \| None | Yes | — | Revenue amount when available. |
-| revenueShare | Decimal \| None | No | None | Normalized revenue share field. |
-| currency | 'CNY' | Yes | — | Currency code. |
-| sourceGroup | Literal['detail', 'others'] | Yes | — | Allowed values: detail, others. |
-| isRollup | bool | Yes | — | Normalized is rollup field. |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
 
+The public return annotation is `FetchResult[RevenueBreakdownData]`.
+
+#### Returned data model `RevenueBreakdownData`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| symbol | str | Yes | — | Declared by the Pydantic model. |
+| breakdowns | list[RevenueBreakdownRow] | Yes | — | Declared by the Pydantic model. |
+
+#### Nested model `RevenueBreakdownRow`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| reportedPeriodLabel | str | Yes | — | Declared by the Pydantic model. |
+| periodEnd | date \| None | No | None | Declared by the Pydantic model. |
+| dimension | Literal['product', 'region', 'industry'] | Yes | — | Declared by the Pydantic model. |
+| itemName | str | Yes | — | Declared by the Pydantic model. |
+| revenue | Decimal \| None | Yes | — | Declared by the Pydantic model. |
+| revenueShare | Decimal \| None | No | None | Declared by the Pydantic model. |
+| currency | Literal['CNY'] | Yes | — | Declared by the Pydantic model. |
+| sourceGroup | Literal['detail', 'others'] | Yes | — | Declared by the Pydantic model. |
+| isRollup | bool | Yes | — | Declared by the Pydantic model. |
 
 #### Example
 
+<!-- api-example: fundamental.revenue_breakdown -->
 ```python
-from datetime import date
 from finchx import FinchX
-from finchx.datasets import KlineAdjustment
 from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
+from finchx.datasets import RevenueBreakdownRequest
 
 fx = FinchX()
 instrument_id = InstrumentId(
@@ -3194,33 +2574,20 @@ instrument_id = InstrumentId(
     kind=InstrumentKind.EQUITY,
     exchange=Exchange.SSE,
 )
-index_id = InstrumentId(
-    code="000001",
-    market=Market.CN_A,
-    kind=InstrumentKind.INDEX,
-    exchange=Exchange.SSE,
-)
-from finchx.datasets import RevenueBreakdownRequest
 request = RevenueBreakdownRequest(instrumentId=instrument_id)
 result = fx.fundamental.revenue_breakdown(request)
 ```
 
-#### Provider behavior and notes
-
-The registry currently implements: `tencent.finance.qq.f10`. Provider selection is controlled by runtime policy unless `provider=` is supplied. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
-
 ## `financial`
-
-Structured financial statements.
 
 ### `fx.financial.statements(...)`
 
-Return normalized financial-statement line items for the requested statement type and periods.
+Fetch financial statements in a FetchResult.
 
 **Dataset:** `financial.statement`
 **Schema version:** `1.0`
 **Implemented Providers:** `tonghuashun.financial`
-**Routing semantics:** `multi_provider`. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
+**Routing semantics:** `multi_provider`
 
 #### Method signature
 
@@ -3232,72 +2599,69 @@ fx.financial.statements(instrument_id: 'InstrumentId | None' = None, statement_t
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| instrument_id | InstrumentId \| None | No | None | Complete InstrumentId for the target instrument. |
-| statement_type | StatementType \| None | No | None | StatementType selection. |
-| period_end | date \| None | No | None | Optional reporting period end date. |
-| max_periods | int \| None | No | None | Optional maximum number of financial periods. |
-| request | FinancialStatementRequest \| None | No | None | Typed request model. It cannot be combined with the convenience business parameters. |
-| provider | str \| None | No | None | Strict Provider id pin. Only the named Provider is used. (keyword-only) |
-| use_cache | bool \| None | No | None | Whether the configured cache may be used; None follows the configured CachePolicy. (keyword-only) |
+| instrument_id | InstrumentId \| None | Required in convenience mode | None | Complete InstrumentId. |
+| statement_type | StatementType \| None | Required in convenience mode | None | balance_sheet, income_statement, or cash_flow_statement. |
+| period_end | date \| None | No | None | Optional report-period end date. |
+| max_periods | int \| None | No | None | Optional maximum number of report periods. |
+| request | FinancialStatementRequest \| None | Conditional request alternative | None | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
+| use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-The typed request model is `FinancialStatementRequest`. Its fields are:
+**Minimum business input:** instrument_id and statement_type, or request.
 
-| Request field | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | Complete instrument identity: code, market, kind and optional exchange. |
-| statementType | Literal['balance_sheet', 'income_statement', 'cash_flow_statement'] | Yes | — | Financial statement type. |
-| periodEnd | date \| None | No | None | Optional financial-reporting period end date. |
-| maxPeriods | int \| None | No | None | Normalized max periods field. |
+#### Request model `FinancialStatementRequest`
 
-#### Return value
-
-The public method annotation is `FetchResult[FinancialStatementData]`. FetchResult.data: StandardRecord. The `data` payload inside each StandardRecord is the `FinancialStatementData` schema below.
-
-#### Returned data fields
-
-| Field | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | Complete instrument identity: code, market, kind and optional exchange. |
-| symbol | str | No | Provider-normalized symbol string for the instrument. |
-| statementType | Literal['balance_sheet', 'income_statement', 'cash_flow_statement'] | No | Financial statement type. |
-| periods | list[FinancialStatementPeriod] | No | Reporting-period or holder-period rows. |
-
-#### Nested record types
-
-The following object types are used by the fields above. Enum values are shown inline in the type column.
-
-**`FinancialStatementLineItem`**
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| lineItemId | str | Yes | — | Normalized line item id field. |
-| sourceName | str | Yes | — | Normalized source name field. |
-| sourceUnit | str | Yes | — | Normalized source unit field. |
-| sourceValue | str \| bool \| int \| Decimal \| None | Yes | — | Normalized source value field. |
-| value | Decimal \| None | No | None | Normalized value field. |
-| currency | Currency \| None | No | None | Currency code. |
-| missingReason | Literal['null', 'false', 'empty_string', 'special_marker'] \| None | No | None | Normalized missing reason field. |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
+| statementType | Literal['balance_sheet', 'income_statement', 'cash_flow_statement'] | Yes | — | Declared by the Pydantic model. |
+| periodEnd | date \| None | No | None | Declared by the Pydantic model. |
+| maxPeriods | int \| None | No | None | Declared by the Pydantic model. |
 
-**`FinancialStatementPeriod`**
+The public return annotation is `FetchResult[FinancialStatementData]`.
+
+#### Returned data model `FinancialStatementData`
+
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| periodEnd | date | Yes | — | Optional financial-reporting period end date. |
-| lineItems | list[FinancialStatementLineItem] | Yes | — | Financial statement line items. |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
+| symbol | str | Yes | — | Declared by the Pydantic model. |
+| statementType | Literal['balance_sheet', 'income_statement', 'cash_flow_statement'] | Yes | — | Declared by the Pydantic model. |
+| periods | list[FinancialStatementPeriod] | Yes | — | Declared by the Pydantic model. |
 
-**`InstrumentId`**
+#### Nested model `InstrumentId`
+
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | Exchange-specific instrument code. |
-| market | Market | Yes | — | FinchX market identifier. |
-| kind | InstrumentKind | Yes | — | Instrument kind. |
-| exchange | Exchange \| None | No | None | Exchange identity when required by the dataset. |
+| code | str | Yes | — | Declared by the Pydantic model. |
+| market | Market | Yes | — | Declared by the Pydantic model. |
+| kind | InstrumentKind | Yes | — | Declared by the Pydantic model. |
+| exchange | Exchange \| None | No | None | Declared by the Pydantic model. |
 
+#### Nested model `FinancialStatementPeriod`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| periodEnd | date | Yes | — | Declared by the Pydantic model. |
+| lineItems | list[FinancialStatementLineItem] | Yes | — | Declared by the Pydantic model. |
+
+#### Nested model `FinancialStatementLineItem`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| lineItemId | str | Yes | — | Declared by the Pydantic model. |
+| sourceName | str | Yes | — | Declared by the Pydantic model. |
+| sourceUnit | str | Yes | — | Declared by the Pydantic model. |
+| sourceValue | str \| bool \| int \| float \| None | Yes | — | Declared by the Pydantic model. |
+| value | Decimal \| None | No | None | Declared by the Pydantic model. |
+| currency | Currency \| None | No | None | Declared by the Pydantic model. |
+| missingReason | Literal['null', 'false', 'empty_string', 'special_marker'] \| None | No | None | Declared by the Pydantic model. |
 
 #### Example
 
+<!-- api-example: financial.statements -->
 ```python
-from datetime import date
 from finchx import FinchX
-from finchx.datasets import KlineAdjustment
 from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
 
 fx = FinchX()
@@ -3307,33 +2671,19 @@ instrument_id = InstrumentId(
     kind=InstrumentKind.EQUITY,
     exchange=Exchange.SSE,
 )
-index_id = InstrumentId(
-    code="000001",
-    market=Market.CN_A,
-    kind=InstrumentKind.INDEX,
-    exchange=Exchange.SSE,
-)
-from finchx.datasets import FinancialStatementRequest
-request = FinancialStatementRequest(instrumentId=instrument_id, statementType="income_statement")
-result = fx.financial.statements(request)
+result = fx.financial.statements(instrument_id, "income_statement")
 ```
-
-#### Provider behavior and notes
-
-The registry currently implements: `tonghuashun.financial`. Provider selection is controlled by runtime policy unless `provider=` is supplied. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
 
 ## `news`
 
-Individual-stock news search references.
-
 ### `fx.news.search(...)`
 
-Search individual-stock news metadata and return serializable document references.
+Search news metadata and return document references in a FetchResult.
 
 **Dataset:** `news.document`
 **Schema version:** `1.0`
 **Implemented Providers:** `eastmoney.news`, `eastmoney.market_news`, `aigupiao.market_news`, `baidu.finscope.market_news`
-**Routing semantics:** `multi_provider`. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
+**Routing semantics:** `multi_provider`
 
 #### Method signature
 
@@ -3345,115 +2695,90 @@ fx.news.search(instrument: 'InstrumentId | str | None' = None, *, page: 'int' = 
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| instrument | InstrumentId \| str \| None | No | None | InstrumentId or supported six-digit symbol text for document search. |
-| page | int | No | 1 | One-based result page; default 1. |
-| page_size | int | No | 20 | Page size; default 20 and capped by the request model. |
-| max_results | int \| None | No | None | Optional result cap. |
-| since | date \| datetime \| None | No | None | Optional inclusive lower publication-time bound. |
-| until | date \| datetime \| None | No | None | Optional inclusive upper publication-time bound. |
-| sort | str | No | 'published_desc' | Document ordering; the public default is published_desc. |
-| request | NewsSearchRequest \| None | No | None | Typed request model. It cannot be combined with the convenience business parameters. |
-| provider | str \| None | No | None | Strict Provider id pin. Only the named Provider is used. (keyword-only) |
-| use_cache | bool \| None | No | None | Whether the configured cache may be used; None follows the configured CachePolicy. (keyword-only) |
+| instrument | InstrumentId \| str \| None | Required in convenience mode | None | InstrumentId or a six-digit equity code. |
+| page | int | No | 1 | One-based page number. |
+| page_size | int | No | 20 | Page size. |
+| max_results | int \| None | No | None | Optional result cap; its combination with non-first pages is model-validated. |
+| since | date \| datetime \| None | No | None | Optional inclusive lower time bound. |
+| until | date \| datetime \| None | No | None | Optional inclusive upper time bound. |
+| sort | str | No | 'published_desc' | published_desc or published_asc. |
+| request | NewsSearchRequest \| None | Conditional request alternative | None | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
+| use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-The typed request model is `NewsSearchRequest`. Its fields are:
+**Minimum business input:** instrument (InstrumentId or six-digit equity code), or request.
 
-| Request field | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | Complete instrument identity: code, market, kind and optional exchange. |
-| page | int | No | 1 | One-based result page; default 1. |
-| pageSize | int | No | 20 | Normalized page size field. |
-| maxResults | int \| None | No | None | Normalized max results field. |
-| since | date \| datetime \| None | No | None | Optional inclusive lower publication-time bound. |
-| until | date \| datetime \| None | No | None | Optional inclusive upper publication-time bound. |
-| sort | Literal['published_desc', 'published_asc'] | No | 'published_desc' | Document ordering; the public default is published_desc. |
+#### Request model `NewsSearchRequest`
 
-#### Return value
-
-The public method annotation is `FetchResult[NewsDocumentData]`. FetchResult.data: tuple[NewsDocumentRef, ...]. The `data` payload inside each StandardRecord is the `NewsDocumentData` schema below.
-
-#### Returned data fields
-
-| Field | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| documentId | str | No | FinchX document identity. |
-| sourceDocumentId | str | No | Source-side document identity. |
-| title | str | No | Document title. |
-| contentText | str \| None | Yes | Fetched document text when content is available. |
-| summary | str \| None | Yes | Short source-provided summary when available. |
-| publishedAt | datetime \| None | Yes | Publication timestamp supplied by the source. |
-| sourceOccurrences | list[NewsSourceOccurrence] | No | Source-side occurrences retained during document normalization. |
-| url | AnyUrl | No | Normalized url field. |
-| originalUrl | AnyUrl \| None | Yes | Original document URL when supplied. |
-| contentAvailable | bool | No | Whether document content is available in this result. |
-| source | str \| None | Yes | Normalized source field. |
-| relatedInstruments | list[InstrumentId] | No | Instruments related to the document. |
-
-#### Nested record types
-
-The following object types are used by the fields above. Enum values are shown inline in the type column.
-
-**`InstrumentId`**
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | Exchange-specific instrument code. |
-| market | Market | Yes | — | FinchX market identifier. |
-| kind | InstrumentKind | Yes | — | Instrument kind. |
-| exchange | Exchange \| None | No | None | Exchange identity when required by the dataset. |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
+| page | int | No | 1 | Declared by the Pydantic model. |
+| pageSize | int | No | 20 | Declared by the Pydantic model. |
+| maxResults | int \| None | No | None | Declared by the Pydantic model. |
+| since | date \| datetime \| None | No | None | Declared by the Pydantic model. |
+| until | date \| datetime \| None | No | None | Declared by the Pydantic model. |
+| sort | Literal['published_desc', 'published_asc'] | No | 'published_desc' | Declared by the Pydantic model. |
 
-**`NewsSourceOccurrence`**
+The public return annotation is `FetchResult[tuple[NewsDocumentRef, Ellipsis]]`.
+
+#### Returned data model `NewsDocumentData`
+
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| providerId | str | Yes | — | Normalized provider id field. |
-| sourceDocumentId | str | Yes | — | Source-side document identity. |
-| sourceUrl | AnyUrl \| None | No | None | Direct source URL or source endpoint reference. |
-| documentUrl | AnyUrl \| None | No | None | Normalized document url field. |
-| publishedAt | datetime \| None | No | None | Publication timestamp supplied by the source. |
-| capturedAt | datetime | Yes | — | Timezone-aware time when FinchX captured the source observation. |
+| documentId | str | Yes | — | Declared by the Pydantic model. |
+| sourceDocumentId | str | Yes | — | Declared by the Pydantic model. |
+| title | str | Yes | — | Declared by the Pydantic model. |
+| contentText | str \| None | No | None | Declared by the Pydantic model. |
+| summary | str \| None | No | None | Declared by the Pydantic model. |
+| publishedAt | datetime \| None | No | None | Declared by the Pydantic model. |
+| sourceOccurrences | list[NewsSourceOccurrence] | No | default_factory=list | Declared by the Pydantic model. |
+| url | AnyUrl | Yes | — | Declared by the Pydantic model. |
+| originalUrl | AnyUrl \| None | No | None | Declared by the Pydantic model. |
+| contentAvailable | bool | Yes | — | Declared by the Pydantic model. |
+| source | str \| None | No | None | Declared by the Pydantic model. |
+| relatedInstruments | list[InstrumentId] | Yes | — | Declared by the Pydantic model. |
 
+#### Nested model `NewsSourceOccurrence`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| providerId | str | Yes | — | Declared by the Pydantic model. |
+| sourceDocumentId | str | Yes | — | Declared by the Pydantic model. |
+| sourceUrl | AnyUrl \| None | No | None | Declared by the Pydantic model. |
+| documentUrl | AnyUrl \| None | No | None | Declared by the Pydantic model. |
+| publishedAt | datetime \| None | No | None | Declared by the Pydantic model. |
+| capturedAt | datetime | Yes | — | Declared by the Pydantic model. |
+
+#### Nested model `InstrumentId`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| code | str | Yes | — | Declared by the Pydantic model. |
+| market | Market | Yes | — | Declared by the Pydantic model. |
+| kind | InstrumentKind | Yes | — | Declared by the Pydantic model. |
+| exchange | Exchange \| None | No | None | Declared by the Pydantic model. |
 
 #### Example
 
+<!-- api-example: news.search -->
 ```python
-from datetime import date
 from finchx import FinchX
-from finchx.datasets import KlineAdjustment
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-index_id = InstrumentId(
-    code="000001",
-    market=Market.CN_A,
-    kind=InstrumentKind.INDEX,
-    exchange=Exchange.SSE,
-)
-result = fx.news.search(instrument_id, page_size=10)
-for ref in result.data:
-    print(ref.title, ref.published_at)
+result = fx.news.search("600519")
 ```
-
-#### Provider behavior and notes
-
-The registry currently implements: `eastmoney.news`, `eastmoney.market_news`, `aigupiao.market_news`, `baidu.finscope.market_news`. Provider selection is controlled by runtime policy unless `provider=` is supplied. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
 
 ## `disclosure`
 
-Individual-stock disclosure search references.
-
 ### `fx.disclosure.search(...)`
 
-Search individual-stock disclosures and return serializable notice references.
+Search disclosures and return document references in a FetchResult.
 
 **Dataset:** `disclosure.document`
 **Schema version:** `1.0`
 **Implemented Providers:** `eastmoney.disclosure`
-**Routing semantics:** `multi_provider`. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
+**Routing semantics:** `multi_provider`
 
 #### Method signature
 
@@ -3465,125 +2790,101 @@ fx.disclosure.search(instrument: 'InstrumentId | str | None' = None, *, page: 'i
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| instrument | InstrumentId \| str \| None | No | None | InstrumentId or supported six-digit symbol text for document search. |
-| page | int | No | 1 | One-based result page; default 1. |
-| page_size | int | No | 20 | Page size; default 20 and capped by the request model. |
-| max_results | int \| None | No | None | Optional result cap. |
-| since | date \| datetime \| None | No | None | Optional inclusive lower publication-time bound. |
-| until | date \| datetime \| None | No | None | Optional inclusive upper publication-time bound. |
-| categories | Sequence[str] \| None | No | None | Optional disclosure category codes or names. |
-| sort | str | No | 'published_desc' | Document ordering; the public default is published_desc. |
-| request | DisclosureSearchRequest \| None | No | None | Typed request model. It cannot be combined with the convenience business parameters. |
-| provider | str \| None | No | None | Strict Provider id pin. Only the named Provider is used. (keyword-only) |
-| use_cache | bool \| None | No | None | Whether the configured cache may be used; None follows the configured CachePolicy. (keyword-only) |
+| instrument | InstrumentId \| str \| None | Required in convenience mode | None | InstrumentId or a six-digit equity code. |
+| page | int | No | 1 | One-based page number. |
+| page_size | int | No | 20 | Page size. |
+| max_results | int \| None | No | None | Optional result cap; its combination with non-first pages is model-validated. |
+| since | date \| datetime \| None | No | None | Optional inclusive lower time bound. |
+| until | date \| datetime \| None | No | None | Optional inclusive upper time bound. |
+| categories | Sequence[str] \| None | No | None | Optional disclosure category list. |
+| sort | str | No | 'published_desc' | published_desc or published_asc. |
+| request | DisclosureSearchRequest \| None | Conditional request alternative | None | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
+| use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-The typed request model is `DisclosureSearchRequest`. Its fields are:
+**Minimum business input:** instrument (InstrumentId or six-digit equity code), or request.
 
-| Request field | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | Complete instrument identity: code, market, kind and optional exchange. |
-| page | int | No | 1 | One-based result page; default 1. |
-| pageSize | int | No | 20 | Normalized page size field. |
-| maxResults | int \| None | No | None | Normalized max results field. |
-| since | date \| datetime \| None | No | None | Optional inclusive lower publication-time bound. |
-| until | date \| datetime \| None | No | None | Optional inclusive upper publication-time bound. |
-| sort | Literal['published_desc', 'published_asc'] | No | 'published_desc' | Document ordering; the public default is published_desc. |
-| categories | list[str] \| None | No | None | Disclosure categories. |
+#### Request model `DisclosureSearchRequest`
 
-#### Return value
-
-The public method annotation is `FetchResult[DisclosureDocumentData]`. FetchResult.data: tuple[DisclosureDocumentRef, ...]. The `data` payload inside each StandardRecord is the `DisclosureDocumentData` schema below.
-
-#### Returned data fields
-
-| Field | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| documentId | str | No | FinchX document identity. |
-| sourceDocumentId | str | No | Source-side document identity. |
-| title | str | No | Document title. |
-| contentText | str \| None | Yes | Fetched document text when content is available. |
-| noticeDate | date | No | Disclosure notice date. |
-| publishedAt | datetime \| None | Yes | Publication timestamp supplied by the source. |
-| sourceRecordedAt | datetime \| None | Yes | Source-side recorded timestamp, distinct from publication and capture time. |
-| categories | list[DisclosureCategory] | No | Disclosure categories. |
-| relatedInstruments | list[InstrumentId] | No | Instruments related to the document. |
-| contentAvailable | bool | No | Whether document content is available in this result. |
-| pdfAvailable | bool | No | Whether a PDF attachment is available. |
-| originalDocumentUrl | AnyUrl | No | Original disclosure document URL. |
-| attachments | list[DisclosureAttachment] | No | Disclosure attachments. |
-| sourceType | str \| None | Yes | Source document type label. |
-
-#### Nested record types
-
-The following object types are used by the fields above. Enum values are shown inline in the type column.
-
-**`DisclosureAttachment`**
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| sequence | int \| None | No | None | Normalized sequence field. |
-| size | int \| None | No | None | Normalized size field. |
-| attachmentType | str \| None | No | None | Normalized attachment type field. |
-| url | AnyUrl | Yes | — | Normalized url field. |
-| webUrl | AnyUrl \| None | No | None | Normalized web url field. |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
+| page | int | No | 1 | Declared by the Pydantic model. |
+| pageSize | int | No | 20 | Declared by the Pydantic model. |
+| maxResults | int \| None | No | None | Declared by the Pydantic model. |
+| since | date \| datetime \| None | No | None | Declared by the Pydantic model. |
+| until | date \| datetime \| None | No | None | Declared by the Pydantic model. |
+| sort | Literal['published_desc', 'published_asc'] | No | 'published_desc' | Declared by the Pydantic model. |
+| categories | list[str] \| None | No | None | Declared by the Pydantic model. |
 
-**`DisclosureCategory`**
+The public return annotation is `FetchResult[tuple[DisclosureDocumentRef, Ellipsis]]`.
+
+#### Returned data model `DisclosureDocumentData`
+
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | Exchange-specific instrument code. |
-| name | str | Yes | — | Provider-normalized display name. |
-| source | str | No | 'eastmoney' | Normalized source field. |
+| documentId | str | Yes | — | Declared by the Pydantic model. |
+| sourceDocumentId | str | Yes | — | Declared by the Pydantic model. |
+| title | str | Yes | — | Declared by the Pydantic model. |
+| contentText | str \| None | No | None | Declared by the Pydantic model. |
+| noticeDate | date | Yes | — | Declared by the Pydantic model. |
+| publishedAt | datetime \| None | No | None | Declared by the Pydantic model. |
+| sourceRecordedAt | datetime \| None | No | None | Declared by the Pydantic model. |
+| categories | list[DisclosureCategory] | Yes | — | Declared by the Pydantic model. |
+| relatedInstruments | list[InstrumentId] | Yes | — | Declared by the Pydantic model. |
+| contentAvailable | bool | Yes | — | Declared by the Pydantic model. |
+| pdfAvailable | bool | Yes | — | Declared by the Pydantic model. |
+| originalDocumentUrl | AnyUrl | Yes | — | Declared by the Pydantic model. |
+| attachments | list[DisclosureAttachment] | Yes | — | Declared by the Pydantic model. |
+| sourceType | str \| None | No | None | Declared by the Pydantic model. |
 
-**`InstrumentId`**
+#### Nested model `DisclosureCategory`
+
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | Exchange-specific instrument code. |
-| market | Market | Yes | — | FinchX market identifier. |
-| kind | InstrumentKind | Yes | — | Instrument kind. |
-| exchange | Exchange \| None | No | None | Exchange identity when required by the dataset. |
+| code | str | Yes | — | Declared by the Pydantic model. |
+| name | str | Yes | — | Declared by the Pydantic model. |
+| source | str | No | 'eastmoney' | Declared by the Pydantic model. |
 
+#### Nested model `InstrumentId`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| code | str | Yes | — | Declared by the Pydantic model. |
+| market | Market | Yes | — | Declared by the Pydantic model. |
+| kind | InstrumentKind | Yes | — | Declared by the Pydantic model. |
+| exchange | Exchange \| None | No | None | Declared by the Pydantic model. |
+
+#### Nested model `DisclosureAttachment`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| sequence | int \| None | No | None | Declared by the Pydantic model. |
+| size | int \| None | No | None | Declared by the Pydantic model. |
+| attachmentType | str \| None | No | None | Declared by the Pydantic model. |
+| url | AnyUrl | Yes | — | Declared by the Pydantic model. |
+| webUrl | AnyUrl \| None | No | None | Declared by the Pydantic model. |
 
 #### Example
 
+<!-- api-example: disclosure.search -->
 ```python
-from datetime import date
 from finchx import FinchX
-from finchx.datasets import KlineAdjustment
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-index_id = InstrumentId(
-    code="000001",
-    market=Market.CN_A,
-    kind=InstrumentKind.INDEX,
-    exchange=Exchange.SSE,
-)
-result = fx.disclosure.search(instrument_id, page_size=10)
-for ref in result.data:
-    print(ref.title, ref.notice_date)
+result = fx.disclosure.search("600519")
 ```
-
-#### Provider behavior and notes
-
-The registry currently implements: `eastmoney.disclosure`. Provider selection is controlled by runtime policy unless `provider=` is supplied. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
 
 ## `ownership`
 
-Capital structure and shareholder snapshots.
-
 ### `fx.ownership.capital_snapshot(...)`
 
-Return total and floating share counts for one instrument.
+Fetch a capital snapshot in a FetchResult.
 
 **Dataset:** `ownership.capital_snapshot`
 **Schema version:** `1.0`
 **Implemented Providers:** `tencent.finance.qq.f10`
-**Routing semantics:** `multi_provider`. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
+**Routing semantics:** `multi_provider`
 
 #### Method signature
 
@@ -3595,37 +2896,35 @@ fx.ownership.capital_snapshot(request: 'CapitalSnapshotRequest', *, provider: 's
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | CapitalSnapshotRequest | Yes | — | Typed request model. It cannot be combined with the convenience business parameters. |
-| provider | str \| None | No | None | Strict Provider id pin. Only the named Provider is used. (keyword-only) |
-| use_cache | bool \| None | No | None | Whether the configured cache may be used; None follows the configured CachePolicy. (keyword-only) |
+| request | CapitalSnapshotRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
+| use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-The typed request model is `CapitalSnapshotRequest`. Its fields are:
+**Minimum business input:** request (instrumentId).
 
-| Request field | Type | Required | Default | Description |
+#### Request model `CapitalSnapshotRequest`
+
+| Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | Complete instrument identity: code, market, kind and optional exchange. |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
 
-#### Return value
+The public return annotation is `FetchResult[CapitalSnapshotData]`.
 
-The public method annotation is `FetchResult[CapitalSnapshotData]`. FetchResult.data: StandardRecord. The `data` payload inside each StandardRecord is the `CapitalSnapshotData` schema below.
+#### Returned data model `CapitalSnapshotData`
 
-#### Returned data fields
-
-| Field | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| symbol | str | No | Provider-normalized symbol string for the instrument. |
-| totalShares | int \| None | Yes | Total shares outstanding. |
-| floatShares | int \| None | Yes | Floating shares outstanding. |
-
-
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| symbol | str | Yes | — | Declared by the Pydantic model. |
+| totalShares | int \| None | No | None | Declared by the Pydantic model. |
+| floatShares | int \| None | No | None | Declared by the Pydantic model. |
 
 #### Example
 
+<!-- api-example: ownership.capital_snapshot -->
 ```python
-from datetime import date
 from finchx import FinchX
-from finchx.datasets import KlineAdjustment
 from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
+from finchx.datasets import CapitalSnapshotRequest
 
 fx = FinchX()
 instrument_id = InstrumentId(
@@ -3634,29 +2933,18 @@ instrument_id = InstrumentId(
     kind=InstrumentKind.EQUITY,
     exchange=Exchange.SSE,
 )
-index_id = InstrumentId(
-    code="000001",
-    market=Market.CN_A,
-    kind=InstrumentKind.INDEX,
-    exchange=Exchange.SSE,
-)
-from finchx.datasets import CapitalSnapshotRequest
 request = CapitalSnapshotRequest(instrumentId=instrument_id)
 result = fx.ownership.capital_snapshot(request)
 ```
 
-#### Provider behavior and notes
-
-The registry currently implements: `tencent.finance.qq.f10`. Provider selection is controlled by runtime policy unless `provider=` is supplied. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
-
 ### `fx.ownership.float_holder(...)`
 
-Return floating-holder rows for one instrument, optionally as of a requested date.
+Fetch floating-holder data in a FetchResult.
 
 **Dataset:** `ownership.float_holder`
 **Schema version:** `1.0`
 **Implemented Providers:** `tencent.finance.qq.float_holder`
-**Routing semantics:** `multi_provider`. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
+**Routing semantics:** `multi_provider`
 
 #### Method signature
 
@@ -3668,60 +2956,57 @@ fx.ownership.float_holder(request: 'FloatHolderRequest', *, provider: 'str | Non
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | FloatHolderRequest | Yes | — | Typed request model. It cannot be combined with the convenience business parameters. |
-| provider | str \| None | No | None | Strict Provider id pin. Only the named Provider is used. (keyword-only) |
-| use_cache | bool \| None | No | None | Whether the configured cache may be used; None follows the configured CachePolicy. (keyword-only) |
+| request | FloatHolderRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
+| use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-The typed request model is `FloatHolderRequest`. Its fields are:
+**Minimum business input:** request (instrumentId; optional asOf).
 
-| Request field | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | Complete instrument identity: code, market, kind and optional exchange. |
-| asOf | datetime \| None | No | None | Optional cutoff date for the lookup or calculation. |
+#### Request model `FloatHolderRequest`
 
-#### Return value
-
-The public method annotation is `FetchResult[FloatHolderData]`. FetchResult.data: StandardRecord. The `data` payload inside each StandardRecord is the `FloatHolderData` schema below.
-
-#### Returned data fields
-
-| Field | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| symbol | str | No | Provider-normalized symbol string for the instrument. |
-| periods | list[FloatHolderPeriod] | No | Reporting-period or holder-period rows. |
-
-#### Nested record types
-
-The following object types are used by the fields above. Enum values are shown inline in the type column.
-
-**`FloatHolderPeriod`**
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| periodEnd | date | Yes | — | Optional financial-reporting period end date. |
-| publishedAt | datetime | Yes | — | Publication timestamp supplied by the source. |
-| rows | list[FloatHolderRow] | Yes | — | Normalized rows field. |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
+| asOf | datetime \| None | No | None | Declared by the Pydantic model. |
 
-**`FloatHolderRow`**
+The public return annotation is `FetchResult[FloatHolderData]`.
+
+#### Returned data model `FloatHolderData`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| symbol | str | Yes | — | Declared by the Pydantic model. |
+| periods | list[FloatHolderPeriod] | Yes | — | Declared by the Pydantic model. |
+
+#### Nested model `FloatHolderPeriod`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| periodEnd | date | Yes | — | Declared by the Pydantic model. |
+| publishedAt | datetime | Yes | — | Declared by the Pydantic model. |
+| rows | list[FloatHolderRow] | Yes | — | Declared by the Pydantic model. |
+
+#### Nested model `FloatHolderRow`
+
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
 | rank | int | Yes | — | Derived from Tencent rows array order. |
-| holderId | str \| None | No | None | Normalized holder id field. |
-| holderName | str | Yes | — | Normalized holder name field. |
-| shares | int | Yes | — | Share quantity. |
-| holderType | str | Yes | — | Normalized holder type field. |
-| floatShareRatio | Decimal \| None | No | None | Normalized float share ratio field. |
-| previousShares | int \| None | No | None | Normalized previous shares field. |
-| shareChange | int \| None | No | None | Signed share quantity change. |
+| holderId | str \| None | No | None | Declared by the Pydantic model. |
+| holderName | str | Yes | — | Declared by the Pydantic model. |
+| shares | int | Yes | — | A non-negative whole number of shares. |
+| holderType | str | Yes | — | Declared by the Pydantic model. |
+| floatShareRatio | Decimal \| None | No | None | Declared by the Pydantic model. |
+| previousShares | int \| None | No | None | Declared by the Pydantic model. |
+| shareChange | int \| None | No | None | Declared by the Pydantic model. |
 | isNewTopFloatHolderEntry | bool \| None | No | None | Derived from bdms=1 after multi-stock adjacent-period validation. |
-
 
 #### Example
 
+<!-- api-example: ownership.float_holder -->
 ```python
-from datetime import date
 from finchx import FinchX
-from finchx.datasets import KlineAdjustment
 from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
+from finchx.datasets import FloatHolderRequest
 
 fx = FinchX()
 instrument_id = InstrumentId(
@@ -3730,29 +3015,18 @@ instrument_id = InstrumentId(
     kind=InstrumentKind.EQUITY,
     exchange=Exchange.SSE,
 )
-index_id = InstrumentId(
-    code="000001",
-    market=Market.CN_A,
-    kind=InstrumentKind.INDEX,
-    exchange=Exchange.SSE,
-)
-from finchx.datasets import FloatHolderRequest
 request = FloatHolderRequest(instrumentId=instrument_id)
 result = fx.ownership.float_holder(request)
 ```
 
-#### Provider behavior and notes
-
-The registry currently implements: `tencent.finance.qq.float_holder`. Provider selection is controlled by runtime policy unless `provider=` is supplied. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
-
 ### `fx.ownership.holder_summary_snapshot(...)`
 
-Return shareholder-count, concentration and average-holder metrics.
+Fetch a holder-summary snapshot in a FetchResult.
 
 **Dataset:** `ownership.holder_summary_snapshot`
 **Schema version:** `1.0`
 **Implemented Providers:** `tencent.finance.qq.f10`
-**Routing semantics:** `multi_provider`. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
+**Routing semantics:** `multi_provider`
 
 #### Method signature
 
@@ -3764,40 +3038,38 @@ fx.ownership.holder_summary_snapshot(request: 'HolderSummarySnapshotRequest', *,
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | HolderSummarySnapshotRequest | Yes | — | Typed request model. It cannot be combined with the convenience business parameters. |
-| provider | str \| None | No | None | Strict Provider id pin. Only the named Provider is used. (keyword-only) |
-| use_cache | bool \| None | No | None | Whether the configured cache may be used; None follows the configured CachePolicy. (keyword-only) |
+| request | HolderSummarySnapshotRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
+| use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-The typed request model is `HolderSummarySnapshotRequest`. Its fields are:
+**Minimum business input:** request (instrumentId).
 
-| Request field | Type | Required | Default | Description |
+#### Request model `HolderSummarySnapshotRequest`
+
+| Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | Complete instrument identity: code, market, kind and optional exchange. |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
 
-#### Return value
+The public return annotation is `FetchResult[HolderSummarySnapshotData]`.
 
-The public method annotation is `FetchResult[HolderSummarySnapshotData]`. FetchResult.data: StandardRecord. The `data` payload inside each StandardRecord is the `HolderSummarySnapshotData` schema below.
+#### Returned data model `HolderSummarySnapshotData`
 
-#### Returned data fields
-
-| Field | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| symbol | str | No | Provider-normalized symbol string for the instrument. |
-| shareholderCount | int \| None | Yes | Shareholder count. |
-| averageSharesPerHolder | Decimal \| None | Yes | Average shares per holder. |
-| shareholderCountChange | Decimal \| None | Yes | Shareholder-count change ratio, not an absolute count delta. |
-| top10FloatHolderRatio | Decimal \| None | Yes | Top-ten floating-holder ratio. |
-| top10HolderRatio | Decimal \| None | Yes | Top-ten holder ratio. |
-
-
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| symbol | str | Yes | — | Declared by the Pydantic model. |
+| shareholderCount | int \| None | No | None | Declared by the Pydantic model. |
+| averageSharesPerHolder | Decimal \| None | No | None | Exact share count per holder; Tencent rjcg display units are normalized to shares. |
+| shareholderCountChange | Decimal \| None | No | None | Tencent gdrshb, normalized from percentage points to a ratio; not an absolute count delta. |
+| top10FloatHolderRatio | Decimal \| None | No | None | Declared by the Pydantic model. |
+| top10HolderRatio | Decimal \| None | No | None | Declared by the Pydantic model. |
 
 #### Example
 
+<!-- api-example: ownership.holder_summary_snapshot -->
 ```python
-from datetime import date
 from finchx import FinchX
-from finchx.datasets import KlineAdjustment
 from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
+from finchx.datasets import HolderSummarySnapshotRequest
 
 fx = FinchX()
 instrument_id = InstrumentId(
@@ -3806,33 +3078,20 @@ instrument_id = InstrumentId(
     kind=InstrumentKind.EQUITY,
     exchange=Exchange.SSE,
 )
-index_id = InstrumentId(
-    code="000001",
-    market=Market.CN_A,
-    kind=InstrumentKind.INDEX,
-    exchange=Exchange.SSE,
-)
-from finchx.datasets import HolderSummarySnapshotRequest
 request = HolderSummarySnapshotRequest(instrumentId=instrument_id)
 result = fx.ownership.holder_summary_snapshot(request)
 ```
 
-#### Provider behavior and notes
-
-The registry currently implements: `tencent.finance.qq.f10`. Provider selection is controlled by runtime policy unless `provider=` is supplied. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
-
 ## `company`
-
-Executive rosters and executive share-change observations.
 
 ### `fx.company.executive_share_change(...)`
 
-Return normalized executive share-change events.
+Fetch executive share changes in a FetchResult.
 
 **Dataset:** `company.executive_share_change`
 **Schema version:** `1.0`
 **Implemented Providers:** `tencent.finance.qq.f10`
-**Routing semantics:** `multi_provider`. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
+**Routing semantics:** `multi_provider`
 
 #### Method signature
 
@@ -3844,47 +3103,43 @@ fx.company.executive_share_change(request: 'ExecutiveShareChangeRequest', *, pro
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | ExecutiveShareChangeRequest | Yes | — | Typed request model. It cannot be combined with the convenience business parameters. |
-| provider | str \| None | No | None | Strict Provider id pin. Only the named Provider is used. (keyword-only) |
-| use_cache | bool \| None | No | None | Whether the configured cache may be used; None follows the configured CachePolicy. (keyword-only) |
+| request | ExecutiveShareChangeRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
+| use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-The typed request model is `ExecutiveShareChangeRequest`. Its fields are:
+**Minimum business input:** request (instrumentId).
 
-| Request field | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | Complete instrument identity: code, market, kind and optional exchange. |
+#### Request model `ExecutiveShareChangeRequest`
 
-#### Return value
-
-The public method annotation is `FetchResult[ExecutiveShareChangeData]`. FetchResult.data: StandardRecord. The `data` payload inside each StandardRecord is the `ExecutiveShareChangeData` schema below.
-
-#### Returned data fields
-
-| Field | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| symbol | str | No | Provider-normalized symbol string for the instrument. |
-| changes | list[ExecutiveShareChange] | No | Normalized changes field. |
-
-#### Nested record types
-
-The following object types are used by the fields above. Enum values are shown inline in the type column.
-
-**`ExecutiveShareChange`**
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| eventDate | date \| None | No | None | Executive share-change event date. |
-| personName | str \| None | No | None | Executive or related person's name. |
-| shareChange | int \| None | No | None | Signed share quantity change. |
-| averagePrice | Decimal \| None | No | None | Average event price in CNY per share. |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
 
+The public return annotation is `FetchResult[ExecutiveShareChangeData]`.
+
+#### Returned data model `ExecutiveShareChangeData`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| symbol | str | Yes | — | Declared by the Pydantic model. |
+| changes | list[ExecutiveShareChange] | Yes | — | Declared by the Pydantic model. |
+
+#### Nested model `ExecutiveShareChange`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| eventDate | date \| None | No | None | Declared by the Pydantic model. |
+| personName | str \| None | No | None | Declared by the Pydantic model. |
+| shareChange | int \| None | No | None | Declared by the Pydantic model. |
+| averagePrice | Decimal \| None | No | None | Declared by the Pydantic model. |
 
 #### Example
 
+<!-- api-example: company.executive_share_change -->
 ```python
-from datetime import date
 from finchx import FinchX
-from finchx.datasets import KlineAdjustment
 from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
+from finchx.datasets import ExecutiveShareChangeRequest
 
 fx = FinchX()
 instrument_id = InstrumentId(
@@ -3893,29 +3148,18 @@ instrument_id = InstrumentId(
     kind=InstrumentKind.EQUITY,
     exchange=Exchange.SSE,
 )
-index_id = InstrumentId(
-    code="000001",
-    market=Market.CN_A,
-    kind=InstrumentKind.INDEX,
-    exchange=Exchange.SSE,
-)
-from finchx.datasets import ExecutiveShareChangeRequest
 request = ExecutiveShareChangeRequest(instrumentId=instrument_id)
 result = fx.company.executive_share_change(request)
 ```
 
-#### Provider behavior and notes
-
-The registry currently implements: `tencent.finance.qq.f10`. Provider selection is controlled by runtime policy unless `provider=` is supplied. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
-
 ### `fx.company.executive_snapshot(...)`
 
-Return the normalized executive roster and roles.
+Fetch an executive snapshot in a FetchResult.
 
 **Dataset:** `company.executive_snapshot`
 **Schema version:** `1.0`
 **Implemented Providers:** `tencent.finance.qq.f10`
-**Routing semantics:** `multi_provider`. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
+**Routing semantics:** `multi_provider`
 
 #### Method signature
 
@@ -3927,47 +3171,43 @@ fx.company.executive_snapshot(request: 'ExecutiveSnapshotRequest', *, provider: 
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | ExecutiveSnapshotRequest | Yes | — | Typed request model. It cannot be combined with the convenience business parameters. |
-| provider | str \| None | No | None | Strict Provider id pin. Only the named Provider is used. (keyword-only) |
-| use_cache | bool \| None | No | None | Whether the configured cache may be used; None follows the configured CachePolicy. (keyword-only) |
+| request | ExecutiveSnapshotRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
+| use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-The typed request model is `ExecutiveSnapshotRequest`. Its fields are:
+**Minimum business input:** request (instrumentId).
 
-| Request field | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | Complete instrument identity: code, market, kind and optional exchange. |
+#### Request model `ExecutiveSnapshotRequest`
 
-#### Return value
-
-The public method annotation is `FetchResult[ExecutiveSnapshotData]`. FetchResult.data: StandardRecord. The `data` payload inside each StandardRecord is the `ExecutiveSnapshotData` schema below.
-
-#### Returned data fields
-
-| Field | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| symbol | str | No | Provider-normalized symbol string for the instrument. |
-| executives | list[ExecutiveEntry] | No | Executive entries. |
-
-#### Nested record types
-
-The following object types are used by the fields above. Enum values are shown inline in the type column.
-
-**`ExecutiveEntry`**
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| name | str | Yes | — | Provider-normalized display name. |
-| roles | list[str] | Yes | — | Executive roles. |
-| shares | int \| None | No | None | Share quantity. |
-| compensation | Decimal \| None | No | None | Compensation amount when supplied. |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
 
+The public return annotation is `FetchResult[ExecutiveSnapshotData]`.
+
+#### Returned data model `ExecutiveSnapshotData`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| symbol | str | Yes | — | Declared by the Pydantic model. |
+| executives | list[ExecutiveEntry] | Yes | — | Declared by the Pydantic model. |
+
+#### Nested model `ExecutiveEntry`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| name | str | Yes | — | Declared by the Pydantic model. |
+| roles | list[str] | Yes | — | Declared by the Pydantic model. |
+| shares | int \| None | No | None | Declared by the Pydantic model. |
+| compensation | Decimal \| None | No | None | Declared by the Pydantic model. |
 
 #### Example
 
+<!-- api-example: company.executive_snapshot -->
 ```python
-from datetime import date
 from finchx import FinchX
-from finchx.datasets import KlineAdjustment
 from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
+from finchx.datasets import ExecutiveSnapshotRequest
 
 fx = FinchX()
 instrument_id = InstrumentId(
@@ -3976,33 +3216,20 @@ instrument_id = InstrumentId(
     kind=InstrumentKind.EQUITY,
     exchange=Exchange.SSE,
 )
-index_id = InstrumentId(
-    code="000001",
-    market=Market.CN_A,
-    kind=InstrumentKind.INDEX,
-    exchange=Exchange.SSE,
-)
-from finchx.datasets import ExecutiveSnapshotRequest
 request = ExecutiveSnapshotRequest(instrumentId=instrument_id)
 result = fx.company.executive_snapshot(request)
 ```
 
-#### Provider behavior and notes
-
-The registry currently implements: `tencent.finance.qq.f10`. Provider selection is controlled by runtime policy unless `provider=` is supplied. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
-
 ## `corporate_action`
-
-Dividend and share-repurchase observations.
 
 ### `fx.corporate_action.dividend(...)`
 
-Return normalized dividend events and their source fields.
+Fetch dividend actions in a FetchResult.
 
 **Dataset:** `corporate_action.dividend`
 **Schema version:** `1.0`
 **Implemented Providers:** `tencent.finance.qq.f10`
-**Routing semantics:** `multi_provider`. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
+**Routing semantics:** `multi_provider`
 
 #### Method signature
 
@@ -4014,52 +3241,48 @@ fx.corporate_action.dividend(request: 'DividendRequest', *, provider: 'str | Non
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | DividendRequest | Yes | — | Typed request model. It cannot be combined with the convenience business parameters. |
-| provider | str \| None | No | None | Strict Provider id pin. Only the named Provider is used. (keyword-only) |
-| use_cache | bool \| None | No | None | Whether the configured cache may be used; None follows the configured CachePolicy. (keyword-only) |
+| request | DividendRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
+| use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-The typed request model is `DividendRequest`. Its fields are:
+**Minimum business input:** request (instrumentId).
 
-| Request field | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | Complete instrument identity: code, market, kind and optional exchange. |
+#### Request model `DividendRequest`
 
-#### Return value
-
-The public method annotation is `FetchResult[DividendData]`. FetchResult.data: StandardRecord. The `data` payload inside each StandardRecord is the `DividendData` schema below.
-
-#### Returned data fields
-
-| Field | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| symbol | str | No | Provider-normalized symbol string for the instrument. |
-| dividends | list[Dividend] | No | Dividend event rows. |
-
-#### Nested record types
-
-The following object types are used by the fields above. Enum values are shown inline in the type column.
-
-**`Dividend`**
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| fiscalYear | int \| None | No | None | Normalized fiscal year field. |
-| announcementDate | date \| None | No | None | Normalized announcement date field. |
-| stockDividendPer10 | Decimal \| None | No | None | Normalized stock dividend per10 field. |
-| capitalizationPer10 | Decimal \| None | No | None | Normalized capitalization per10 field. |
-| cashDividendPer10 | Decimal \| None | No | None | Normalized cash dividend per10 field. |
-| rightsIssuePer10 | Decimal \| None | No | None | Normalized rights issue per10 field. |
-| recordDate | date \| None | No | None | Corporate-action record date. |
-| exDate | date \| None | No | None | Ex-dividend or ex-rights date. |
-| description | str \| None | No | None | Normalized description field. |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
 
+The public return annotation is `FetchResult[DividendData]`.
+
+#### Returned data model `DividendData`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| symbol | str | Yes | — | Declared by the Pydantic model. |
+| dividends | list[Dividend] | Yes | — | Declared by the Pydantic model. |
+
+#### Nested model `Dividend`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| fiscalYear | int \| None | No | None | Declared by the Pydantic model. |
+| announcementDate | date \| None | No | None | Declared by the Pydantic model. |
+| stockDividendPer10 | Decimal \| None | No | None | Declared by the Pydantic model. |
+| capitalizationPer10 | Decimal \| None | No | None | Declared by the Pydantic model. |
+| cashDividendPer10 | Decimal \| None | No | None | Declared by the Pydantic model. |
+| rightsIssuePer10 | Decimal \| None | No | None | Declared by the Pydantic model. |
+| recordDate | date \| None | No | None | Declared by the Pydantic model. |
+| exDate | date \| None | No | None | Declared by the Pydantic model. |
+| description | str \| None | No | None | Declared by the Pydantic model. |
 
 #### Example
 
+<!-- api-example: corporate_action.dividend -->
 ```python
-from datetime import date
 from finchx import FinchX
-from finchx.datasets import KlineAdjustment
 from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
+from finchx.datasets import DividendRequest
 
 fx = FinchX()
 instrument_id = InstrumentId(
@@ -4068,29 +3291,18 @@ instrument_id = InstrumentId(
     kind=InstrumentKind.EQUITY,
     exchange=Exchange.SSE,
 )
-index_id = InstrumentId(
-    code="000001",
-    market=Market.CN_A,
-    kind=InstrumentKind.INDEX,
-    exchange=Exchange.SSE,
-)
-from finchx.datasets import DividendRequest
 request = DividendRequest(instrumentId=instrument_id)
 result = fx.corporate_action.dividend(request)
 ```
 
-#### Provider behavior and notes
-
-The registry currently implements: `tencent.finance.qq.f10`. Provider selection is controlled by runtime policy unless `provider=` is supplied. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
-
 ### `fx.corporate_action.repurchase(...)`
 
-Return normalized share-repurchase events and their source fields.
+Fetch repurchase actions in a FetchResult.
 
 **Dataset:** `corporate_action.repurchase`
 **Schema version:** `1.0`
 **Implemented Providers:** `tencent.finance.qq.f10`
-**Routing semantics:** `multi_provider`. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
+**Routing semantics:** `multi_provider`
 
 #### Method signature
 
@@ -4102,49 +3314,45 @@ fx.corporate_action.repurchase(request: 'RepurchaseRequest', *, provider: 'str |
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | RepurchaseRequest | Yes | — | Typed request model. It cannot be combined with the convenience business parameters. |
-| provider | str \| None | No | None | Strict Provider id pin. Only the named Provider is used. (keyword-only) |
-| use_cache | bool \| None | No | None | Whether the configured cache may be used; None follows the configured CachePolicy. (keyword-only) |
+| request | RepurchaseRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
+| use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-The typed request model is `RepurchaseRequest`. Its fields are:
+**Minimum business input:** request (instrumentId).
 
-| Request field | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| instrumentId | InstrumentId | Yes | — | Complete instrument identity: code, market, kind and optional exchange. |
+#### Request model `RepurchaseRequest`
 
-#### Return value
-
-The public method annotation is `FetchResult[RepurchaseData]`. FetchResult.data: StandardRecord. The `data` payload inside each StandardRecord is the `RepurchaseData` schema below.
-
-#### Returned data fields
-
-| Field | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| symbol | str | No | Provider-normalized symbol string for the instrument. |
-| repurchases | list[Repurchase] | No | Repurchase event rows. |
-
-#### Nested record types
-
-The following object types are used by the fields above. Enum values are shown inline in the type column.
-
-**`Repurchase`**
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| repurchaseDate | date \| None | No | None | Repurchase date. |
-| quantity | int \| None | No | None | Repurchased share quantity. |
-| averagePrice | Decimal \| None | No | None | Average event price in CNY per share. |
-| currency | Currency \| None | No | None | Currency code. |
-| fundAmount | Decimal \| None | No | None | Funds used or announced for the event, in CNY. |
-| market | str \| None | No | None | FinchX market identifier. |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
 
+The public return annotation is `FetchResult[RepurchaseData]`.
+
+#### Returned data model `RepurchaseData`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| symbol | str | Yes | — | Declared by the Pydantic model. |
+| repurchases | list[Repurchase] | Yes | — | Declared by the Pydantic model. |
+
+#### Nested model `Repurchase`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| repurchaseDate | date \| None | No | None | Declared by the Pydantic model. |
+| quantity | int \| None | No | None | Declared by the Pydantic model. |
+| averagePrice | Decimal \| None | No | None | Declared by the Pydantic model. |
+| currency | Currency \| None | No | None | Declared by the Pydantic model. |
+| fundAmount | Decimal \| None | No | None | Declared by the Pydantic model. |
+| market | str \| None | No | None | Declared by the Pydantic model. |
 
 #### Example
 
+<!-- api-example: corporate_action.repurchase -->
 ```python
-from datetime import date
 from finchx import FinchX
-from finchx.datasets import KlineAdjustment
 from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
+from finchx.datasets import RepurchaseRequest
 
 fx = FinchX()
 instrument_id = InstrumentId(
@@ -4153,32 +3361,18 @@ instrument_id = InstrumentId(
     kind=InstrumentKind.EQUITY,
     exchange=Exchange.SSE,
 )
-index_id = InstrumentId(
-    code="000001",
-    market=Market.CN_A,
-    kind=InstrumentKind.INDEX,
-    exchange=Exchange.SSE,
-)
-from finchx.datasets import RepurchaseRequest
 request = RepurchaseRequest(instrumentId=instrument_id)
 result = fx.corporate_action.repurchase(request)
 ```
 
-#### Provider behavior and notes
-
-The registry currently implements: `tencent.finance.qq.f10`. Provider selection is controlled by runtime policy unless `provider=` is supplied. The registry marks this Dataset as `multi_provider`; the listed Provider set is the set implemented in this release.
-
-## Computed capability: `market.deviation`
-
-`market.deviation` is a deterministic local computation, not an external Provider. It reuses trading-calendar and Kline Dataset calls, sets `provider=None` on its returned `FetchResult`, and retains underlying provenance.
+## `market.deviation`
 
 ### `fx.market.deviation(...)`
 
-Compute close-based 10-day and/or 30-day stock-versus-benchmark deviation from FinchX calendar and Kline inputs.
+Compute close-based 10-day/30-day deviation from existing data.
 
-**Dataset identity:** `market.deviation` (computed, schema version `1.0`)
-**External Provider:** none; the calculation uses the trading-calendar capability and Klines.
-**Default Kline Provider:** `tencent.finance.qq.klines`.
+**Dataset:** `market.deviation` (computed; no Provider)
+**Schema version:** `1.0`
 
 #### Method signature
 
@@ -4186,80 +3380,84 @@ Compute close-based 10-day and/or 30-day stock-versus-benchmark deviation from F
 fx.market.deviation(instrument_id: 'InstrumentId', *, windows: 'Sequence[int]' = (10, 30), as_of: 'date | None' = None, window_convention: 'DeviationWindowConvention' = <DeviationWindowConvention.MAX_DEVIATION_SCAN: 'max_deviation_scan'>, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[DeviationData]'
 ```
 
+#### Parameters
+
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| instrument_id | InstrumentId | Yes | — | Complete SSE/SZSE A-share equity identity. |
-| windows | Sequence[int] | No | (10, 30) | Only 10 and 30 are accepted; duplicates are rejected. |
-| as_of | date \| None | No | None | Cutoff date; latest completed session on or before the cutoff is used. |
-| window_convention | DeviationWindowConvention | No | max_deviation_scan | `strict_exchange_window` or `max_deviation_scan`. |
-| provider | str \| None | No | None | Strict Kline Provider pin. The calendar lookup still uses the runtime's calendar Provider selection. |
-| use_cache | bool \| None | No | None | Passed to underlying calendar and Kline fetches. |
+| instrument_id | InstrumentId | Yes | — | Complete InstrumentId. |
+| windows | Sequence[int] | No | (10, 30) | Supported deviation windows: 10 and 30 trading sessions. |
+| as_of | date \| None | No | None | Optional completed-session date. |
+| window_convention | DeviationWindowConvention | No | DeviationWindowConvention.MAX_DEVIATION_SCAN | Deviation window interpretation. |
+| provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
+| use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-#### Calculation rule
+**Minimum business input:** instrument_id.
 
-For each requested window, `deviation = stock_return - benchmark_return`, where each return is calculated from the selected baseline close/point to the completed end date. The default `max_deviation_scan` chooses the eligible start that maximizes this difference; `strict_exchange_window` uses the exchange-shaped start. The 10-day thresholds are `+1.00` and `-0.50`; the 30-day thresholds are `+2.00` and `-0.70`. These are ratios, so `0.03` means 3%. A positive deviation means the stock outperformed its benchmark over the selected window; a negative deviation means it underperformed.
+#### Request model `DeviationRequest`
 
-Stock input uses Tencent QFQ daily Kline closes; the benchmark is an unadjusted index series. The result reports `priceBasis="qfq_stock__raw_index"`, `calculationMode="official_close"`, and rule version `cn-a-exchange-2026-07-06+finchx-v1`. It does not make network requests as a separate deviation Provider, but it does call the underlying calendar and Kline capabilities.
-
-Supported benchmark mapping: SSE `60xxxx` → SSE A Share Index `000002`; SSE `68xxxx` → SSE STAR 50 Index `000688`; SZSE `00xxxx` → SZSE A Share Index `399107`; SZSE `30xxxx` → ChiNext Composite Index `399102`. BSE and unsupported code prefixes raise the existing invalid-request boundary.
-
-#### Computed return fields
-
-| Field | Type | Nullable | Description |
-| --- | --- | --- | --- |
-| instrumentId | InstrumentId | No | Complete instrument identity: code, market, kind and optional exchange. |
-| board | str | No | Resolved board classification used by the deviation benchmark mapping. |
-| effectiveAsOf | date | No | Latest completed trading session actually used by the calculation. |
-| calculationMode | 'official_close' | No | Frozen calculation mode; v1 is official_close. |
-| priceBasis | 'qfq_stock__raw_index' | No | Frozen price basis; v1 is qfq_stock__raw_index. |
-| ruleVersion | str | No | Version of the deviation calculation rule set. |
-| windows | list[DeviationWindowData] | No | Computed observations for each requested window. |
-
-#### Nested record types
-
-The following object types are used by the fields above. Enum values are shown inline in the type column.
-
-**`DeviationWindowData`**
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| windowDays | Literal[10, 30] | Yes | — | Selected deviation window: 10 or 30 trading days. |
-| windowConvention | DeviationWindowConvention | Yes | — | Window interpretation: strict_exchange_window or max_deviation_scan. |
-| tradingSessions | int | Yes | — | Number of aligned trading sessions used by the calculation. |
-| startDate | date | Yes | — | Inclusive start date of the requested range or selected window. |
-| baselineDate | date | Yes | — | Session immediately preceding the selected window start. |
-| endDate | date | Yes | — | Inclusive end date of the requested range or selected window. |
-| startPrice | Decimal | Yes | — | Stock price at the selected baseline date. |
-| windowStartPrice | Decimal | Yes | — | Stock price at the selected window start date. |
-| currentPrice | Decimal | Yes | — | Current-session price in CNY per share. |
-| benchmarkInstrument | InstrumentId | Yes | — | Audited index instrument used as the benchmark. |
-| benchmarkName | str | Yes | — | Human-readable benchmark name. |
-| benchmarkStart | Decimal | Yes | — | Benchmark point at the selected baseline date. |
-| benchmarkCurrent | Decimal | Yes | — | Benchmark point at the calculation end date. |
-| stockReturn | Decimal | Yes | — | Cumulative stock return over the selected baseline and end date. |
-| benchmarkReturn | Decimal | Yes | — | Cumulative benchmark return over the selected baseline and end date. |
-| deviation | Decimal | Yes | — | Stock return minus benchmark return, represented as a ratio. |
-| upperThreshold | Decimal | Yes | — | Upper deviation threshold for the selected window. |
-| lowerThreshold | Decimal | Yes | — | Lower deviation threshold for the selected window. |
-| remainingToUpper | Decimal | Yes | — | Upper threshold minus the computed deviation. |
-| remainingToLower | Decimal | Yes | — | Computed deviation minus the lower threshold. |
-| upperTriggerPrice | Decimal | Yes | — | Deterministic upper trigger-price estimate holding benchmark return constant. |
-| lowerTriggerPrice | Decimal | Yes | — | Deterministic lower trigger-price estimate holding benchmark return constant. |
-| remainingPricePctToUpper | Decimal | Yes | — | Price-space distance to the upper trigger estimate. |
-| remainingPricePctToLower | Decimal | Yes | — | Price-space distance to the lower trigger estimate. |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
+| asOf | date \| None | No | None | Declared by the Pydantic model. |
+| windows | tuple[Literal[10, 30], Ellipsis] | No | (10, 30) | Declared by the Pydantic model. |
+| windowConvention | DeviationWindowConvention | No | DeviationWindowConvention.MAX_DEVIATION_SCAN | Declared by the Pydantic model. |
 
-**`InstrumentId`**
+The public return annotation is `FetchResult[DeviationData]`.
+
+#### Returned data model `DeviationData`
+
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| code | str | Yes | — | Exchange-specific instrument code. |
-| market | Market | Yes | — | FinchX market identifier. |
-| kind | InstrumentKind | Yes | — | Instrument kind. |
-| exchange | Exchange \| None | No | None | Exchange identity when required by the dataset. |
+| instrumentId | InstrumentId | Yes | — | Declared by the Pydantic model. |
+| board | str | Yes | — | Declared by the Pydantic model. |
+| effectiveAsOf | date | Yes | — | Declared by the Pydantic model. |
+| calculationMode | Literal['official_close'] | Yes | — | Declared by the Pydantic model. |
+| priceBasis | Literal['qfq_stock__raw_index'] | Yes | — | Declared by the Pydantic model. |
+| ruleVersion | str | Yes | — | Declared by the Pydantic model. |
+| windows | tuple[DeviationWindowData, Ellipsis] | Yes | — | Declared by the Pydantic model. |
 
+#### Nested model `InstrumentId`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| code | str | Yes | — | Declared by the Pydantic model. |
+| market | Market | Yes | — | Declared by the Pydantic model. |
+| kind | InstrumentKind | Yes | — | Declared by the Pydantic model. |
+| exchange | Exchange \| None | No | None | Declared by the Pydantic model. |
+
+#### Nested model `DeviationWindowData`
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| windowDays | Literal[10, 30] | Yes | — | Declared by the Pydantic model. |
+| windowConvention | DeviationWindowConvention | Yes | — | Declared by the Pydantic model. |
+| tradingSessions | int | Yes | — | Declared by the Pydantic model. |
+| startDate | date | Yes | — | Declared by the Pydantic model. |
+| baselineDate | date | Yes | — | Declared by the Pydantic model. |
+| endDate | date | Yes | — | Declared by the Pydantic model. |
+| startPrice | Decimal | Yes | — | Declared by the Pydantic model. |
+| windowStartPrice | Decimal | Yes | — | Declared by the Pydantic model. |
+| currentPrice | Decimal | Yes | — | Declared by the Pydantic model. |
+| benchmarkInstrument | InstrumentId | Yes | — | Declared by the Pydantic model. |
+| benchmarkName | str | Yes | — | Declared by the Pydantic model. |
+| benchmarkStart | Decimal | Yes | — | Declared by the Pydantic model. |
+| benchmarkCurrent | Decimal | Yes | — | Declared by the Pydantic model. |
+| stockReturn | Decimal | Yes | — | Declared by the Pydantic model. |
+| benchmarkReturn | Decimal | Yes | — | Declared by the Pydantic model. |
+| deviation | Decimal | Yes | — | Declared by the Pydantic model. |
+| upperThreshold | Decimal | Yes | — | Declared by the Pydantic model. |
+| lowerThreshold | Decimal | Yes | — | Declared by the Pydantic model. |
+| remainingToUpper | Decimal | Yes | — | Declared by the Pydantic model. |
+| remainingToLower | Decimal | Yes | — | Declared by the Pydantic model. |
+| upperTriggerPrice | Decimal | Yes | — | Declared by the Pydantic model. |
+| lowerTriggerPrice | Decimal | Yes | — | Declared by the Pydantic model. |
+| remainingPricePctToUpper | Decimal | Yes | — | Declared by the Pydantic model. |
+| remainingPricePctToLower | Decimal | Yes | — | Declared by the Pydantic model. |
 
 #### Example
 
+<!-- api-example: market.deviation -->
 ```python
-from datetime import date
 from finchx import FinchX
 from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
 
@@ -4271,25 +3469,4 @@ instrument_id = InstrumentId(
     exchange=Exchange.SSE,
 )
 result = fx.market.deviation(instrument_id, windows=(10, 30))
-for window in result.data.windows:
-    print(window.window_days, window.deviation, window.benchmark_name)
 ```
-
-A computed deviation is not an official exchange announcement, not an intraday estimate, and not a product exclusion or trigger state. Insufficient history, missing aligned closes, non-positive prices and unsupported identities produce an error rather than a zero value.
-
-## Optional dependency reference
-
-| Extra | Package | Capability |
-| --- | --- | --- |
-| `calendar` | `pandas_market_calendars` | Optional trading-calendar Provider `pandas_market_calendars`. |
-| `jygs` | `playwright` | Authenticated `jiuyangongshe.daily_replay`; also requires `JYGS_SESSION`. |
-
-From a source checkout, install with `python -m pip install ".[calendar]"` or `python -m pip install ".[jygs]"`. After PyPI publication, use `pip install "finchx[calendar]"` or `pip install "finchx[jygs]"`.
-
-## Third-party data notice
-
-FinchX provides software for accessing and normalizing third-party data sources. FinchX does not redistribute third-party market datasets. Users are responsible for complying with the terms and policies of the respective data providers.
-
-## License
-
-FinchX is licensed under Apache-2.0. Third-party data is not covered by the FinchX license.
