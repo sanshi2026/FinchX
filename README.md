@@ -63,20 +63,24 @@ for record in result.data:
 print(result.provider, result.captured_at)
 ```
 
+### Single-stock quote
+
+```python
+result = fx.market.quote_snapshot("600519")
+```
+
+Single-instrument Client endpoints accept either a complete `InstrumentId` or a verified six-digit A-share code. FinchX resolves the code to a `CN_A` equity and infers SSE from `6`, SZSE from `0`/`3`, and BSE from `4`/`8`/`9` when the selected endpoint supports that venue. Index and other ambiguous identities still require an explicit `InstrumentId`.
+
 ### Historical OHLCV
 
 ```python
 from datetime import date
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
 from finchx.datasets import KlineAdjustment
 
-instrument = InstrumentId(
-    code="600519", market=Market.CN_A,
-    kind=InstrumentKind.EQUITY, exchange=Exchange.SSE,
-)
-result = FinchX().market.ohlcv(
-    instrument,
+fx = FinchX()
+result = fx.market.ohlcv(
+    "600519",
     date(2026, 9, 1),
     date(2026, 9, 18),
     adjustment=KlineAdjustment.QFQ,
@@ -88,8 +92,8 @@ for record in result.data:
 ### News and disclosures
 
 ```python
-news = fx.news.search(instrument, page_size=10)
-disclosures = fx.disclosure.search(instrument, page_size=10)
+news = fx.news.search("600519", page_size=10)
+disclosures = fx.disclosure.search("600519", page_size=10)
 print(news.data[0].title if news.data else "no news")
 print(disclosures.data[0].title if disclosures.data else "no disclosures")
 ```
@@ -97,11 +101,7 @@ print(disclosures.data[0].title if disclosures.data else "no disclosures")
 ### Financial data
 
 ```python
-from finchx.datasets import FinancialSummaryRequest
-
-result = fx.fundamental.financial_summary(
-    FinancialSummaryRequest(instrumentId=instrument)
-)
+result = fx.fundamental.financial_summary("600519")
 print(result.data.data["periods"])
 ```
 
@@ -110,11 +110,7 @@ print(result.data.data["periods"])
 `market.stock_keyword` returns structured keywords/concepts supplied by the source. It does not perform NLP keyword extraction and does not invent a heat score.
 
 ```python
-from finchx.datasets import MarketStockKeywordRequest
-
-result = fx.market.stock_keyword(
-    MarketStockKeywordRequest(instrumentId=instrument)
-)
+result = fx.market.stock_keyword("600519")
 for keyword in result.data.data["keywords"]:
     print(keyword["keywordName"], keyword["hitCount"])
 ```
@@ -122,7 +118,7 @@ for keyword in result.data.data["keywords"]:
 ### Computed deviation
 
 ```python
-result = fx.market.deviation(instrument, windows=(10, 30))
+result = fx.market.deviation("600519", windows=(10, 30))
 for window in result.data.windows:
     print(window.window_days, window.deviation)
 ```
@@ -133,7 +129,7 @@ This is a deterministic close-based calculation over FinchX trading-calendar and
 
 ### Instrument identity
 
-Most instrument endpoints accept a complete `InstrumentId` rather than a bare code. It contains `code`, `market`, `kind`, and, where needed, an explicit `exchange`. The public A-share market value is `Market.CN_A`; instrument kinds are `equity`, `index`, and `etf`; exchanges are `sse`, `szse`, and `bse`.
+Single-instrument endpoints accept either a complete `InstrumentId` or a verified six-digit A-share code. The latter is normalized to `Market.CN_A` plus `InstrumentKind.EQUITY`; code prefixes `6`, `0`/`3`, and `4`/`8`/`9` identify SSE, SZSE, and BSE respectively where supported. Index and other ambiguous identities require a complete `InstrumentId` with `code`, `market`, `kind`, and, where needed, an explicit `exchange`.
 
 ### FetchResult
 

@@ -151,7 +151,7 @@ def test_provider_backed_examples_dry_run_through_client_validation(monkeypatch)
 
 def test_deviation_example_is_explicitly_kept_out_of_provider_dry_run():
     code = _examples(render("en"))["market.deviation"]
-    assert "fx.market.deviation(instrument_id, windows=(10, 30))" in code
+    assert 'fx.market.deviation("600519", windows=(10, 30))' in code
 
     tree = ast.parse(code, filename="<example:market.deviation>")
     call = next(
@@ -161,24 +161,16 @@ def test_deviation_example_is_explicitly_kept_out_of_provider_dry_run():
         and isinstance(node.func, ast.Attribute)
         and node.func.attr == "deviation"
     )
-    assert isinstance(call.args[0], ast.Name)
-    assert call.args[0].id == "instrument_id"
+    assert isinstance(call.args[0], ast.Constant)
+    assert call.args[0].value == "600519"
     windows_node = next(keyword.value for keyword in call.keywords if keyword.arg == "windows")
     windows = ast.literal_eval(windows_node)
     assert windows == (10, 30)
 
     from finchx import FinchX
-    from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
-
-    instrument_id = InstrumentId(
-        code="600519",
-        market=Market.CN_A,
-        kind=InstrumentKind.EQUITY,
-        exchange=Exchange.SSE,
-    )
     signature = inspect.signature(FinchX(collector=_RecordingCollector()).market.deviation)
-    bound = signature.bind(instrument_id, windows=windows)
-    assert bound.arguments["instrument_id"] == instrument_id
+    bound = signature.bind("600519", windows=windows)
+    assert bound.arguments["instrument_id"] == "600519"
     assert bound.arguments["windows"] == windows
 
 

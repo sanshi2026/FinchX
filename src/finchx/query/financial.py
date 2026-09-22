@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 from datetime import date
-from typing import Any
 
 from finchx.datasets.financial_statement import (
     FinancialStatementRequest,
     normalize_financial_statement,
 )
+from finchx.entities import InstrumentInput, normalize_instrument
 from finchx.providers.tonghuashun_financial import TonghuashunFinancialProvider
 
 
@@ -20,14 +20,14 @@ class FinancialStatementService:
 
     def get_statement(
         self,
-        instrument: Any,
+        instrument: InstrumentInput,
         statement_type: str,
         *,
         period_end: date | None = None,
         max_periods: int | None = None,
     ):
         request = FinancialStatementRequest(
-            instrumentId=instrument,
+            instrumentId=normalize_instrument(instrument),
             statementType=statement_type,
             periodEnd=period_end,
             maxPeriods=max_periods,
@@ -40,7 +40,7 @@ class FinancialStatementService:
 
     def get(
         self,
-        instrument: Any,
+        instrument: InstrumentInput,
         statement_type: str,
         *,
         period_end: date | None = None,

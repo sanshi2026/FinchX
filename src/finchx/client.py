@@ -140,7 +140,7 @@ from finchx.datasets.financial_statement import StatementType
 from finchx.datasets.fundamental_industry_comparison import (
     IndustryComparisonRequest as FundamentalIndustryComparisonRequest,
 )
-from finchx.entities import InstrumentId, Market
+from finchx.entities import InstrumentId, InstrumentInput, Market, normalize_instrument
 from finchx.providers.registry import PROVIDER_REGISTRY, ProviderRegistry
 from finchx.storage import Cache
 
@@ -200,13 +200,32 @@ class _RequestNamespace(_Namespace):
             use_cache=use_cache,
         )
 
+    def _fetch_instrument_request(
+        self,
+        dataset: DatasetDefinition[Any, Any],
+        request: Any,
+        request_type: type[Any],
+        *,
+        provider: str | None,
+        use_cache: bool | None,
+    ) -> FetchResult[Any]:
+        """Fetch a request model or build one from a single instrument input."""
+        if isinstance(request, (InstrumentId, str)):
+            request = request_type(instrumentId=normalize_instrument(request))
+        return self._fetch_request(
+            dataset,
+            request,
+            provider=provider,
+            use_cache=use_cache,
+        )
+
 
 class ReferenceNamespace(_Namespace):
     """Reference and identity lookups."""
 
     def instrument(
         self,
-        instrument_id: InstrumentId | None = None,
+        instrument_id: InstrumentInput | None = None,
         *,
         request: InstrumentRequest | None = None,
         provider: str | None = None,
@@ -217,7 +236,13 @@ class ReferenceNamespace(_Namespace):
             if instrument_id is not None:
                 raise TypeError("instrument_id cannot be combined with request")
         else:
-            request = InstrumentRequest(instrumentId=instrument_id)
+            request = InstrumentRequest(
+                instrumentId=(
+                    normalize_instrument(instrument_id)
+                    if instrument_id is not None
+                    else None
+                )
+            )
         return self._fetch(
             INSTRUMENT_DATASET,
             request,
@@ -278,7 +303,7 @@ class MarketNamespace(_RequestNamespace):
 
     def ohlcv(
         self,
-        instrument_id: InstrumentId | None = None,
+        instrument_id: InstrumentInput | None = None,
         start_date: date | None = None,
         end_date: date | None = None,
         adjustment: KlineAdjustment | None = None,
@@ -295,7 +320,7 @@ class MarketNamespace(_RequestNamespace):
             if instrument_id is None or start_date is None or end_date is None:
                 raise TypeError("ohlcv requires instrument_id, start_date, and end_date")
             request_values: dict[str, Any] = {
-                "instrumentId": instrument_id,
+                "instrumentId": normalize_instrument(instrument_id),
                 "startDate": start_date,
                 "endDate": end_date,
             }
@@ -311,7 +336,7 @@ class MarketNamespace(_RequestNamespace):
 
     def deviation(
         self,
-        instrument_id: InstrumentId,
+        instrument_id: InstrumentInput,
         *,
         windows: Sequence[int] = (10, 30),
         as_of: date | None = None,
@@ -321,7 +346,7 @@ class MarketNamespace(_RequestNamespace):
     ) -> FetchResult[DeviationData]:
         """Compute close-based 10-day/30-day deviation from existing data."""
         return self._client._deviation_service.calculate(
-            instrument_id,
+            normalize_instrument(instrument_id),
             windows=windows,
             as_of=as_of,
             window_convention=window_convention,
@@ -393,53 +418,83 @@ class MarketNamespace(_RequestNamespace):
 
     def equity_intraday(
         self,
-        request: EquityIntradayRequest,
+        request: EquityIntradayRequest | InstrumentInput,
         *,
         provider: str | None = None,
         use_cache: bool | None = None,
     ) -> FetchResult[EquityIntradayData]:
         """Fetch one equity intraday session in a FetchResult."""
-        return self._fetch_request(MARKET_EQUITY_INTRADAY_DATASET, request, provider=provider, use_cache=use_cache)
+        return self._fetch_instrument_request(
+            MARKET_EQUITY_INTRADAY_DATASET,
+            request,
+            EquityIntradayRequest,
+            provider=provider,
+            use_cache=use_cache,
+        )
 
     def equity_intraday_5d(
         self,
-        request: EquityIntraday5dRequest,
+        request: EquityIntraday5dRequest | InstrumentInput,
         *,
         provider: str | None = None,
         use_cache: bool | None = None,
     ) -> FetchResult[EquityIntradayData]:
         """Fetch five-day equity intraday data in a FetchResult."""
-        return self._fetch_request(MARKET_EQUITY_INTRADAY_5D_DATASET, request, provider=provider, use_cache=use_cache)
+        return self._fetch_instrument_request(
+            MARKET_EQUITY_INTRADAY_5D_DATASET,
+            request,
+            EquityIntraday5dRequest,
+            provider=provider,
+            use_cache=use_cache,
+        )
 
     def fund_flow_daily(
         self,
-        request: MarketFundFlowRequest,
+        request: MarketFundFlowRequest | InstrumentInput,
         *,
         provider: str | None = None,
         use_cache: bool | None = None,
     ) -> FetchResult[MarketFundFlowDailyData]:
         """Fetch daily fund-flow data in a FetchResult."""
-        return self._fetch_request(MARKET_FUND_FLOW_DAILY_DATASET, request, provider=provider, use_cache=use_cache)
+        return self._fetch_instrument_request(
+            MARKET_FUND_FLOW_DAILY_DATASET,
+            request,
+            MarketFundFlowRequest,
+            provider=provider,
+            use_cache=use_cache,
+        )
 
     def fund_flow_intraday(
         self,
-        request: MarketFundFlowRequest,
+        request: MarketFundFlowRequest | InstrumentInput,
         *,
         provider: str | None = None,
         use_cache: bool | None = None,
     ) -> FetchResult[MarketFundFlowIntradayData]:
         """Fetch intraday fund-flow data in a FetchResult."""
-        return self._fetch_request(MARKET_FUND_FLOW_INTRADAY_DATASET, request, provider=provider, use_cache=use_cache)
+        return self._fetch_instrument_request(
+            MARKET_FUND_FLOW_INTRADAY_DATASET,
+            request,
+            MarketFundFlowRequest,
+            provider=provider,
+            use_cache=use_cache,
+        )
 
     def fund_flow_snapshot(
         self,
-        request: MarketFundFlowRequest,
+        request: MarketFundFlowRequest | InstrumentInput,
         *,
         provider: str | None = None,
         use_cache: bool | None = None,
     ) -> FetchResult[MarketFundFlowSnapshotData]:
         """Fetch the fund-flow snapshot in a FetchResult."""
-        return self._fetch_request(MARKET_FUND_FLOW_SNAPSHOT_DATASET, request, provider=provider, use_cache=use_cache)
+        return self._fetch_instrument_request(
+            MARKET_FUND_FLOW_SNAPSHOT_DATASET,
+            request,
+            MarketFundFlowRequest,
+            provider=provider,
+            use_cache=use_cache,
+        )
 
     def index_intraday(
         self,
@@ -463,33 +518,51 @@ class MarketNamespace(_RequestNamespace):
 
     def industry_comparison(
         self,
-        request: MarketIndustryComparisonRequest,
+        request: MarketIndustryComparisonRequest | InstrumentInput,
         *,
         provider: str | None = None,
         use_cache: bool | None = None,
     ) -> FetchResult[MarketIndustryComparisonData]:
         """Fetch the market industry comparison in a FetchResult."""
-        return self._fetch_request(MARKET_INDUSTRY_COMPARISON_DATASET, request, provider=provider, use_cache=use_cache)
+        return self._fetch_instrument_request(
+            MARKET_INDUSTRY_COMPARISON_DATASET,
+            request,
+            MarketIndustryComparisonRequest,
+            provider=provider,
+            use_cache=use_cache,
+        )
 
     def instrument_sector_snapshot(
         self,
-        request: MarketInstrumentSectorSnapshotRequest,
+        request: MarketInstrumentSectorSnapshotRequest | InstrumentInput,
         *,
         provider: str | None = None,
         use_cache: bool | None = None,
     ) -> FetchResult[MarketInstrumentSectorSnapshotData]:
         """Fetch sector tags and snapshots for an instrument in a FetchResult."""
-        return self._fetch_request(MARKET_INSTRUMENT_SECTOR_SNAPSHOT_DATASET, request, provider=provider, use_cache=use_cache)
+        return self._fetch_instrument_request(
+            MARKET_INSTRUMENT_SECTOR_SNAPSHOT_DATASET,
+            request,
+            MarketInstrumentSectorSnapshotRequest,
+            provider=provider,
+            use_cache=use_cache,
+        )
 
     def stock_keyword(
         self,
-        request: MarketStockKeywordRequest,
+        request: MarketStockKeywordRequest | InstrumentInput,
         *,
         provider: str | None = None,
         use_cache: bool | None = None,
     ) -> FetchResult[MarketStockKeywordData]:
         """Fetch EastMoney source-ranked hot keywords for an instrument."""
-        return self._fetch_request(MARKET_STOCK_KEYWORD_DATASET, request, provider=provider, use_cache=use_cache)
+        return self._fetch_instrument_request(
+            MARKET_STOCK_KEYWORD_DATASET,
+            request,
+            MarketStockKeywordRequest,
+            provider=provider,
+            use_cache=use_cache,
+        )
 
     def limit_down_pool(
         self,
@@ -513,23 +586,35 @@ class MarketNamespace(_RequestNamespace):
 
     def orderbook(
         self,
-        request: MarketOrderbookRequest,
+        request: MarketOrderbookRequest | InstrumentInput,
         *,
         provider: str | None = None,
         use_cache: bool | None = None,
     ) -> FetchResult[MarketOrderbookData]:
         """Fetch the order book in a FetchResult."""
-        return self._fetch_request(MARKET_ORDERBOOK_DATASET, request, provider=provider, use_cache=use_cache)
+        return self._fetch_instrument_request(
+            MARKET_ORDERBOOK_DATASET,
+            request,
+            MarketOrderbookRequest,
+            provider=provider,
+            use_cache=use_cache,
+        )
 
     def quote_snapshot(
         self,
-        request: MarketQuoteSnapshotRequest,
+        request: MarketQuoteSnapshotRequest | InstrumentInput,
         *,
         provider: str | None = None,
         use_cache: bool | None = None,
     ) -> FetchResult[MarketQuoteSnapshotData]:
         """Fetch one quote snapshot in a FetchResult."""
-        return self._fetch_request(MARKET_QUOTE_SNAPSHOT_DATASET, request, provider=provider, use_cache=use_cache)
+        return self._fetch_instrument_request(
+            MARKET_QUOTE_SNAPSHOT_DATASET,
+            request,
+            MarketQuoteSnapshotRequest,
+            provider=provider,
+            use_cache=use_cache,
+        )
 
     def ranking(
         self,
@@ -578,7 +663,7 @@ class FundamentalNamespace(_RequestNamespace):
 
     def company_profile(
         self,
-        instrument_id: InstrumentId | None = None,
+        instrument_id: InstrumentInput | None = None,
         *,
         request: CompanyProfileRequest | None = None,
         provider: str | None = None,
@@ -589,7 +674,13 @@ class FundamentalNamespace(_RequestNamespace):
             if instrument_id is not None:
                 raise TypeError("instrument_id cannot be combined with request")
         else:
-            request = CompanyProfileRequest(instrumentId=instrument_id)
+            request = CompanyProfileRequest(
+                instrumentId=(
+                    normalize_instrument(instrument_id)
+                    if instrument_id is not None
+                    else None
+                )
+            )
         return self._fetch(
             FUNDAMENTAL_COMPANY_PROFILE_DATASET,
             request,
@@ -599,33 +690,51 @@ class FundamentalNamespace(_RequestNamespace):
 
     def financial_summary(
         self,
-        request: FinancialSummaryRequest,
+        request: FinancialSummaryRequest | InstrumentInput,
         *,
         provider: str | None = None,
         use_cache: bool | None = None,
     ) -> FetchResult[FinancialSummaryData]:
         """Fetch a company's financial summary in a FetchResult."""
-        return self._fetch_request(FUNDAMENTAL_FINANCIAL_SUMMARY_DATASET, request, provider=provider, use_cache=use_cache)
+        return self._fetch_instrument_request(
+            FUNDAMENTAL_FINANCIAL_SUMMARY_DATASET,
+            request,
+            FinancialSummaryRequest,
+            provider=provider,
+            use_cache=use_cache,
+        )
 
     def industry_comparison(
         self,
-        request: FundamentalIndustryComparisonRequest,
+        request: FundamentalIndustryComparisonRequest | InstrumentInput,
         *,
         provider: str | None = None,
         use_cache: bool | None = None,
     ) -> FetchResult[IndustryComparisonData]:
         """Fetch the fundamental industry comparison in a FetchResult."""
-        return self._fetch_request(FUNDAMENTAL_INDUSTRY_COMPARISON_DATASET, request, provider=provider, use_cache=use_cache)
+        return self._fetch_instrument_request(
+            FUNDAMENTAL_INDUSTRY_COMPARISON_DATASET,
+            request,
+            FundamentalIndustryComparisonRequest,
+            provider=provider,
+            use_cache=use_cache,
+        )
 
     def revenue_breakdown(
         self,
-        request: RevenueBreakdownRequest,
+        request: RevenueBreakdownRequest | InstrumentInput,
         *,
         provider: str | None = None,
         use_cache: bool | None = None,
     ) -> FetchResult[RevenueBreakdownData]:
         """Fetch a company's revenue breakdown in a FetchResult."""
-        return self._fetch_request(FUNDAMENTAL_REVENUE_BREAKDOWN_DATASET, request, provider=provider, use_cache=use_cache)
+        return self._fetch_instrument_request(
+            FUNDAMENTAL_REVENUE_BREAKDOWN_DATASET,
+            request,
+            RevenueBreakdownRequest,
+            provider=provider,
+            use_cache=use_cache,
+        )
 
 
 class FinancialNamespace(_Namespace):
@@ -633,7 +742,7 @@ class FinancialNamespace(_Namespace):
 
     def statements(
         self,
-        instrument_id: InstrumentId | None = None,
+        instrument_id: InstrumentInput | None = None,
         statement_type: StatementType | None = None,
         *,
         period_end: date | None = None,
@@ -650,7 +759,7 @@ class FinancialNamespace(_Namespace):
             if instrument_id is None or statement_type is None:
                 raise TypeError("statements requires instrument_id and statement_type")
             request = FinancialStatementRequest(
-                instrumentId=instrument_id,
+                instrumentId=normalize_instrument(instrument_id),
                 statementType=statement_type,
                 periodEnd=period_end,
                 maxPeriods=max_periods,
@@ -748,33 +857,51 @@ class OwnershipNamespace(_RequestNamespace):
 
     def capital_snapshot(
         self,
-        request: CapitalSnapshotRequest,
+        request: CapitalSnapshotRequest | InstrumentInput,
         *,
         provider: str | None = None,
         use_cache: bool | None = None,
     ) -> FetchResult[CapitalSnapshotData]:
         """Fetch a capital snapshot in a FetchResult."""
-        return self._fetch_request(OWNERSHIP_CAPITAL_SNAPSHOT_DATASET, request, provider=provider, use_cache=use_cache)
+        return self._fetch_instrument_request(
+            OWNERSHIP_CAPITAL_SNAPSHOT_DATASET,
+            request,
+            CapitalSnapshotRequest,
+            provider=provider,
+            use_cache=use_cache,
+        )
 
     def float_holder(
         self,
-        request: FloatHolderRequest,
+        request: FloatHolderRequest | InstrumentInput,
         *,
         provider: str | None = None,
         use_cache: bool | None = None,
     ) -> FetchResult[FloatHolderData]:
         """Fetch floating-holder data in a FetchResult."""
-        return self._fetch_request(OWNERSHIP_FLOAT_HOLDER_DATASET, request, provider=provider, use_cache=use_cache)
+        return self._fetch_instrument_request(
+            OWNERSHIP_FLOAT_HOLDER_DATASET,
+            request,
+            FloatHolderRequest,
+            provider=provider,
+            use_cache=use_cache,
+        )
 
     def holder_summary_snapshot(
         self,
-        request: HolderSummarySnapshotRequest,
+        request: HolderSummarySnapshotRequest | InstrumentInput,
         *,
         provider: str | None = None,
         use_cache: bool | None = None,
     ) -> FetchResult[HolderSummarySnapshotData]:
         """Fetch a holder-summary snapshot in a FetchResult."""
-        return self._fetch_request(OWNERSHIP_HOLDER_SUMMARY_SNAPSHOT_DATASET, request, provider=provider, use_cache=use_cache)
+        return self._fetch_instrument_request(
+            OWNERSHIP_HOLDER_SUMMARY_SNAPSHOT_DATASET,
+            request,
+            HolderSummarySnapshotRequest,
+            provider=provider,
+            use_cache=use_cache,
+        )
 
 
 class CompanyNamespace(_RequestNamespace):
@@ -782,23 +909,35 @@ class CompanyNamespace(_RequestNamespace):
 
     def executive_snapshot(
         self,
-        request: ExecutiveSnapshotRequest,
+        request: ExecutiveSnapshotRequest | InstrumentInput,
         *,
         provider: str | None = None,
         use_cache: bool | None = None,
     ) -> FetchResult[ExecutiveSnapshotData]:
         """Fetch an executive snapshot in a FetchResult."""
-        return self._fetch_request(COMPANY_EXECUTIVE_SNAPSHOT_DATASET, request, provider=provider, use_cache=use_cache)
+        return self._fetch_instrument_request(
+            COMPANY_EXECUTIVE_SNAPSHOT_DATASET,
+            request,
+            ExecutiveSnapshotRequest,
+            provider=provider,
+            use_cache=use_cache,
+        )
 
     def executive_share_change(
         self,
-        request: ExecutiveShareChangeRequest,
+        request: ExecutiveShareChangeRequest | InstrumentInput,
         *,
         provider: str | None = None,
         use_cache: bool | None = None,
     ) -> FetchResult[ExecutiveShareChangeData]:
         """Fetch executive share changes in a FetchResult."""
-        return self._fetch_request(COMPANY_EXECUTIVE_SHARE_CHANGE_DATASET, request, provider=provider, use_cache=use_cache)
+        return self._fetch_instrument_request(
+            COMPANY_EXECUTIVE_SHARE_CHANGE_DATASET,
+            request,
+            ExecutiveShareChangeRequest,
+            provider=provider,
+            use_cache=use_cache,
+        )
 
 
 class CorporateActionNamespace(_RequestNamespace):
@@ -806,23 +945,35 @@ class CorporateActionNamespace(_RequestNamespace):
 
     def dividend(
         self,
-        request: DividendRequest,
+        request: DividendRequest | InstrumentInput,
         *,
         provider: str | None = None,
         use_cache: bool | None = None,
     ) -> FetchResult[DividendData]:
         """Fetch dividend actions in a FetchResult."""
-        return self._fetch_request(CORPORATE_ACTION_DIVIDEND_DATASET, request, provider=provider, use_cache=use_cache)
+        return self._fetch_instrument_request(
+            CORPORATE_ACTION_DIVIDEND_DATASET,
+            request,
+            DividendRequest,
+            provider=provider,
+            use_cache=use_cache,
+        )
 
     def repurchase(
         self,
-        request: RepurchaseRequest,
+        request: RepurchaseRequest | InstrumentInput,
         *,
         provider: str | None = None,
         use_cache: bool | None = None,
     ) -> FetchResult[RepurchaseData]:
         """Fetch repurchase actions in a FetchResult."""
-        return self._fetch_request(CORPORATE_ACTION_REPURCHASE_DATASET, request, provider=provider, use_cache=use_cache)
+        return self._fetch_instrument_request(
+            CORPORATE_ACTION_REPURCHASE_DATASET,
+            request,
+            RepurchaseRequest,
+            provider=provider,
+            use_cache=use_cache,
+        )
 
 
 @dataclass(frozen=True)

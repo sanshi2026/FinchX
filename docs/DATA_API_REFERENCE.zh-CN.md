@@ -13,7 +13,7 @@
 | `provider` | 严格指定 Provider id；失败时不会静默切换。 |
 | `use_cache` | None 遵循已配置的 CachePolicy；构造 FinchX 不会创建存储。 |
 | 请求模型 | 部分方法同时提供便捷调用和类型化请求替代；合法组合以 Client 和 Pydantic 校验为准。 |
-| InstrumentId | 接口需要时使用包含 code、market、kind 和 exchange 的完整身份。 |
+| Instrument input | 单证券接口可接收 InstrumentId 或已验证的六位 A 股代码；指数和其他歧义标的仍需显式 InstrumentId。 |
 
 ## 接口索引
 
@@ -21,7 +21,7 @@
 
 | Namespace | 方法 | Dataset | 已实现 Provider | 最小业务输入 |
 | --- | --- | --- | --- | --- |
-| reference | instrument | instrument | tencent.finance.qq.market | instrument_id 或 request |
+| reference | instrument | instrument | tencent.finance.qq.market | instrument_id（InstrumentId 或六位股票代码），或使用 request |
 | reference | trading_calendar | trading_calendar | szse.official.calendar, pandas_market_calendars | 同时提供 start_date 和 end_date，或使用 request |
 | market | breadth | market.breadth | eastmoney.push2ex.breadth | 无 |
 | market | broken_limit_pool | market.broken_limit_pool | eastmoney.push2ex.broken_limit_pool | request |
@@ -29,41 +29,41 @@
 | market | daily_replay | market.daily_replay | jiuyangongshe.daily_replay | request |
 | market | dragon_tiger_detail | market.dragon_tiger_detail | aigupiao.dragon_tiger | request（包含 instrumentId、tradeDate 和 tradeId） |
 | market | dragon_tiger_list | market.dragon_tiger_list | aigupiao.dragon_tiger | request |
-| market | equity_intraday | market.equity_intraday | tencent.finance.qq.intraday | request（包含股票 instrumentId） |
-| market | equity_intraday_5d | market.equity_intraday_5d | tencent.finance.qq.intraday | request（包含股票 instrumentId） |
-| market | fund_flow_daily | market.fund_flow_daily | tencent.finance.qq.fund_flow | request（包含 instrumentId） |
-| market | fund_flow_intraday | market.fund_flow_intraday | tencent.finance.qq.fund_flow | request（包含 instrumentId） |
-| market | fund_flow_snapshot | market.fund_flow_snapshot | tencent.finance.qq.fund_flow | request（包含 instrumentId） |
+| market | equity_intraday | market.equity_intraday | tencent.finance.qq.intraday | instrument（InstrumentId 或六位股票代码），或使用 request |
+| market | equity_intraday_5d | market.equity_intraday_5d | tencent.finance.qq.intraday | instrument（InstrumentId 或六位股票代码），或使用 request |
+| market | fund_flow_daily | market.fund_flow_daily | tencent.finance.qq.fund_flow | instrument（InstrumentId 或六位股票代码），或使用 request |
+| market | fund_flow_intraday | market.fund_flow_intraday | tencent.finance.qq.fund_flow | instrument（InstrumentId 或六位股票代码），或使用 request |
+| market | fund_flow_snapshot | market.fund_flow_snapshot | tencent.finance.qq.fund_flow | instrument（InstrumentId 或六位股票代码），或使用 request |
 | market | index_intraday | market.index_intraday | tencent.finance.qq.intraday | request（包含指数 instrumentId） |
 | market | index_intraday_5d | market.index_intraday_5d | tencent.finance.qq.intraday | request（包含指数 instrumentId） |
-| market | industry_comparison | market.industry_comparison | tencent.finance.qq.industry | request（包含 instrumentId） |
-| market | instrument_sector_snapshot | market.instrument_sector_snapshot | tencent.finance.qq.sector | request（包含 instrumentId） |
-| market | stock_keyword | market.stock_keyword | eastmoney.stockrank | request（包含 instrumentId） |
+| market | industry_comparison | market.industry_comparison | tencent.finance.qq.industry | instrument（InstrumentId 或六位股票代码），或使用 request |
+| market | instrument_sector_snapshot | market.instrument_sector_snapshot | tencent.finance.qq.sector | instrument（InstrumentId 或六位股票代码），或使用 request |
+| market | stock_keyword | market.stock_keyword | eastmoney.stockrank | instrument（InstrumentId 或六位股票代码），或使用 request |
 | market | limit_down_pool | market.limit_down_pool | eastmoney.push2ex.limit_down_pool | request |
 | market | limit_up_pool | market.limit_up_pool | eastmoney.push2ex.limit_up_pool | request |
-| market | ohlcv | market.klines | tencent.finance.qq.klines, sohu.finance.klines | 股票需提供 instrument_id、start_date、end_date 和 adjustment |
-| market | orderbook | market.orderbook | tencent.finance.qq.quote | request（包含 instrumentId） |
+| market | ohlcv | market.klines | tencent.finance.qq.klines, sohu.finance.klines | 股票需提供 instrument_id（InstrumentId 或六位股票代码）、start_date、end_date 和 adjustment |
+| market | orderbook | market.orderbook | tencent.finance.qq.quote | instrument（InstrumentId 或六位股票代码），或使用 request |
 | market | quote | market.quote | tencent.finance.qq.market | 无；默认范围为 CN_A_SHARE |
-| market | quote_snapshot | market.quote_snapshot | tencent.finance.qq.quote | request（包含 instrumentId） |
+| market | quote_snapshot | market.quote_snapshot | tencent.finance.qq.quote | instrument（InstrumentId 或六位股票代码），或使用 request |
 | market | ranking | market.ranking | tencent.finance.qq.market | request（包含 universe、criterion、direction 和 limit） |
 | market | sentiment | market.sentiment_snapshot | aigupiao.market_sentiment | 无 |
 | market | strong_pool | market.strong_pool | eastmoney.push2ex.strong_pool | request |
 | market | yesterday_limit_up_pool | market.yesterday_limit_up_pool | eastmoney.push2ex.yesterday_limit_up_pool | request |
-| fundamental | company_profile | fundamental.company_profile | tencent.finance.qq.f10 | instrument_id 或 request |
-| fundamental | financial_summary | fundamental.financial_summary | tencent.finance.qq.f10 | request（包含 instrumentId） |
-| fundamental | industry_comparison | fundamental.industry_comparison | tencent.finance.qq.f10 | request（包含 instrumentId） |
-| fundamental | revenue_breakdown | fundamental.revenue_breakdown | tencent.finance.qq.f10 | request（包含 instrumentId） |
-| financial | statements | financial.statement | tonghuashun.financial | instrument_id 和 statement_type，或使用 request |
+| fundamental | company_profile | fundamental.company_profile | tencent.finance.qq.f10 | instrument_id（InstrumentId 或六位股票代码），或使用 request |
+| fundamental | financial_summary | fundamental.financial_summary | tencent.finance.qq.f10 | instrument（InstrumentId 或六位股票代码），或使用 request |
+| fundamental | industry_comparison | fundamental.industry_comparison | tencent.finance.qq.f10 | instrument（InstrumentId 或六位股票代码），或使用 request |
+| fundamental | revenue_breakdown | fundamental.revenue_breakdown | tencent.finance.qq.f10 | instrument（InstrumentId 或六位股票代码），或使用 request |
+| financial | statements | financial.statement | tonghuashun.financial | instrument_id（InstrumentId 或六位股票代码）和 statement_type，或使用 request |
 | news | search | news.document | eastmoney.news, eastmoney.market_news, aigupiao.market_news, baidu.finscope.market_news | instrument（InstrumentId 或六位股票代码），或使用 request |
 | disclosure | search | disclosure.document | eastmoney.disclosure | instrument（InstrumentId 或六位股票代码），或使用 request |
-| ownership | capital_snapshot | ownership.capital_snapshot | tencent.finance.qq.f10 | request（包含 instrumentId） |
-| ownership | float_holder | ownership.float_holder | tencent.finance.qq.float_holder | request（包含 instrumentId；asOf 可选） |
-| ownership | holder_summary_snapshot | ownership.holder_summary_snapshot | tencent.finance.qq.f10 | request（包含 instrumentId） |
-| company | executive_share_change | company.executive_share_change | tencent.finance.qq.f10 | request（包含 instrumentId） |
-| company | executive_snapshot | company.executive_snapshot | tencent.finance.qq.f10 | request（包含 instrumentId） |
-| corporate_action | dividend | corporate_action.dividend | tencent.finance.qq.f10 | request（包含 instrumentId） |
-| corporate_action | repurchase | corporate_action.repurchase | tencent.finance.qq.f10 | request（包含 instrumentId） |
-| market | deviation | market.deviation (computed) | — | instrument_id |
+| ownership | capital_snapshot | ownership.capital_snapshot | tencent.finance.qq.f10 | instrument（InstrumentId 或六位股票代码），或使用 request |
+| ownership | float_holder | ownership.float_holder | tencent.finance.qq.float_holder | instrument（InstrumentId 或六位股票代码），或使用 request |
+| ownership | holder_summary_snapshot | ownership.holder_summary_snapshot | tencent.finance.qq.f10 | instrument（InstrumentId 或六位股票代码），或使用 request |
+| company | executive_share_change | company.executive_share_change | tencent.finance.qq.f10 | instrument（InstrumentId 或六位股票代码），或使用 request |
+| company | executive_snapshot | company.executive_snapshot | tencent.finance.qq.f10 | instrument（InstrumentId 或六位股票代码），或使用 request |
+| corporate_action | dividend | corporate_action.dividend | tencent.finance.qq.f10 | instrument（InstrumentId 或六位股票代码），或使用 request |
+| corporate_action | repurchase | corporate_action.repurchase | tencent.finance.qq.f10 | instrument（InstrumentId 或六位股票代码），或使用 request |
+| market | deviation | market.deviation (computed) | — | instrument_id（InstrumentId 或六位股票代码） |
 
 ## 接口参考
 
@@ -81,19 +81,19 @@
 #### 方法签名
 
 ```python
-fx.reference.instrument(instrument_id: 'InstrumentId | None' = None, *, request: 'InstrumentRequest | None' = None, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[InstrumentData]'
+fx.reference.instrument(instrument_id: 'InstrumentInput | None' = None, *, request: 'InstrumentRequest | None' = None, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[InstrumentData]'
 ```
 
 #### 参数
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| instrument_id | InstrumentId \| None | 便捷模式必填 | None | 完整的 InstrumentId。 |
+| instrument_id | InstrumentInput \| None | 便捷模式必填 | None | 完整的 InstrumentId。 |
 | request | InstrumentRequest \| None | 条件性 request 替代 | None | 类型化请求模型；合法组合由 Client 和 Pydantic 校验决定。 |
 | provider | str \| None | 否 | None | 严格指定 Provider id；失败时不会静默切换。 |
 | use_cache | bool \| None | 否 | None | 缓存控制；None 遵循已配置的 CachePolicy。 |
 
-**最小业务输入：** instrument_id 或 request。
+**最小业务输入：** instrument_id（InstrumentId 或六位股票代码），或使用 request。
 
 #### 请求模型 `InstrumentRequest`
 
@@ -124,16 +124,9 @@ fx.reference.instrument(instrument_id: 'InstrumentId | None' = None, *, request:
 <!-- api-example: reference.instrument -->
 ```python
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-result = fx.reference.instrument(instrument_id)
+result = fx.reference.instrument("600519")
 ```
 
 ### `fx.reference.trading_calendar(...)`
@@ -687,18 +680,18 @@ result = fx.market.dragon_tiger_list(request)
 #### 方法签名
 
 ```python
-fx.market.equity_intraday(request: 'EquityIntradayRequest', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[EquityIntradayData]'
+fx.market.equity_intraday(request: 'EquityIntradayRequest | InstrumentInput', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[EquityIntradayData]'
 ```
 
 #### 参数
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | EquityIntradayRequest | 是 | — | 类型化请求模型；合法组合由 Client 和 Pydantic 校验决定。 |
+| request | EquityIntradayRequest \| InstrumentInput | 是 | — | 类型化请求模型；合法组合由 Client 和 Pydantic 校验决定。 |
 | provider | str \| None | 否 | None | 严格指定 Provider id；失败时不会静默切换。 |
 | use_cache | bool \| None | 否 | None | 缓存控制；None 遵循已配置的 CachePolicy。 |
 
-**最小业务输入：** request（包含股票 instrumentId）。
+**最小业务输入：** instrument（InstrumentId 或六位股票代码），或使用 request。
 
 #### 请求模型 `EquityIntradayRequest`
 
@@ -735,18 +728,9 @@ fx.market.equity_intraday(request: 'EquityIntradayRequest', *, provider: 'str | 
 <!-- api-example: market.equity_intraday -->
 ```python
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
-from finchx.datasets import EquityIntradayRequest
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-request = EquityIntradayRequest(instrumentId=instrument_id)
-result = fx.market.equity_intraday(request)
+result = fx.market.equity_intraday("600519")
 ```
 
 ### `fx.market.equity_intraday_5d(...)`
@@ -761,18 +745,18 @@ result = fx.market.equity_intraday(request)
 #### 方法签名
 
 ```python
-fx.market.equity_intraday_5d(request: 'EquityIntraday5dRequest', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[EquityIntradayData]'
+fx.market.equity_intraday_5d(request: 'EquityIntraday5dRequest | InstrumentInput', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[EquityIntradayData]'
 ```
 
 #### 参数
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | EquityIntraday5dRequest | 是 | — | 类型化请求模型；合法组合由 Client 和 Pydantic 校验决定。 |
+| request | EquityIntraday5dRequest \| InstrumentInput | 是 | — | 类型化请求模型；合法组合由 Client 和 Pydantic 校验决定。 |
 | provider | str \| None | 否 | None | 严格指定 Provider id；失败时不会静默切换。 |
 | use_cache | bool \| None | 否 | None | 缓存控制；None 遵循已配置的 CachePolicy。 |
 
-**最小业务输入：** request（包含股票 instrumentId）。
+**最小业务输入：** instrument（InstrumentId 或六位股票代码），或使用 request。
 
 #### 请求模型 `EquityIntraday5dRequest`
 
@@ -809,18 +793,9 @@ fx.market.equity_intraday_5d(request: 'EquityIntraday5dRequest', *, provider: 's
 <!-- api-example: market.equity_intraday_5d -->
 ```python
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
-from finchx.datasets import EquityIntraday5dRequest
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-request = EquityIntraday5dRequest(instrumentId=instrument_id)
-result = fx.market.equity_intraday_5d(request)
+result = fx.market.equity_intraday_5d("600519")
 ```
 
 ### `fx.market.fund_flow_daily(...)`
@@ -835,18 +810,18 @@ result = fx.market.equity_intraday_5d(request)
 #### 方法签名
 
 ```python
-fx.market.fund_flow_daily(request: 'MarketFundFlowRequest', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[MarketFundFlowDailyData]'
+fx.market.fund_flow_daily(request: 'MarketFundFlowRequest | InstrumentInput', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[MarketFundFlowDailyData]'
 ```
 
 #### 参数
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | MarketFundFlowRequest | 是 | — | 类型化请求模型；合法组合由 Client 和 Pydantic 校验决定。 |
+| request | MarketFundFlowRequest \| InstrumentInput | 是 | — | 类型化请求模型；合法组合由 Client 和 Pydantic 校验决定。 |
 | provider | str \| None | 否 | None | 严格指定 Provider id；失败时不会静默切换。 |
 | use_cache | bool \| None | 否 | None | 缓存控制；None 遵循已配置的 CachePolicy。 |
 
-**最小业务输入：** request（包含 instrumentId）。
+**最小业务输入：** instrument（InstrumentId 或六位股票代码），或使用 request。
 
 #### 请求模型 `MarketFundFlowRequest`
 
@@ -879,18 +854,9 @@ fx.market.fund_flow_daily(request: 'MarketFundFlowRequest', *, provider: 'str | 
 <!-- api-example: market.fund_flow_daily -->
 ```python
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
-from finchx.datasets import MarketFundFlowRequest
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-request = MarketFundFlowRequest(instrumentId=instrument_id)
-result = fx.market.fund_flow_daily(request)
+result = fx.market.fund_flow_daily("600519")
 ```
 
 ### `fx.market.fund_flow_intraday(...)`
@@ -905,18 +871,18 @@ result = fx.market.fund_flow_daily(request)
 #### 方法签名
 
 ```python
-fx.market.fund_flow_intraday(request: 'MarketFundFlowRequest', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[MarketFundFlowIntradayData]'
+fx.market.fund_flow_intraday(request: 'MarketFundFlowRequest | InstrumentInput', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[MarketFundFlowIntradayData]'
 ```
 
 #### 参数
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | MarketFundFlowRequest | 是 | — | 类型化请求模型；合法组合由 Client 和 Pydantic 校验决定。 |
+| request | MarketFundFlowRequest \| InstrumentInput | 是 | — | 类型化请求模型；合法组合由 Client 和 Pydantic 校验决定。 |
 | provider | str \| None | 否 | None | 严格指定 Provider id；失败时不会静默切换。 |
 | use_cache | bool \| None | 否 | None | 缓存控制；None 遵循已配置的 CachePolicy。 |
 
-**最小业务输入：** request（包含 instrumentId）。
+**最小业务输入：** instrument（InstrumentId 或六位股票代码），或使用 request。
 
 #### 请求模型 `MarketFundFlowRequest`
 
@@ -957,18 +923,9 @@ fx.market.fund_flow_intraday(request: 'MarketFundFlowRequest', *, provider: 'str
 <!-- api-example: market.fund_flow_intraday -->
 ```python
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
-from finchx.datasets import MarketFundFlowRequest
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-request = MarketFundFlowRequest(instrumentId=instrument_id)
-result = fx.market.fund_flow_intraday(request)
+result = fx.market.fund_flow_intraday("600519")
 ```
 
 ### `fx.market.fund_flow_snapshot(...)`
@@ -983,18 +940,18 @@ result = fx.market.fund_flow_intraday(request)
 #### 方法签名
 
 ```python
-fx.market.fund_flow_snapshot(request: 'MarketFundFlowRequest', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[MarketFundFlowSnapshotData]'
+fx.market.fund_flow_snapshot(request: 'MarketFundFlowRequest | InstrumentInput', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[MarketFundFlowSnapshotData]'
 ```
 
 #### 参数
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | MarketFundFlowRequest | 是 | — | 类型化请求模型；合法组合由 Client 和 Pydantic 校验决定。 |
+| request | MarketFundFlowRequest \| InstrumentInput | 是 | — | 类型化请求模型；合法组合由 Client 和 Pydantic 校验决定。 |
 | provider | str \| None | 否 | None | 严格指定 Provider id；失败时不会静默切换。 |
 | use_cache | bool \| None | 否 | None | 缓存控制；None 遵循已配置的 CachePolicy。 |
 
-**最小业务输入：** request（包含 instrumentId）。
+**最小业务输入：** instrument（InstrumentId 或六位股票代码），或使用 request。
 
 #### 请求模型 `MarketFundFlowRequest`
 
@@ -1038,18 +995,9 @@ fx.market.fund_flow_snapshot(request: 'MarketFundFlowRequest', *, provider: 'str
 <!-- api-example: market.fund_flow_snapshot -->
 ```python
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
-from finchx.datasets import MarketFundFlowRequest
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-request = MarketFundFlowRequest(instrumentId=instrument_id)
-result = fx.market.fund_flow_snapshot(request)
+result = fx.market.fund_flow_snapshot("600519")
 ```
 
 ### `fx.market.index_intraday(...)`
@@ -1212,18 +1160,18 @@ result = fx.market.index_intraday_5d(request)
 #### 方法签名
 
 ```python
-fx.market.industry_comparison(request: 'MarketIndustryComparisonRequest', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[MarketIndustryComparisonData]'
+fx.market.industry_comparison(request: 'MarketIndustryComparisonRequest | InstrumentInput', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[MarketIndustryComparisonData]'
 ```
 
 #### 参数
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | MarketIndustryComparisonRequest | 是 | — | 类型化请求模型；合法组合由 Client 和 Pydantic 校验决定。 |
+| request | MarketIndustryComparisonRequest \| InstrumentInput | 是 | — | 类型化请求模型；合法组合由 Client 和 Pydantic 校验决定。 |
 | provider | str \| None | 否 | None | 严格指定 Provider id；失败时不会静默切换。 |
 | use_cache | bool \| None | 否 | None | 缓存控制；None 遵循已配置的 CachePolicy。 |
 
-**最小业务输入：** request（包含 instrumentId）。
+**最小业务输入：** instrument（InstrumentId 或六位股票代码），或使用 request。
 
 #### 请求模型 `MarketIndustryComparisonRequest`
 
@@ -1299,18 +1247,9 @@ fx.market.industry_comparison(request: 'MarketIndustryComparisonRequest', *, pro
 <!-- api-example: market.industry_comparison -->
 ```python
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
-from finchx.datasets import MarketIndustryComparisonRequest
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-request = MarketIndustryComparisonRequest(instrumentId=instrument_id)
-result = fx.market.industry_comparison(request)
+result = fx.market.industry_comparison("600519")
 ```
 
 ### `fx.market.instrument_sector_snapshot(...)`
@@ -1325,18 +1264,18 @@ result = fx.market.industry_comparison(request)
 #### 方法签名
 
 ```python
-fx.market.instrument_sector_snapshot(request: 'MarketInstrumentSectorSnapshotRequest', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[MarketInstrumentSectorSnapshotData]'
+fx.market.instrument_sector_snapshot(request: 'MarketInstrumentSectorSnapshotRequest | InstrumentInput', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[MarketInstrumentSectorSnapshotData]'
 ```
 
 #### 参数
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | MarketInstrumentSectorSnapshotRequest | 是 | — | 类型化请求模型；合法组合由 Client 和 Pydantic 校验决定。 |
+| request | MarketInstrumentSectorSnapshotRequest \| InstrumentInput | 是 | — | 类型化请求模型；合法组合由 Client 和 Pydantic 校验决定。 |
 | provider | str \| None | 否 | None | 严格指定 Provider id；失败时不会静默切换。 |
 | use_cache | bool \| None | 否 | None | 缓存控制；None 遵循已配置的 CachePolicy。 |
 
-**最小业务输入：** request（包含 instrumentId）。
+**最小业务输入：** instrument（InstrumentId 或六位股票代码），或使用 request。
 
 #### 请求模型 `MarketInstrumentSectorSnapshotRequest`
 
@@ -1379,18 +1318,9 @@ fx.market.instrument_sector_snapshot(request: 'MarketInstrumentSectorSnapshotReq
 <!-- api-example: market.instrument_sector_snapshot -->
 ```python
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
-from finchx.datasets import MarketInstrumentSectorSnapshotRequest
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-request = MarketInstrumentSectorSnapshotRequest(instrumentId=instrument_id)
-result = fx.market.instrument_sector_snapshot(request)
+result = fx.market.instrument_sector_snapshot("600519")
 ```
 
 ### `fx.market.stock_keyword(...)`
@@ -1405,18 +1335,18 @@ result = fx.market.instrument_sector_snapshot(request)
 #### 方法签名
 
 ```python
-fx.market.stock_keyword(request: 'MarketStockKeywordRequest', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[MarketStockKeywordData]'
+fx.market.stock_keyword(request: 'MarketStockKeywordRequest | InstrumentInput', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[MarketStockKeywordData]'
 ```
 
 #### 参数
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | MarketStockKeywordRequest | 是 | — | 类型化请求模型；合法组合由 Client 和 Pydantic 校验决定。 |
+| request | MarketStockKeywordRequest \| InstrumentInput | 是 | — | 类型化请求模型；合法组合由 Client 和 Pydantic 校验决定。 |
 | provider | str \| None | 否 | None | 严格指定 Provider id；失败时不会静默切换。 |
 | use_cache | bool \| None | 否 | None | 缓存控制；None 遵循已配置的 CachePolicy。 |
 
-**最小业务输入：** request（包含 instrumentId）。
+**最小业务输入：** instrument（InstrumentId 或六位股票代码），或使用 request。
 
 #### 请求模型 `MarketStockKeywordRequest`
 
@@ -1457,18 +1387,9 @@ fx.market.stock_keyword(request: 'MarketStockKeywordRequest', *, provider: 'str 
 <!-- api-example: market.stock_keyword -->
 ```python
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
-from finchx.datasets import MarketStockKeywordRequest
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-request = MarketStockKeywordRequest(instrumentId=instrument_id)
-result = fx.market.stock_keyword(request)
+result = fx.market.stock_keyword("600519")
 ```
 
 ### `fx.market.limit_down_pool(...)`
@@ -1642,14 +1563,14 @@ result = fx.market.limit_up_pool(request)
 #### 方法签名
 
 ```python
-fx.market.ohlcv(instrument_id: 'InstrumentId | None' = None, start_date: 'date | None' = None, end_date: 'date | None' = None, adjustment: 'KlineAdjustment | None' = None, *, request: 'KlinesRequest | None' = None, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[MarketKlineData]'
+fx.market.ohlcv(instrument_id: 'InstrumentInput | None' = None, start_date: 'date | None' = None, end_date: 'date | None' = None, adjustment: 'KlineAdjustment | None' = None, *, request: 'KlinesRequest | None' = None, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[MarketKlineData]'
 ```
 
 #### 参数
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| instrument_id | InstrumentId \| None | 便捷模式必填 | None | 完整的 InstrumentId。 |
+| instrument_id | InstrumentInput \| None | 便捷模式必填 | None | 完整的 InstrumentId。 |
 | start_date | date \| None | 便捷模式必填 | None | 包含在内的开始日期。 |
 | end_date | date \| None | 便捷模式必填 | None | 包含在内的结束日期。 |
 | adjustment | KlineAdjustment \| None | 股票必填；指数省略 | None | Kline 调整方式；股票调用必填，指数调用省略。 |
@@ -1657,7 +1578,7 @@ fx.market.ohlcv(instrument_id: 'InstrumentId | None' = None, start_date: 'date |
 | provider | str \| None | 否 | None | 严格指定 Provider id；失败时不会静默切换。 |
 | use_cache | bool \| None | 否 | None | 缓存控制；None 遵循已配置的 CachePolicy。 |
 
-**最小业务输入：** 股票需提供 instrument_id、start_date、end_date 和 adjustment。
+**最小业务输入：** 股票需提供 instrument_id（InstrumentId 或六位股票代码）、start_date、end_date 和 adjustment。
 
 #### 请求模型 `KlinesRequest`
 
@@ -1700,17 +1621,10 @@ fx.market.ohlcv(instrument_id: 'InstrumentId | None' = None, start_date: 'date |
 from datetime import date
 from finchx import FinchX
 from finchx.datasets import KlineAdjustment
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
 result = fx.market.ohlcv(
-    instrument_id,
+    "600519",
     date(2026, 9, 1),
     date(2026, 9, 18),
     adjustment=KlineAdjustment.QFQ,
@@ -1729,18 +1643,18 @@ result = fx.market.ohlcv(
 #### 方法签名
 
 ```python
-fx.market.orderbook(request: 'MarketOrderbookRequest', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[MarketOrderbookData]'
+fx.market.orderbook(request: 'MarketOrderbookRequest | InstrumentInput', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[MarketOrderbookData]'
 ```
 
 #### 参数
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | MarketOrderbookRequest | 是 | — | 类型化请求模型；合法组合由 Client 和 Pydantic 校验决定。 |
+| request | MarketOrderbookRequest \| InstrumentInput | 是 | — | 类型化请求模型；合法组合由 Client 和 Pydantic 校验决定。 |
 | provider | str \| None | 否 | None | 严格指定 Provider id；失败时不会静默切换。 |
 | use_cache | bool \| None | 否 | None | 缓存控制；None 遵循已配置的 CachePolicy。 |
 
-**最小业务输入：** request（包含 instrumentId）。
+**最小业务输入：** instrument（InstrumentId 或六位股票代码），或使用 request。
 
 #### 请求模型 `MarketOrderbookRequest`
 
@@ -1780,18 +1694,9 @@ fx.market.orderbook(request: 'MarketOrderbookRequest', *, provider: 'str | None'
 <!-- api-example: market.orderbook -->
 ```python
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
-from finchx.datasets import MarketOrderbookRequest
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-request = MarketOrderbookRequest(instrumentId=instrument_id)
-result = fx.market.orderbook(request)
+result = fx.market.orderbook("600519")
 ```
 
 ### `fx.market.quote(...)`
@@ -1888,18 +1793,18 @@ result = fx.market.quote()
 #### 方法签名
 
 ```python
-fx.market.quote_snapshot(request: 'MarketQuoteSnapshotRequest', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[MarketQuoteSnapshotData]'
+fx.market.quote_snapshot(request: 'MarketQuoteSnapshotRequest | InstrumentInput', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[MarketQuoteSnapshotData]'
 ```
 
 #### 参数
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | MarketQuoteSnapshotRequest | 是 | — | 类型化请求模型；合法组合由 Client 和 Pydantic 校验决定。 |
+| request | MarketQuoteSnapshotRequest \| InstrumentInput | 是 | — | 类型化请求模型；合法组合由 Client 和 Pydantic 校验决定。 |
 | provider | str \| None | 否 | None | 严格指定 Provider id；失败时不会静默切换。 |
 | use_cache | bool \| None | 否 | None | 缓存控制；None 遵循已配置的 CachePolicy。 |
 
-**最小业务输入：** request（包含 instrumentId）。
+**最小业务输入：** instrument（InstrumentId 或六位股票代码），或使用 request。
 
 #### 请求模型 `MarketQuoteSnapshotRequest`
 
@@ -1939,18 +1844,9 @@ fx.market.quote_snapshot(request: 'MarketQuoteSnapshotRequest', *, provider: 'st
 <!-- api-example: market.quote_snapshot -->
 ```python
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
-from finchx.datasets import MarketQuoteSnapshotRequest
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-request = MarketQuoteSnapshotRequest(instrumentId=instrument_id)
-result = fx.market.quote_snapshot(request)
+result = fx.market.quote_snapshot("600519")
 ```
 
 ### `fx.market.ranking(...)`
@@ -2301,19 +2197,19 @@ result = fx.market.yesterday_limit_up_pool(request)
 #### 方法签名
 
 ```python
-fx.fundamental.company_profile(instrument_id: 'InstrumentId | None' = None, *, request: 'CompanyProfileRequest | None' = None, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[CompanyProfileData]'
+fx.fundamental.company_profile(instrument_id: 'InstrumentInput | None' = None, *, request: 'CompanyProfileRequest | None' = None, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[CompanyProfileData]'
 ```
 
 #### 参数
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| instrument_id | InstrumentId \| None | 便捷模式必填 | None | 完整的 InstrumentId。 |
+| instrument_id | InstrumentInput \| None | 便捷模式必填 | None | 完整的 InstrumentId。 |
 | request | CompanyProfileRequest \| None | 条件性 request 替代 | None | 类型化请求模型；合法组合由 Client 和 Pydantic 校验决定。 |
 | provider | str \| None | 否 | None | 严格指定 Provider id；失败时不会静默切换。 |
 | use_cache | bool \| None | 否 | None | 缓存控制；None 遵循已配置的 CachePolicy。 |
 
-**最小业务输入：** instrument_id 或 request。
+**最小业务输入：** instrument_id（InstrumentId 或六位股票代码），或使用 request。
 
 #### 请求模型 `CompanyProfileRequest`
 
@@ -2338,16 +2234,9 @@ fx.fundamental.company_profile(instrument_id: 'InstrumentId | None' = None, *, r
 <!-- api-example: fundamental.company_profile -->
 ```python
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-result = fx.fundamental.company_profile(instrument_id)
+result = fx.fundamental.company_profile("600519")
 ```
 
 ### `fx.fundamental.financial_summary(...)`
@@ -2362,18 +2251,18 @@ result = fx.fundamental.company_profile(instrument_id)
 #### 方法签名
 
 ```python
-fx.fundamental.financial_summary(request: 'FinancialSummaryRequest', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[FinancialSummaryData]'
+fx.fundamental.financial_summary(request: 'FinancialSummaryRequest | InstrumentInput', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[FinancialSummaryData]'
 ```
 
 #### 参数
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | FinancialSummaryRequest | 是 | — | 类型化请求模型；合法组合由 Client 和 Pydantic 校验决定。 |
+| request | FinancialSummaryRequest \| InstrumentInput | 是 | — | 类型化请求模型；合法组合由 Client 和 Pydantic 校验决定。 |
 | provider | str \| None | 否 | None | 严格指定 Provider id；失败时不会静默切换。 |
 | use_cache | bool \| None | 否 | None | 缓存控制；None 遵循已配置的 CachePolicy。 |
 
-**最小业务输入：** request（包含 instrumentId）。
+**最小业务输入：** instrument（InstrumentId 或六位股票代码），或使用 request。
 
 #### 请求模型 `FinancialSummaryRequest`
 
@@ -2415,18 +2304,9 @@ fx.fundamental.financial_summary(request: 'FinancialSummaryRequest', *, provider
 <!-- api-example: fundamental.financial_summary -->
 ```python
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
-from finchx.datasets import FinancialSummaryRequest
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-request = FinancialSummaryRequest(instrumentId=instrument_id)
-result = fx.fundamental.financial_summary(request)
+result = fx.fundamental.financial_summary("600519")
 ```
 
 ### `fx.fundamental.industry_comparison(...)`
@@ -2441,18 +2321,18 @@ result = fx.fundamental.financial_summary(request)
 #### 方法签名
 
 ```python
-fx.fundamental.industry_comparison(request: 'FundamentalIndustryComparisonRequest', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[IndustryComparisonData]'
+fx.fundamental.industry_comparison(request: 'FundamentalIndustryComparisonRequest | InstrumentInput', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[IndustryComparisonData]'
 ```
 
 #### 参数
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | FundamentalIndustryComparisonRequest | 是 | — | 类型化请求模型；合法组合由 Client 和 Pydantic 校验决定。 |
+| request | FundamentalIndustryComparisonRequest \| InstrumentInput | 是 | — | 类型化请求模型；合法组合由 Client 和 Pydantic 校验决定。 |
 | provider | str \| None | 否 | None | 严格指定 Provider id；失败时不会静默切换。 |
 | use_cache | bool \| None | 否 | None | 缓存控制；None 遵循已配置的 CachePolicy。 |
 
-**最小业务输入：** request（包含 instrumentId）。
+**最小业务输入：** instrument（InstrumentId 或六位股票代码），或使用 request。
 
 **命名说明：** Client 标注使用局部别名 `FundamentalIndustryComparisonRequest`；真实公开类名和 Dataset request type 是 `finchx.datasets.IndustryComparisonRequest`。
 
@@ -2491,18 +2371,9 @@ fx.fundamental.industry_comparison(request: 'FundamentalIndustryComparisonReques
 <!-- api-example: fundamental.industry_comparison -->
 ```python
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
-from finchx.datasets import IndustryComparisonRequest
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-request = IndustryComparisonRequest(instrumentId=instrument_id)
-result = fx.fundamental.industry_comparison(request)
+result = fx.fundamental.industry_comparison("600519")
 ```
 
 ### `fx.fundamental.revenue_breakdown(...)`
@@ -2517,18 +2388,18 @@ result = fx.fundamental.industry_comparison(request)
 #### 方法签名
 
 ```python
-fx.fundamental.revenue_breakdown(request: 'RevenueBreakdownRequest', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[RevenueBreakdownData]'
+fx.fundamental.revenue_breakdown(request: 'RevenueBreakdownRequest | InstrumentInput', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[RevenueBreakdownData]'
 ```
 
 #### 参数
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | RevenueBreakdownRequest | 是 | — | 类型化请求模型；合法组合由 Client 和 Pydantic 校验决定。 |
+| request | RevenueBreakdownRequest \| InstrumentInput | 是 | — | 类型化请求模型；合法组合由 Client 和 Pydantic 校验决定。 |
 | provider | str \| None | 否 | None | 严格指定 Provider id；失败时不会静默切换。 |
 | use_cache | bool \| None | 否 | None | 缓存控制；None 遵循已配置的 CachePolicy。 |
 
-**最小业务输入：** request（包含 instrumentId）。
+**最小业务输入：** instrument（InstrumentId 或六位股票代码），或使用 request。
 
 #### 请求模型 `RevenueBreakdownRequest`
 
@@ -2564,18 +2435,9 @@ fx.fundamental.revenue_breakdown(request: 'RevenueBreakdownRequest', *, provider
 <!-- api-example: fundamental.revenue_breakdown -->
 ```python
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
-from finchx.datasets import RevenueBreakdownRequest
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-request = RevenueBreakdownRequest(instrumentId=instrument_id)
-result = fx.fundamental.revenue_breakdown(request)
+result = fx.fundamental.revenue_breakdown("600519")
 ```
 
 ## `financial`
@@ -2592,14 +2454,14 @@ result = fx.fundamental.revenue_breakdown(request)
 #### 方法签名
 
 ```python
-fx.financial.statements(instrument_id: 'InstrumentId | None' = None, statement_type: 'StatementType | None' = None, *, period_end: 'date | None' = None, max_periods: 'int | None' = None, request: 'FinancialStatementRequest | None' = None, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[FinancialStatementData]'
+fx.financial.statements(instrument_id: 'InstrumentInput | None' = None, statement_type: 'StatementType | None' = None, *, period_end: 'date | None' = None, max_periods: 'int | None' = None, request: 'FinancialStatementRequest | None' = None, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[FinancialStatementData]'
 ```
 
 #### 参数
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| instrument_id | InstrumentId \| None | 便捷模式必填 | None | 完整的 InstrumentId。 |
+| instrument_id | InstrumentInput \| None | 便捷模式必填 | None | 完整的 InstrumentId。 |
 | statement_type | StatementType \| None | 便捷模式必填 | None | balance_sheet、income_statement 或 cash_flow_statement。 |
 | period_end | date \| None | 否 | None | 可选的报告期结束日期。 |
 | max_periods | int \| None | 否 | None | 可选的最大报告期数量。 |
@@ -2607,7 +2469,7 @@ fx.financial.statements(instrument_id: 'InstrumentId | None' = None, statement_t
 | provider | str \| None | 否 | None | 严格指定 Provider id；失败时不会静默切换。 |
 | use_cache | bool \| None | 否 | None | 缓存控制；None 遵循已配置的 CachePolicy。 |
 
-**最小业务输入：** instrument_id 和 statement_type，或使用 request。
+**最小业务输入：** instrument_id（InstrumentId 或六位股票代码）和 statement_type，或使用 request。
 
 #### 请求模型 `FinancialStatementRequest`
 
@@ -2662,16 +2524,9 @@ fx.financial.statements(instrument_id: 'InstrumentId | None' = None, statement_t
 <!-- api-example: financial.statements -->
 ```python
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-result = fx.financial.statements(instrument_id, "income_statement")
+result = fx.financial.statements("600519", "income_statement")
 ```
 
 ## `news`
@@ -2889,18 +2744,18 @@ result = fx.disclosure.search("600519")
 #### 方法签名
 
 ```python
-fx.ownership.capital_snapshot(request: 'CapitalSnapshotRequest', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[CapitalSnapshotData]'
+fx.ownership.capital_snapshot(request: 'CapitalSnapshotRequest | InstrumentInput', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[CapitalSnapshotData]'
 ```
 
 #### 参数
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | CapitalSnapshotRequest | 是 | — | 类型化请求模型；合法组合由 Client 和 Pydantic 校验决定。 |
+| request | CapitalSnapshotRequest \| InstrumentInput | 是 | — | 类型化请求模型；合法组合由 Client 和 Pydantic 校验决定。 |
 | provider | str \| None | 否 | None | 严格指定 Provider id；失败时不会静默切换。 |
 | use_cache | bool \| None | 否 | None | 缓存控制；None 遵循已配置的 CachePolicy。 |
 
-**最小业务输入：** request（包含 instrumentId）。
+**最小业务输入：** instrument（InstrumentId 或六位股票代码），或使用 request。
 
 #### 请求模型 `CapitalSnapshotRequest`
 
@@ -2923,18 +2778,9 @@ fx.ownership.capital_snapshot(request: 'CapitalSnapshotRequest', *, provider: 's
 <!-- api-example: ownership.capital_snapshot -->
 ```python
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
-from finchx.datasets import CapitalSnapshotRequest
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-request = CapitalSnapshotRequest(instrumentId=instrument_id)
-result = fx.ownership.capital_snapshot(request)
+result = fx.ownership.capital_snapshot("600519")
 ```
 
 ### `fx.ownership.float_holder(...)`
@@ -2949,18 +2795,18 @@ result = fx.ownership.capital_snapshot(request)
 #### 方法签名
 
 ```python
-fx.ownership.float_holder(request: 'FloatHolderRequest', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[FloatHolderData]'
+fx.ownership.float_holder(request: 'FloatHolderRequest | InstrumentInput', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[FloatHolderData]'
 ```
 
 #### 参数
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | FloatHolderRequest | 是 | — | 类型化请求模型；合法组合由 Client 和 Pydantic 校验决定。 |
+| request | FloatHolderRequest \| InstrumentInput | 是 | — | 类型化请求模型；合法组合由 Client 和 Pydantic 校验决定。 |
 | provider | str \| None | 否 | None | 严格指定 Provider id；失败时不会静默切换。 |
 | use_cache | bool \| None | 否 | None | 缓存控制；None 遵循已配置的 CachePolicy。 |
 
-**最小业务输入：** request（包含 instrumentId；asOf 可选）。
+**最小业务输入：** instrument（InstrumentId 或六位股票代码），或使用 request。
 
 #### 请求模型 `FloatHolderRequest`
 
@@ -3005,18 +2851,9 @@ fx.ownership.float_holder(request: 'FloatHolderRequest', *, provider: 'str | Non
 <!-- api-example: ownership.float_holder -->
 ```python
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
-from finchx.datasets import FloatHolderRequest
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-request = FloatHolderRequest(instrumentId=instrument_id)
-result = fx.ownership.float_holder(request)
+result = fx.ownership.float_holder("600519")
 ```
 
 ### `fx.ownership.holder_summary_snapshot(...)`
@@ -3031,18 +2868,18 @@ result = fx.ownership.float_holder(request)
 #### 方法签名
 
 ```python
-fx.ownership.holder_summary_snapshot(request: 'HolderSummarySnapshotRequest', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[HolderSummarySnapshotData]'
+fx.ownership.holder_summary_snapshot(request: 'HolderSummarySnapshotRequest | InstrumentInput', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[HolderSummarySnapshotData]'
 ```
 
 #### 参数
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | HolderSummarySnapshotRequest | 是 | — | 类型化请求模型；合法组合由 Client 和 Pydantic 校验决定。 |
+| request | HolderSummarySnapshotRequest \| InstrumentInput | 是 | — | 类型化请求模型；合法组合由 Client 和 Pydantic 校验决定。 |
 | provider | str \| None | 否 | None | 严格指定 Provider id；失败时不会静默切换。 |
 | use_cache | bool \| None | 否 | None | 缓存控制；None 遵循已配置的 CachePolicy。 |
 
-**最小业务输入：** request（包含 instrumentId）。
+**最小业务输入：** instrument（InstrumentId 或六位股票代码），或使用 request。
 
 #### 请求模型 `HolderSummarySnapshotRequest`
 
@@ -3068,18 +2905,9 @@ fx.ownership.holder_summary_snapshot(request: 'HolderSummarySnapshotRequest', *,
 <!-- api-example: ownership.holder_summary_snapshot -->
 ```python
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
-from finchx.datasets import HolderSummarySnapshotRequest
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-request = HolderSummarySnapshotRequest(instrumentId=instrument_id)
-result = fx.ownership.holder_summary_snapshot(request)
+result = fx.ownership.holder_summary_snapshot("600519")
 ```
 
 ## `company`
@@ -3096,18 +2924,18 @@ result = fx.ownership.holder_summary_snapshot(request)
 #### 方法签名
 
 ```python
-fx.company.executive_share_change(request: 'ExecutiveShareChangeRequest', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[ExecutiveShareChangeData]'
+fx.company.executive_share_change(request: 'ExecutiveShareChangeRequest | InstrumentInput', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[ExecutiveShareChangeData]'
 ```
 
 #### 参数
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | ExecutiveShareChangeRequest | 是 | — | 类型化请求模型；合法组合由 Client 和 Pydantic 校验决定。 |
+| request | ExecutiveShareChangeRequest \| InstrumentInput | 是 | — | 类型化请求模型；合法组合由 Client 和 Pydantic 校验决定。 |
 | provider | str \| None | 否 | None | 严格指定 Provider id；失败时不会静默切换。 |
 | use_cache | bool \| None | 否 | None | 缓存控制；None 遵循已配置的 CachePolicy。 |
 
-**最小业务输入：** request（包含 instrumentId）。
+**最小业务输入：** instrument（InstrumentId 或六位股票代码），或使用 request。
 
 #### 请求模型 `ExecutiveShareChangeRequest`
 
@@ -3138,18 +2966,9 @@ fx.company.executive_share_change(request: 'ExecutiveShareChangeRequest', *, pro
 <!-- api-example: company.executive_share_change -->
 ```python
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
-from finchx.datasets import ExecutiveShareChangeRequest
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-request = ExecutiveShareChangeRequest(instrumentId=instrument_id)
-result = fx.company.executive_share_change(request)
+result = fx.company.executive_share_change("600519")
 ```
 
 ### `fx.company.executive_snapshot(...)`
@@ -3164,18 +2983,18 @@ result = fx.company.executive_share_change(request)
 #### 方法签名
 
 ```python
-fx.company.executive_snapshot(request: 'ExecutiveSnapshotRequest', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[ExecutiveSnapshotData]'
+fx.company.executive_snapshot(request: 'ExecutiveSnapshotRequest | InstrumentInput', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[ExecutiveSnapshotData]'
 ```
 
 #### 参数
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | ExecutiveSnapshotRequest | 是 | — | 类型化请求模型；合法组合由 Client 和 Pydantic 校验决定。 |
+| request | ExecutiveSnapshotRequest \| InstrumentInput | 是 | — | 类型化请求模型；合法组合由 Client 和 Pydantic 校验决定。 |
 | provider | str \| None | 否 | None | 严格指定 Provider id；失败时不会静默切换。 |
 | use_cache | bool \| None | 否 | None | 缓存控制；None 遵循已配置的 CachePolicy。 |
 
-**最小业务输入：** request（包含 instrumentId）。
+**最小业务输入：** instrument（InstrumentId 或六位股票代码），或使用 request。
 
 #### 请求模型 `ExecutiveSnapshotRequest`
 
@@ -3206,18 +3025,9 @@ fx.company.executive_snapshot(request: 'ExecutiveSnapshotRequest', *, provider: 
 <!-- api-example: company.executive_snapshot -->
 ```python
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
-from finchx.datasets import ExecutiveSnapshotRequest
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-request = ExecutiveSnapshotRequest(instrumentId=instrument_id)
-result = fx.company.executive_snapshot(request)
+result = fx.company.executive_snapshot("600519")
 ```
 
 ## `corporate_action`
@@ -3234,18 +3044,18 @@ result = fx.company.executive_snapshot(request)
 #### 方法签名
 
 ```python
-fx.corporate_action.dividend(request: 'DividendRequest', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[DividendData]'
+fx.corporate_action.dividend(request: 'DividendRequest | InstrumentInput', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[DividendData]'
 ```
 
 #### 参数
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | DividendRequest | 是 | — | 类型化请求模型；合法组合由 Client 和 Pydantic 校验决定。 |
+| request | DividendRequest \| InstrumentInput | 是 | — | 类型化请求模型；合法组合由 Client 和 Pydantic 校验决定。 |
 | provider | str \| None | 否 | None | 严格指定 Provider id；失败时不会静默切换。 |
 | use_cache | bool \| None | 否 | None | 缓存控制；None 遵循已配置的 CachePolicy。 |
 
-**最小业务输入：** request（包含 instrumentId）。
+**最小业务输入：** instrument（InstrumentId 或六位股票代码），或使用 request。
 
 #### 请求模型 `DividendRequest`
 
@@ -3281,18 +3091,9 @@ fx.corporate_action.dividend(request: 'DividendRequest', *, provider: 'str | Non
 <!-- api-example: corporate_action.dividend -->
 ```python
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
-from finchx.datasets import DividendRequest
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-request = DividendRequest(instrumentId=instrument_id)
-result = fx.corporate_action.dividend(request)
+result = fx.corporate_action.dividend("600519")
 ```
 
 ### `fx.corporate_action.repurchase(...)`
@@ -3307,18 +3108,18 @@ result = fx.corporate_action.dividend(request)
 #### 方法签名
 
 ```python
-fx.corporate_action.repurchase(request: 'RepurchaseRequest', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[RepurchaseData]'
+fx.corporate_action.repurchase(request: 'RepurchaseRequest | InstrumentInput', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[RepurchaseData]'
 ```
 
 #### 参数
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| request | RepurchaseRequest | 是 | — | 类型化请求模型；合法组合由 Client 和 Pydantic 校验决定。 |
+| request | RepurchaseRequest \| InstrumentInput | 是 | — | 类型化请求模型；合法组合由 Client 和 Pydantic 校验决定。 |
 | provider | str \| None | 否 | None | 严格指定 Provider id；失败时不会静默切换。 |
 | use_cache | bool \| None | 否 | None | 缓存控制；None 遵循已配置的 CachePolicy。 |
 
-**最小业务输入：** request（包含 instrumentId）。
+**最小业务输入：** instrument（InstrumentId 或六位股票代码），或使用 request。
 
 #### 请求模型 `RepurchaseRequest`
 
@@ -3351,18 +3152,9 @@ fx.corporate_action.repurchase(request: 'RepurchaseRequest', *, provider: 'str |
 <!-- api-example: corporate_action.repurchase -->
 ```python
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
-from finchx.datasets import RepurchaseRequest
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-request = RepurchaseRequest(instrumentId=instrument_id)
-result = fx.corporate_action.repurchase(request)
+result = fx.corporate_action.repurchase("600519")
 ```
 
 ## `market.deviation`
@@ -3377,21 +3169,21 @@ result = fx.corporate_action.repurchase(request)
 #### 方法签名
 
 ```python
-fx.market.deviation(instrument_id: 'InstrumentId', *, windows: 'Sequence[int]' = (10, 30), as_of: 'date | None' = None, window_convention: 'DeviationWindowConvention' = <DeviationWindowConvention.MAX_DEVIATION_SCAN: 'max_deviation_scan'>, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[DeviationData]'
+fx.market.deviation(instrument_id: 'InstrumentInput', *, windows: 'Sequence[int]' = (10, 30), as_of: 'date | None' = None, window_convention: 'DeviationWindowConvention' = <DeviationWindowConvention.MAX_DEVIATION_SCAN: 'max_deviation_scan'>, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[DeviationData]'
 ```
 
 #### 参数
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| instrument_id | InstrumentId | 是 | — | 完整的 InstrumentId。 |
+| instrument_id | InstrumentInput | 是 | — | 完整的 InstrumentId。 |
 | windows | Sequence[int] | 否 | (10, 30) | 支持的偏离窗口：10 和 30 个交易时段。 |
 | as_of | date \| None | 否 | None | 可选的已完成交易时段日期。 |
 | window_convention | DeviationWindowConvention | 否 | DeviationWindowConvention.MAX_DEVIATION_SCAN | 偏离窗口解释方式。 |
 | provider | str \| None | 否 | None | 严格指定 Provider id；失败时不会静默切换。 |
 | use_cache | bool \| None | 否 | None | 缓存控制；None 遵循已配置的 CachePolicy。 |
 
-**最小业务输入：** instrument_id。
+**最小业务输入：** instrument_id（InstrumentId 或六位股票代码）。
 
 #### 请求模型 `DeviationRequest`
 
@@ -3459,14 +3251,7 @@ fx.market.deviation(instrument_id: 'InstrumentId', *, windows: 'Sequence[int]' =
 <!-- api-example: market.deviation -->
 ```python
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-result = fx.market.deviation(instrument_id, windows=(10, 30))
+result = fx.market.deviation("600519", windows=(10, 30))
 ```

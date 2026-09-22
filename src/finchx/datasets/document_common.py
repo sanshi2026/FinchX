@@ -13,7 +13,7 @@ from finchx.entities import (
     InstrumentId,
     InstrumentKind,
     Market,
-    parse_symbol,
+    normalize_instrument,
 )
 
 
@@ -54,26 +54,7 @@ def normalize_document_instrument(value: InstrumentId | str) -> InstrumentId:
 
     if isinstance(value, InstrumentId):
         return validate_document_instrument(value)
-    if not isinstance(value, str) or not value:
-        raise ValueError("instrument must be an InstrumentId or non-empty symbol")
-    if ":" in value:
-        return validate_document_instrument(parse_symbol(value))
-    if len(value) != 6 or not value.isascii() or not value.isdigit():
-        raise ValueError("bare document instrument must be a six-digit ASCII equity code")
-    if value.startswith(("60", "68")):
-        exchange = Exchange.SSE
-    elif value.startswith(("00", "30")):
-        exchange = Exchange.SZSE
-    else:
-        raise ValueError("bare code has no verified SSE/SZSE document routing")
-    return validate_document_instrument(
-        InstrumentId(
-            code=value,
-            market=Market.CN_A,
-            kind=InstrumentKind.EQUITY,
-            exchange=exchange,
-        )
-    )
+    return validate_document_instrument(normalize_instrument(value))
 
 
 class DocumentSearchRequest(ContractModel):

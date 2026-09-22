@@ -8,6 +8,7 @@ from finchx.entities import (
     InvalidSymbolError,
     Market,
     format_symbol,
+    normalize_instrument,
     normalize_symbol,
     parse_symbol,
 )
@@ -144,6 +145,61 @@ def test_provider_spellings_are_not_canonical_aliases():
             parse_symbol(provider_spelling)
         with pytest.raises(AmbiguousSymbolError):
             normalize_symbol(provider_spelling)
+
+
+@pytest.mark.parametrize(
+    ("code", "exchange"),
+    [
+        ("600519", Exchange.SSE),
+        ("000001", Exchange.SZSE),
+        ("300750", Exchange.SZSE),
+    ],
+)
+def test_normalize_instrument_resolves_verified_bare_equity_codes(code, exchange):
+    assert normalize_instrument(code) == InstrumentId(
+        code=code,
+        market=Market.CN_A,
+        kind=InstrumentKind.EQUITY,
+        exchange=exchange,
+    )
+
+
+@pytest.mark.parametrize("code", ["430001", "830001", "920001", "930001"])
+def test_normalize_instrument_does_not_guess_bse_for_ambiguous_bare_codes(code):
+    with pytest.raises(AmbiguousSymbolError, match="pass an explicit InstrumentId"):
+        normalize_instrument(code)
+
+
+def test_normalize_instrument_accepts_explicit_bse_identity():
+    identity = InstrumentId(
+        code="920001",
+        market=Market.CN_A,
+        kind=InstrumentKind.EQUITY,
+        exchange=Exchange.BSE,
+    )
+    assert normalize_instrument(identity) is identity
+
+
+def test_normalize_instrument_preserves_explicit_identity_and_does_not_guess_index():
+    index = InstrumentId(
+        code="000001",
+        market=Market.CN_A,
+        kind=InstrumentKind.INDEX,
+        exchange=Exchange.SZSE,
+    )
+    assert normalize_instrument(index) is index
+    assert normalize_instrument("000001").kind is InstrumentKind.EQUITY
+
+
+@pytest.mark.parametrize("value", ["60051", "6005190", "60A519", "600 519", "600519.SH"])
+def test_normalize_instrument_rejects_invalid_bare_inputs(value):
+    with pytest.raises(InvalidSymbolError, match="six-digit ASCII code"):
+        normalize_instrument(value)
+
+
+def test_normalize_instrument_rejects_exchange_ambiguous_six_digit_code():
+    with pytest.raises(AmbiguousSymbolError, match="does not identify an exchange"):
+        normalize_instrument("199999")
 
 
 def test_identity_shape_does_not_check_real_world_existence():

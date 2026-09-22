@@ -40,21 +40,18 @@ _CLIENT = FinchX(collector=_NoopCollector())
 
 
 MINIMUM_INPUT_ZH: dict[str, str] = {
-    "instrument_id or request": "instrument_id 或 request",
+    "instrument_id (InstrumentId or six-digit equity code) or request": "instrument_id（InstrumentId 或六位股票代码），或使用 request",
     "start_date and end_date together, or request": "同时提供 start_date 和 end_date，或使用 request",
     "none": "无",
     "request": "request",
     "request (instrumentId, tradeDate, tradeId)": "request（包含 instrumentId、tradeDate 和 tradeId）",
-    "request (equity instrumentId)": "request（包含股票 instrumentId）",
-    "request (instrumentId)": "request（包含 instrumentId）",
     "request (index instrumentId)": "request（包含指数 instrumentId）",
-    "instrument_id, start_date, end_date, and adjustment for equity": "股票需提供 instrument_id、start_date、end_date 和 adjustment",
     "none; the default universe is CN_A_SHARE": "无；默认范围为 CN_A_SHARE",
     "request (universe, criterion, direction, limit)": "request（包含 universe、criterion、direction 和 limit）",
-    "instrument_id and statement_type, or request": "instrument_id 和 statement_type，或使用 request",
+    "instrument_id (InstrumentId or six-digit equity code) and statement_type, or request": "instrument_id（InstrumentId 或六位股票代码）和 statement_type，或使用 request",
     "instrument (InstrumentId or six-digit equity code), or request": "instrument（InstrumentId 或六位股票代码），或使用 request",
-    "request (instrumentId; optional asOf)": "request（包含 instrumentId；asOf 可选）",
-    "instrument_id": "instrument_id",
+    "instrument_id (InstrumentId or six-digit equity code), start_date, end_date, and adjustment for equity": "股票需提供 instrument_id（InstrumentId 或六位股票代码）、start_date、end_date 和 adjustment",
+    "instrument_id (InstrumentId or six-digit equity code)": "instrument_id（InstrumentId 或六位股票代码）",
 }
 
 @dataclass(frozen=True)
@@ -77,7 +74,6 @@ class ExampleSpec:
         if language == "en":
             return self.minimum_input_en
         return self.minimum_input_zh
-        assert self.minimum_input_zh is not None
 
 
 _EQUITY_IMPORT = "from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market"
@@ -101,6 +97,13 @@ def _equity_call(call: str) -> str:
 
 fx = FinchX()
 {_EQUITY_SETUP}
+result = {call}'''
+
+
+def _equity_code_call(call: str) -> str:
+    return f'''from finchx import FinchX
+
+fx = FinchX()
 result = {call}'''
 
 
@@ -133,8 +136,8 @@ result = {call}'''
 
 EXAMPLE_SPECS: dict[str, ExampleSpec] = {
     "reference.instrument": ExampleSpec(
-        _equity_call("fx.reference.instrument(instrument_id)"),
-        "instrument_id or request",
+        _equity_code_call('fx.reference.instrument("600519")'),
+        "instrument_id (InstrumentId or six-digit equity code) or request",
     ),
     "reference.trading_calendar": ExampleSpec(
         '''from datetime import date
@@ -203,49 +206,24 @@ result = fx.market.consecutive_limit_up()""",
         "request",
     ),
     "market.equity_intraday": ExampleSpec(
-        _request_call(
-            f"{_EQUITY_IMPORT}\nfrom finchx.datasets import EquityIntradayRequest",
-            "EquityIntradayRequest(instrumentId=instrument_id)",
-            "fx.market.equity_intraday(request)",
-            setup=_EQUITY_SETUP,
-        ),
-        "request (equity instrumentId)",
+        _equity_code_call('fx.market.equity_intraday("600519")'),
+        "instrument (InstrumentId or six-digit equity code), or request",
     ),
     "market.equity_intraday_5d": ExampleSpec(
-        _request_call(
-            f"{_EQUITY_IMPORT}\nfrom finchx.datasets import EquityIntraday5dRequest",
-            "EquityIntraday5dRequest(instrumentId=instrument_id)",
-            "fx.market.equity_intraday_5d(request)",
-            setup=_EQUITY_SETUP,
-        ),
-        "request (equity instrumentId)",
+        _equity_code_call('fx.market.equity_intraday_5d("600519")'),
+        "instrument (InstrumentId or six-digit equity code), or request",
     ),
     "market.fund_flow_daily": ExampleSpec(
-        _request_call(
-            f"{_EQUITY_IMPORT}\nfrom finchx.datasets import MarketFundFlowRequest",
-            "MarketFundFlowRequest(instrumentId=instrument_id)",
-            "fx.market.fund_flow_daily(request)",
-            setup=_EQUITY_SETUP,
-        ),
-        "request (instrumentId)",
+        _equity_code_call('fx.market.fund_flow_daily("600519")'),
+        "instrument (InstrumentId or six-digit equity code), or request",
     ),
     "market.fund_flow_intraday": ExampleSpec(
-        _request_call(
-            f"{_EQUITY_IMPORT}\nfrom finchx.datasets import MarketFundFlowRequest",
-            "MarketFundFlowRequest(instrumentId=instrument_id)",
-            "fx.market.fund_flow_intraday(request)",
-            setup=_EQUITY_SETUP,
-        ),
-        "request (instrumentId)",
+        _equity_code_call('fx.market.fund_flow_intraday("600519")'),
+        "instrument (InstrumentId or six-digit equity code), or request",
     ),
     "market.fund_flow_snapshot": ExampleSpec(
-        _request_call(
-            f"{_EQUITY_IMPORT}\nfrom finchx.datasets import MarketFundFlowRequest",
-            "MarketFundFlowRequest(instrumentId=instrument_id)",
-            "fx.market.fund_flow_snapshot(request)",
-            setup=_EQUITY_SETUP,
-        ),
-        "request (instrumentId)",
+        _equity_code_call('fx.market.fund_flow_snapshot("600519")'),
+        "instrument (InstrumentId or six-digit equity code), or request",
     ),
     "market.index_intraday": ExampleSpec(
         _request_call(
@@ -266,31 +244,16 @@ result = fx.market.consecutive_limit_up()""",
         "request (index instrumentId)",
     ),
     "market.industry_comparison": ExampleSpec(
-        _request_call(
-            f"{_EQUITY_IMPORT}\nfrom finchx.datasets import MarketIndustryComparisonRequest",
-            "MarketIndustryComparisonRequest(instrumentId=instrument_id)",
-            "fx.market.industry_comparison(request)",
-            setup=_EQUITY_SETUP,
-        ),
-        "request (instrumentId)",
+        _equity_code_call('fx.market.industry_comparison("600519")'),
+        "instrument (InstrumentId or six-digit equity code), or request",
     ),
     "market.instrument_sector_snapshot": ExampleSpec(
-        _request_call(
-            f"{_EQUITY_IMPORT}\nfrom finchx.datasets import MarketInstrumentSectorSnapshotRequest",
-            "MarketInstrumentSectorSnapshotRequest(instrumentId=instrument_id)",
-            "fx.market.instrument_sector_snapshot(request)",
-            setup=_EQUITY_SETUP,
-        ),
-        "request (instrumentId)",
+        _equity_code_call('fx.market.instrument_sector_snapshot("600519")'),
+        "instrument (InstrumentId or six-digit equity code), or request",
     ),
     "market.stock_keyword": ExampleSpec(
-        _request_call(
-            f"{_EQUITY_IMPORT}\nfrom finchx.datasets import MarketStockKeywordRequest",
-            "MarketStockKeywordRequest(instrumentId=instrument_id)",
-            "fx.market.stock_keyword(request)",
-            setup=_EQUITY_SETUP,
-        ),
-        "request (instrumentId)",
+        _equity_code_call('fx.market.stock_keyword("600519")'),
+        "instrument (InstrumentId or six-digit equity code), or request",
     ),
     "market.limit_down_pool": ExampleSpec(
         _request_call(
@@ -314,26 +277,19 @@ result = fx.market.consecutive_limit_up()""",
         '''from datetime import date
 from finchx import FinchX
 from finchx.datasets import KlineAdjustment
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
 
 fx = FinchX()
-{equity_setup}
 result = fx.market.ohlcv(
-    instrument_id,
+    "600519",
     date(2026, 9, 1),
     date(2026, 9, 18),
     adjustment=KlineAdjustment.QFQ,
-)'''.format(equity_setup=_EQUITY_SETUP),
-        "instrument_id, start_date, end_date, and adjustment for equity",
+)''',
+        "instrument_id (InstrumentId or six-digit equity code), start_date, end_date, and adjustment for equity",
     ),
     "market.orderbook": ExampleSpec(
-        _request_call(
-            f"{_EQUITY_IMPORT}\nfrom finchx.datasets import MarketOrderbookRequest",
-            "MarketOrderbookRequest(instrumentId=instrument_id)",
-            "fx.market.orderbook(request)",
-            setup=_EQUITY_SETUP,
-        ),
-        "request (instrumentId)",
+        _equity_code_call('fx.market.orderbook("600519")'),
+        "instrument (InstrumentId or six-digit equity code), or request",
     ),
     "market.quote": ExampleSpec(
         """from finchx import FinchX
@@ -343,13 +299,8 @@ result = fx.market.quote()""",
         "none; the default universe is CN_A_SHARE",
     ),
     "market.quote_snapshot": ExampleSpec(
-        _request_call(
-            f"{_EQUITY_IMPORT}\nfrom finchx.datasets import MarketQuoteSnapshotRequest",
-            "MarketQuoteSnapshotRequest(instrumentId=instrument_id)",
-            "fx.market.quote_snapshot(request)",
-            setup=_EQUITY_SETUP,
-        ),
-        "request (instrumentId)",
+        _equity_code_call('fx.market.quote_snapshot("600519")'),
+        "instrument (InstrumentId or six-digit equity code), or request",
     ),
     "market.ranking": ExampleSpec(
         _request_call(
@@ -390,39 +341,24 @@ result = fx.market.sentiment()""",
         "request",
     ),
     "fundamental.company_profile": ExampleSpec(
-        _equity_call("fx.fundamental.company_profile(instrument_id)"),
-        "instrument_id or request",
+        _equity_code_call('fx.fundamental.company_profile("600519")'),
+        "instrument_id (InstrumentId or six-digit equity code) or request",
     ),
     "fundamental.financial_summary": ExampleSpec(
-        _request_call(
-            f"{_EQUITY_IMPORT}\nfrom finchx.datasets import FinancialSummaryRequest",
-            "FinancialSummaryRequest(instrumentId=instrument_id)",
-            "fx.fundamental.financial_summary(request)",
-            setup=_EQUITY_SETUP,
-        ),
-        "request (instrumentId)",
+        _equity_code_call('fx.fundamental.financial_summary("600519")'),
+        "instrument (InstrumentId or six-digit equity code), or request",
     ),
     "fundamental.industry_comparison": ExampleSpec(
-        _request_call(
-            f"{_EQUITY_IMPORT}\nfrom finchx.datasets import IndustryComparisonRequest",
-            "IndustryComparisonRequest(instrumentId=instrument_id)",
-            "fx.fundamental.industry_comparison(request)",
-            setup=_EQUITY_SETUP,
-        ),
-        "request (instrumentId)",
+        _equity_code_call('fx.fundamental.industry_comparison("600519")'),
+        "instrument (InstrumentId or six-digit equity code), or request",
     ),
     "fundamental.revenue_breakdown": ExampleSpec(
-        _request_call(
-            f"{_EQUITY_IMPORT}\nfrom finchx.datasets import RevenueBreakdownRequest",
-            "RevenueBreakdownRequest(instrumentId=instrument_id)",
-            "fx.fundamental.revenue_breakdown(request)",
-            setup=_EQUITY_SETUP,
-        ),
-        "request (instrumentId)",
+        _equity_code_call('fx.fundamental.revenue_breakdown("600519")'),
+        "instrument (InstrumentId or six-digit equity code), or request",
     ),
     "financial.statements": ExampleSpec(
-        _equity_call('fx.financial.statements(instrument_id, "income_statement")'),
-        "instrument_id and statement_type, or request",
+        _equity_code_call('fx.financial.statements("600519", "income_statement")'),
+        "instrument_id (InstrumentId or six-digit equity code) and statement_type, or request",
     ),
     "news.search": ExampleSpec(
         """from finchx import FinchX
@@ -439,71 +375,36 @@ result = fx.disclosure.search("600519")""",
         "instrument (InstrumentId or six-digit equity code), or request",
     ),
     "ownership.capital_snapshot": ExampleSpec(
-        _request_call(
-            f"{_EQUITY_IMPORT}\nfrom finchx.datasets import CapitalSnapshotRequest",
-            "CapitalSnapshotRequest(instrumentId=instrument_id)",
-            "fx.ownership.capital_snapshot(request)",
-            setup=_EQUITY_SETUP,
-        ),
-        "request (instrumentId)",
+        _equity_code_call('fx.ownership.capital_snapshot("600519")'),
+        "instrument (InstrumentId or six-digit equity code), or request",
     ),
     "ownership.float_holder": ExampleSpec(
-        _request_call(
-            f"{_EQUITY_IMPORT}\nfrom finchx.datasets import FloatHolderRequest",
-            "FloatHolderRequest(instrumentId=instrument_id)",
-            "fx.ownership.float_holder(request)",
-            setup=_EQUITY_SETUP,
-        ),
-        "request (instrumentId; optional asOf)",
+        _equity_code_call('fx.ownership.float_holder("600519")'),
+        "instrument (InstrumentId or six-digit equity code), or request",
     ),
     "ownership.holder_summary_snapshot": ExampleSpec(
-        _request_call(
-            f"{_EQUITY_IMPORT}\nfrom finchx.datasets import HolderSummarySnapshotRequest",
-            "HolderSummarySnapshotRequest(instrumentId=instrument_id)",
-            "fx.ownership.holder_summary_snapshot(request)",
-            setup=_EQUITY_SETUP,
-        ),
-        "request (instrumentId)",
+        _equity_code_call('fx.ownership.holder_summary_snapshot("600519")'),
+        "instrument (InstrumentId or six-digit equity code), or request",
     ),
     "company.executive_share_change": ExampleSpec(
-        _request_call(
-            f"{_EQUITY_IMPORT}\nfrom finchx.datasets import ExecutiveShareChangeRequest",
-            "ExecutiveShareChangeRequest(instrumentId=instrument_id)",
-            "fx.company.executive_share_change(request)",
-            setup=_EQUITY_SETUP,
-        ),
-        "request (instrumentId)",
+        _equity_code_call('fx.company.executive_share_change("600519")'),
+        "instrument (InstrumentId or six-digit equity code), or request",
     ),
     "company.executive_snapshot": ExampleSpec(
-        _request_call(
-            f"{_EQUITY_IMPORT}\nfrom finchx.datasets import ExecutiveSnapshotRequest",
-            "ExecutiveSnapshotRequest(instrumentId=instrument_id)",
-            "fx.company.executive_snapshot(request)",
-            setup=_EQUITY_SETUP,
-        ),
-        "request (instrumentId)",
+        _equity_code_call('fx.company.executive_snapshot("600519")'),
+        "instrument (InstrumentId or six-digit equity code), or request",
     ),
     "corporate_action.dividend": ExampleSpec(
-        _request_call(
-            f"{_EQUITY_IMPORT}\nfrom finchx.datasets import DividendRequest",
-            "DividendRequest(instrumentId=instrument_id)",
-            "fx.corporate_action.dividend(request)",
-            setup=_EQUITY_SETUP,
-        ),
-        "request (instrumentId)",
+        _equity_code_call('fx.corporate_action.dividend("600519")'),
+        "instrument (InstrumentId or six-digit equity code), or request",
     ),
     "corporate_action.repurchase": ExampleSpec(
-        _request_call(
-            f"{_EQUITY_IMPORT}\nfrom finchx.datasets import RepurchaseRequest",
-            "RepurchaseRequest(instrumentId=instrument_id)",
-            "fx.corporate_action.repurchase(request)",
-            setup=_EQUITY_SETUP,
-        ),
-        "request (instrumentId)",
+        _equity_code_call('fx.corporate_action.repurchase("600519")'),
+        "instrument (InstrumentId or six-digit equity code), or request",
     ),
     "market.deviation": ExampleSpec(
-        _equity_call("fx.market.deviation(instrument_id, windows=(10, 30))"),
-        "instrument_id",
+        _equity_code_call('fx.market.deviation("600519", windows=(10, 30))'),
+        "instrument_id (InstrumentId or six-digit equity code)",
     ),
 }
 
@@ -1001,7 +902,7 @@ def computed_block(*, language: str) -> list[str]:
             "",
             table(("Parameter", "Type", "Required", "Default", "Description"), rows),
             "",
-            "**Minimum business input:** instrument_id.",
+            "**Minimum business input:** instrument_id (InstrumentId or six-digit equity code).",
             "",
         ]
         lines += model_section(COMPUTED_DEVIATION_DATASET.request_type, "Request model", language=language)
@@ -1038,7 +939,7 @@ def computed_block(*, language: str) -> list[str]:
             "",
             table(("参数", "类型", "必填", "默认值", "说明"), rows),
             "",
-            "**最小业务输入：** instrument_id。",
+            "**最小业务输入：** instrument_id（InstrumentId 或六位股票代码）。",
             "",
         ]
         lines += model_section(COMPUTED_DEVIATION_DATASET.request_type, "请求模型", language=language)
@@ -1102,7 +1003,7 @@ def render(language: str) -> str:
                 ("`provider`", "Strict Provider id pin; a failure is not silently redirected."),
                 ("`use_cache`", "None follows the configured CachePolicy; FinchX construction does not create storage."),
                 ("Request model", "Some methods expose a convenience call and a typed request alternative; valid combinations follow the Client and Pydantic validators."),
-                ("InstrumentId", "Use a complete identity with code, market, kind and exchange when the endpoint requires it."),
+                ("Instrument input", "Single-equity endpoints accept an InstrumentId or a verified six-digit A-share code; index and other ambiguous identities still require an explicit InstrumentId."),
             ]),
             "",
         ]
@@ -1122,7 +1023,7 @@ def render(language: str) -> str:
                 ("`provider`", "严格指定 Provider id；失败时不会静默切换。"),
                 ("`use_cache`", "None 遵循已配置的 CachePolicy；构造 FinchX 不会创建存储。"),
                 ("请求模型", "部分方法同时提供便捷调用和类型化请求替代；合法组合以 Client 和 Pydantic 校验为准。"),
-                ("InstrumentId", "接口需要时使用包含 code、market、kind 和 exchange 的完整身份。"),
+                ("Instrument input", "单证券接口可接收 InstrumentId 或已验证的六位 A 股代码；指数和其他歧义标的仍需显式 InstrumentId。"),
             ]),
             "",
         ]

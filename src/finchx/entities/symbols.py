@@ -1,6 +1,7 @@
 """Strict, provider-independent symbol normalization for InstrumentId."""
 
 from enum import Enum
+from typing import TypeAlias
 from urllib.parse import quote, unquote_to_bytes
 
 from pydantic import ValidationError
@@ -22,6 +23,12 @@ class InvalidSymbolError(SymbolError):
 
 _NO_EXCHANGE = "-"
 _CODE_SAFE_CHARACTERS = "-._~"
+_BARE_EQUITY_EXCHANGE_PREFIXES = {
+    Exchange.SSE: ("6",),
+    Exchange.SZSE: ("0", "3"),
+}
+
+InstrumentInput: TypeAlias = InstrumentId | str
 
 
 def _validate_symbol_text(symbol: str) -> None:
@@ -169,3 +176,42 @@ def normalize_symbol(
         )
     except ValidationError as exc:
         raise InvalidSymbolError("explicit context does not form a valid InstrumentId") from exc
+
+
+def normalize_instrument(value: InstrumentInput) -> InstrumentId:
+    """Resolve a public instrument input into one explicit ``InstrumentId``.
+
+    Existing ``InstrumentId`` values are returned unchanged. Canonical FinchX
+    symbols are parsed as-is. A bare six-digit ASCII code is treated as a
+    CN_A equity only when its leading digit identifies a supported exchange:
+    6 -> SSE and 0/3 -> SZSE. The helper never guesses an
+    index, ETF, or other instrument kind from a bare code.
+    """
+
+    if isinstance(value, InstrumentId):
+        return value
+    if not isinstance(value, str):
+        raise InvalidSymbolError("instrument must be an InstrumentId or string")
+    if ":" in value:
+        return parse_symbol(value)
+    if len(value) != 6 or not value.isascii() or not value.isdigit():
+        raise InvalidSymbolError("bare instrument must be a six-digit ASCII code")
+
+    exchange = next(
+        (
+            candidate
+            for candidate, prefixes in _BARE_EQUITY_EXCHANGE_PREFIXES.items()
+            if value.startswith(prefixes)
+        ),
+        None,
+    )
+    if exchange is None:
+        raise AmbiguousSymbolError(
+            "bare code does not identify an exchange; pass an explicit InstrumentId"
+        )
+    return InstrumentId(
+        code=value,
+        market=Market.CN_A,
+        kind=InstrumentKind.EQUITY,
+        exchange=exchange,
+    )

@@ -4,8 +4,10 @@ from finchx.entities.instrument import Exchange, InstrumentId, InstrumentKind, M
 from finchx.entities.symbols import (
     AmbiguousSymbolError,
     InvalidSymbolError,
+    InstrumentInput,
     SymbolError,
     format_symbol,
+    normalize_instrument,
     normalize_symbol,
     parse_symbol,
 )
@@ -16,9 +18,11 @@ __all__ = [
     "InstrumentId",
     "InstrumentKind",
     "InvalidSymbolError",
+    "InstrumentInput",
     "Market",
     "SymbolError",
     "format_symbol",
+    "normalize_instrument",
     "normalize_symbol",
     "parse_symbol",
 ]

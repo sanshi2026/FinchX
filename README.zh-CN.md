@@ -62,20 +62,24 @@ for record in result.data:
 print(result.provider, result.captured_at)
 ```
 
+### 单只股票行情
+
+```python
+result = fx.market.quote_snapshot("600519")
+```
+
+单证券 Client 接口既接受完整的 `InstrumentId`，也接受已验证的六位 A 股代码。FinchX 会把代码解析为 `Market.CN_A` + `InstrumentKind.EQUITY`，并在接口支持时按 `6`、`0`/`3`、`4`/`8`/`9` 分别推导 SSE、SZSE、BSE。指数和其他有歧义的标的仍需显式 `InstrumentId`。
+
 ### 历史 OHLCV
 
 ```python
 from datetime import date
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
 from finchx.datasets import KlineAdjustment
 
-instrument = InstrumentId(
-    code="600519", market=Market.CN_A,
-    kind=InstrumentKind.EQUITY, exchange=Exchange.SSE,
-)
-result = FinchX().market.ohlcv(
-    instrument,
+fx = FinchX()
+result = fx.market.ohlcv(
+    "600519",
     date(2026, 9, 1),
     date(2026, 9, 18),
     adjustment=KlineAdjustment.QFQ,
@@ -87,8 +91,8 @@ for record in result.data:
 ### 新闻与公告
 
 ```python
-news = fx.news.search(instrument, page_size=10)
-disclosures = fx.disclosure.search(instrument, page_size=10)
+news = fx.news.search("600519", page_size=10)
+disclosures = fx.disclosure.search("600519", page_size=10)
 print(news.data[0].title if news.data else "no news")
 print(disclosures.data[0].title if disclosures.data else "no disclosures")
 ```
@@ -96,11 +100,7 @@ print(disclosures.data[0].title if disclosures.data else "no disclosures")
 ### 财务数据
 
 ```python
-from finchx.datasets import FinancialSummaryRequest
-
-result = fx.fundamental.financial_summary(
-    FinancialSummaryRequest(instrumentId=instrument)
-)
+result = fx.fundamental.financial_summary("600519")
 print(result.data.data["periods"])
 ```
 
@@ -109,11 +109,7 @@ print(result.data.data["periods"])
 `market.stock_keyword` 返回数据源提供的结构化关键词/概念。它不执行 NLP 关键词抽取，也不会虚构热度分数。
 
 ```python
-from finchx.datasets import MarketStockKeywordRequest
-
-result = fx.market.stock_keyword(
-    MarketStockKeywordRequest(instrumentId=instrument)
-)
+result = fx.market.stock_keyword("600519")
 for keyword in result.data.data["keywords"]:
     print(keyword["keywordName"], keyword["hitCount"])
 ```
@@ -121,7 +117,7 @@ for keyword in result.data.data["keywords"]:
 ### 计算偏离值
 
 ```python
-result = fx.market.deviation(instrument, windows=(10, 30))
+result = fx.market.deviation("600519", windows=(10, 30))
 for window in result.data.windows:
     print(window.window_days, window.deviation)
 ```
@@ -132,7 +128,7 @@ for window in result.data.windows:
 
 ### 标的身份
 
-大多数标的接口接收完整的 `InstrumentId`，而不是单独的代码。它包含 `code`、`market`、`kind`，并在需要时包含明确的 `exchange`。公开 A 股市场值为 `Market.CN_A`；标的类型为 `equity`、`index` 和 `etf`；交易所为 `sse`、`szse` 和 `bse`。
+单证券接口既接受完整的 `InstrumentId`，也接受已验证的六位 A 股代码。后者会规范化为 `Market.CN_A` + `InstrumentKind.EQUITY`；在接口支持时，代码前缀 `6`、`0`/`3`、`4`/`8`/`9` 分别标识 SSE、SZSE、BSE。指数和其他有歧义的标的必须提供包含 `code`、`market`、`kind` 以及必要时明确 `exchange` 的完整 `InstrumentId`。
 
 ### FetchResult
 

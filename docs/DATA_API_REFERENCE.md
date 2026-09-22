@@ -13,7 +13,7 @@ Signatures below are taken from the live public Client. Request-field Required /
 | `provider` | Strict Provider id pin; a failure is not silently redirected. |
 | `use_cache` | None follows the configured CachePolicy; FinchX construction does not create storage. |
 | Request model | Some methods expose a convenience call and a typed request alternative; valid combinations follow the Client and Pydantic validators. |
-| InstrumentId | Use a complete identity with code, market, kind and exchange when the endpoint requires it. |
+| Instrument input | Single-equity endpoints accept an InstrumentId or a verified six-digit A-share code; index and other ambiguous identities still require an explicit InstrumentId. |
 
 ## Endpoint index
 
@@ -21,7 +21,7 @@ This index is generated from `CLIENT_ENDPOINTS`, plus the computed `market.devia
 
 | Namespace | Method | Dataset | Implemented Providers | Minimum business input |
 | --- | --- | --- | --- | --- |
-| reference | instrument | instrument | tencent.finance.qq.market | instrument_id or request |
+| reference | instrument | instrument | tencent.finance.qq.market | instrument_id (InstrumentId or six-digit equity code) or request |
 | reference | trading_calendar | trading_calendar | szse.official.calendar, pandas_market_calendars | start_date and end_date together, or request |
 | market | breadth | market.breadth | eastmoney.push2ex.breadth | none |
 | market | broken_limit_pool | market.broken_limit_pool | eastmoney.push2ex.broken_limit_pool | request |
@@ -29,41 +29,41 @@ This index is generated from `CLIENT_ENDPOINTS`, plus the computed `market.devia
 | market | daily_replay | market.daily_replay | jiuyangongshe.daily_replay | request |
 | market | dragon_tiger_detail | market.dragon_tiger_detail | aigupiao.dragon_tiger | request (instrumentId, tradeDate, tradeId) |
 | market | dragon_tiger_list | market.dragon_tiger_list | aigupiao.dragon_tiger | request |
-| market | equity_intraday | market.equity_intraday | tencent.finance.qq.intraday | request (equity instrumentId) |
-| market | equity_intraday_5d | market.equity_intraday_5d | tencent.finance.qq.intraday | request (equity instrumentId) |
-| market | fund_flow_daily | market.fund_flow_daily | tencent.finance.qq.fund_flow | request (instrumentId) |
-| market | fund_flow_intraday | market.fund_flow_intraday | tencent.finance.qq.fund_flow | request (instrumentId) |
-| market | fund_flow_snapshot | market.fund_flow_snapshot | tencent.finance.qq.fund_flow | request (instrumentId) |
+| market | equity_intraday | market.equity_intraday | tencent.finance.qq.intraday | instrument (InstrumentId or six-digit equity code), or request |
+| market | equity_intraday_5d | market.equity_intraday_5d | tencent.finance.qq.intraday | instrument (InstrumentId or six-digit equity code), or request |
+| market | fund_flow_daily | market.fund_flow_daily | tencent.finance.qq.fund_flow | instrument (InstrumentId or six-digit equity code), or request |
+| market | fund_flow_intraday | market.fund_flow_intraday | tencent.finance.qq.fund_flow | instrument (InstrumentId or six-digit equity code), or request |
+| market | fund_flow_snapshot | market.fund_flow_snapshot | tencent.finance.qq.fund_flow | instrument (InstrumentId or six-digit equity code), or request |
 | market | index_intraday | market.index_intraday | tencent.finance.qq.intraday | request (index instrumentId) |
 | market | index_intraday_5d | market.index_intraday_5d | tencent.finance.qq.intraday | request (index instrumentId) |
-| market | industry_comparison | market.industry_comparison | tencent.finance.qq.industry | request (instrumentId) |
-| market | instrument_sector_snapshot | market.instrument_sector_snapshot | tencent.finance.qq.sector | request (instrumentId) |
-| market | stock_keyword | market.stock_keyword | eastmoney.stockrank | request (instrumentId) |
+| market | industry_comparison | market.industry_comparison | tencent.finance.qq.industry | instrument (InstrumentId or six-digit equity code), or request |
+| market | instrument_sector_snapshot | market.instrument_sector_snapshot | tencent.finance.qq.sector | instrument (InstrumentId or six-digit equity code), or request |
+| market | stock_keyword | market.stock_keyword | eastmoney.stockrank | instrument (InstrumentId or six-digit equity code), or request |
 | market | limit_down_pool | market.limit_down_pool | eastmoney.push2ex.limit_down_pool | request |
 | market | limit_up_pool | market.limit_up_pool | eastmoney.push2ex.limit_up_pool | request |
-| market | ohlcv | market.klines | tencent.finance.qq.klines, sohu.finance.klines | instrument_id, start_date, end_date, and adjustment for equity |
-| market | orderbook | market.orderbook | tencent.finance.qq.quote | request (instrumentId) |
+| market | ohlcv | market.klines | tencent.finance.qq.klines, sohu.finance.klines | instrument_id (InstrumentId or six-digit equity code), start_date, end_date, and adjustment for equity |
+| market | orderbook | market.orderbook | tencent.finance.qq.quote | instrument (InstrumentId or six-digit equity code), or request |
 | market | quote | market.quote | tencent.finance.qq.market | none; the default universe is CN_A_SHARE |
-| market | quote_snapshot | market.quote_snapshot | tencent.finance.qq.quote | request (instrumentId) |
+| market | quote_snapshot | market.quote_snapshot | tencent.finance.qq.quote | instrument (InstrumentId or six-digit equity code), or request |
 | market | ranking | market.ranking | tencent.finance.qq.market | request (universe, criterion, direction, limit) |
 | market | sentiment | market.sentiment_snapshot | aigupiao.market_sentiment | none |
 | market | strong_pool | market.strong_pool | eastmoney.push2ex.strong_pool | request |
 | market | yesterday_limit_up_pool | market.yesterday_limit_up_pool | eastmoney.push2ex.yesterday_limit_up_pool | request |
-| fundamental | company_profile | fundamental.company_profile | tencent.finance.qq.f10 | instrument_id or request |
-| fundamental | financial_summary | fundamental.financial_summary | tencent.finance.qq.f10 | request (instrumentId) |
-| fundamental | industry_comparison | fundamental.industry_comparison | tencent.finance.qq.f10 | request (instrumentId) |
-| fundamental | revenue_breakdown | fundamental.revenue_breakdown | tencent.finance.qq.f10 | request (instrumentId) |
-| financial | statements | financial.statement | tonghuashun.financial | instrument_id and statement_type, or request |
+| fundamental | company_profile | fundamental.company_profile | tencent.finance.qq.f10 | instrument_id (InstrumentId or six-digit equity code) or request |
+| fundamental | financial_summary | fundamental.financial_summary | tencent.finance.qq.f10 | instrument (InstrumentId or six-digit equity code), or request |
+| fundamental | industry_comparison | fundamental.industry_comparison | tencent.finance.qq.f10 | instrument (InstrumentId or six-digit equity code), or request |
+| fundamental | revenue_breakdown | fundamental.revenue_breakdown | tencent.finance.qq.f10 | instrument (InstrumentId or six-digit equity code), or request |
+| financial | statements | financial.statement | tonghuashun.financial | instrument_id (InstrumentId or six-digit equity code) and statement_type, or request |
 | news | search | news.document | eastmoney.news, eastmoney.market_news, aigupiao.market_news, baidu.finscope.market_news | instrument (InstrumentId or six-digit equity code), or request |
 | disclosure | search | disclosure.document | eastmoney.disclosure | instrument (InstrumentId or six-digit equity code), or request |
-| ownership | capital_snapshot | ownership.capital_snapshot | tencent.finance.qq.f10 | request (instrumentId) |
-| ownership | float_holder | ownership.float_holder | tencent.finance.qq.float_holder | request (instrumentId; optional asOf) |
-| ownership | holder_summary_snapshot | ownership.holder_summary_snapshot | tencent.finance.qq.f10 | request (instrumentId) |
-| company | executive_share_change | company.executive_share_change | tencent.finance.qq.f10 | request (instrumentId) |
-| company | executive_snapshot | company.executive_snapshot | tencent.finance.qq.f10 | request (instrumentId) |
-| corporate_action | dividend | corporate_action.dividend | tencent.finance.qq.f10 | request (instrumentId) |
-| corporate_action | repurchase | corporate_action.repurchase | tencent.finance.qq.f10 | request (instrumentId) |
-| market | deviation | market.deviation (computed) | — | instrument_id |
+| ownership | capital_snapshot | ownership.capital_snapshot | tencent.finance.qq.f10 | instrument (InstrumentId or six-digit equity code), or request |
+| ownership | float_holder | ownership.float_holder | tencent.finance.qq.float_holder | instrument (InstrumentId or six-digit equity code), or request |
+| ownership | holder_summary_snapshot | ownership.holder_summary_snapshot | tencent.finance.qq.f10 | instrument (InstrumentId or six-digit equity code), or request |
+| company | executive_share_change | company.executive_share_change | tencent.finance.qq.f10 | instrument (InstrumentId or six-digit equity code), or request |
+| company | executive_snapshot | company.executive_snapshot | tencent.finance.qq.f10 | instrument (InstrumentId or six-digit equity code), or request |
+| corporate_action | dividend | corporate_action.dividend | tencent.finance.qq.f10 | instrument (InstrumentId or six-digit equity code), or request |
+| corporate_action | repurchase | corporate_action.repurchase | tencent.finance.qq.f10 | instrument (InstrumentId or six-digit equity code), or request |
+| market | deviation | market.deviation (computed) | — | instrument_id (InstrumentId or six-digit equity code) |
 
 ## Endpoint reference
 
@@ -81,19 +81,19 @@ Fetch instrument identity data and return it in a FetchResult.
 #### Method signature
 
 ```python
-fx.reference.instrument(instrument_id: 'InstrumentId | None' = None, *, request: 'InstrumentRequest | None' = None, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[InstrumentData]'
+fx.reference.instrument(instrument_id: 'InstrumentInput | None' = None, *, request: 'InstrumentRequest | None' = None, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[InstrumentData]'
 ```
 
 #### Parameters
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| instrument_id | InstrumentId \| None | Required in convenience mode | None | Complete InstrumentId. |
+| instrument_id | InstrumentInput \| None | Required in convenience mode | None | Complete InstrumentId. |
 | request | InstrumentRequest \| None | Conditional request alternative | None | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
 | provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
 | use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-**Minimum business input:** instrument_id or request.
+**Minimum business input:** instrument_id (InstrumentId or six-digit equity code) or request.
 
 #### Request model `InstrumentRequest`
 
@@ -124,16 +124,9 @@ The public return annotation is `FetchResult[InstrumentData]`.
 <!-- api-example: reference.instrument -->
 ```python
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-result = fx.reference.instrument(instrument_id)
+result = fx.reference.instrument("600519")
 ```
 
 ### `fx.reference.trading_calendar(...)`
@@ -687,18 +680,18 @@ Fetch one equity intraday session in a FetchResult.
 #### Method signature
 
 ```python
-fx.market.equity_intraday(request: 'EquityIntradayRequest', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[EquityIntradayData]'
+fx.market.equity_intraday(request: 'EquityIntradayRequest | InstrumentInput', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[EquityIntradayData]'
 ```
 
 #### Parameters
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | EquityIntradayRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| request | EquityIntradayRequest \| InstrumentInput | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
 | provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
 | use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-**Minimum business input:** request (equity instrumentId).
+**Minimum business input:** instrument (InstrumentId or six-digit equity code), or request.
 
 #### Request model `EquityIntradayRequest`
 
@@ -735,18 +728,9 @@ The public return annotation is `FetchResult[EquityIntradayData]`.
 <!-- api-example: market.equity_intraday -->
 ```python
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
-from finchx.datasets import EquityIntradayRequest
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-request = EquityIntradayRequest(instrumentId=instrument_id)
-result = fx.market.equity_intraday(request)
+result = fx.market.equity_intraday("600519")
 ```
 
 ### `fx.market.equity_intraday_5d(...)`
@@ -761,18 +745,18 @@ Fetch five-day equity intraday data in a FetchResult.
 #### Method signature
 
 ```python
-fx.market.equity_intraday_5d(request: 'EquityIntraday5dRequest', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[EquityIntradayData]'
+fx.market.equity_intraday_5d(request: 'EquityIntraday5dRequest | InstrumentInput', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[EquityIntradayData]'
 ```
 
 #### Parameters
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | EquityIntraday5dRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| request | EquityIntraday5dRequest \| InstrumentInput | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
 | provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
 | use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-**Minimum business input:** request (equity instrumentId).
+**Minimum business input:** instrument (InstrumentId or six-digit equity code), or request.
 
 #### Request model `EquityIntraday5dRequest`
 
@@ -809,18 +793,9 @@ The public return annotation is `FetchResult[EquityIntradayData]`.
 <!-- api-example: market.equity_intraday_5d -->
 ```python
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
-from finchx.datasets import EquityIntraday5dRequest
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-request = EquityIntraday5dRequest(instrumentId=instrument_id)
-result = fx.market.equity_intraday_5d(request)
+result = fx.market.equity_intraday_5d("600519")
 ```
 
 ### `fx.market.fund_flow_daily(...)`
@@ -835,18 +810,18 @@ Fetch daily fund-flow data in a FetchResult.
 #### Method signature
 
 ```python
-fx.market.fund_flow_daily(request: 'MarketFundFlowRequest', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[MarketFundFlowDailyData]'
+fx.market.fund_flow_daily(request: 'MarketFundFlowRequest | InstrumentInput', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[MarketFundFlowDailyData]'
 ```
 
 #### Parameters
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | MarketFundFlowRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| request | MarketFundFlowRequest \| InstrumentInput | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
 | provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
 | use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-**Minimum business input:** request (instrumentId).
+**Minimum business input:** instrument (InstrumentId or six-digit equity code), or request.
 
 #### Request model `MarketFundFlowRequest`
 
@@ -879,18 +854,9 @@ The public return annotation is `FetchResult[MarketFundFlowDailyData]`.
 <!-- api-example: market.fund_flow_daily -->
 ```python
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
-from finchx.datasets import MarketFundFlowRequest
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-request = MarketFundFlowRequest(instrumentId=instrument_id)
-result = fx.market.fund_flow_daily(request)
+result = fx.market.fund_flow_daily("600519")
 ```
 
 ### `fx.market.fund_flow_intraday(...)`
@@ -905,18 +871,18 @@ Fetch intraday fund-flow data in a FetchResult.
 #### Method signature
 
 ```python
-fx.market.fund_flow_intraday(request: 'MarketFundFlowRequest', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[MarketFundFlowIntradayData]'
+fx.market.fund_flow_intraday(request: 'MarketFundFlowRequest | InstrumentInput', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[MarketFundFlowIntradayData]'
 ```
 
 #### Parameters
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | MarketFundFlowRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| request | MarketFundFlowRequest \| InstrumentInput | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
 | provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
 | use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-**Minimum business input:** request (instrumentId).
+**Minimum business input:** instrument (InstrumentId or six-digit equity code), or request.
 
 #### Request model `MarketFundFlowRequest`
 
@@ -957,18 +923,9 @@ The public return annotation is `FetchResult[MarketFundFlowIntradayData]`.
 <!-- api-example: market.fund_flow_intraday -->
 ```python
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
-from finchx.datasets import MarketFundFlowRequest
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-request = MarketFundFlowRequest(instrumentId=instrument_id)
-result = fx.market.fund_flow_intraday(request)
+result = fx.market.fund_flow_intraday("600519")
 ```
 
 ### `fx.market.fund_flow_snapshot(...)`
@@ -983,18 +940,18 @@ Fetch the fund-flow snapshot in a FetchResult.
 #### Method signature
 
 ```python
-fx.market.fund_flow_snapshot(request: 'MarketFundFlowRequest', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[MarketFundFlowSnapshotData]'
+fx.market.fund_flow_snapshot(request: 'MarketFundFlowRequest | InstrumentInput', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[MarketFundFlowSnapshotData]'
 ```
 
 #### Parameters
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | MarketFundFlowRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| request | MarketFundFlowRequest \| InstrumentInput | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
 | provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
 | use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-**Minimum business input:** request (instrumentId).
+**Minimum business input:** instrument (InstrumentId or six-digit equity code), or request.
 
 #### Request model `MarketFundFlowRequest`
 
@@ -1038,18 +995,9 @@ The public return annotation is `FetchResult[MarketFundFlowSnapshotData]`.
 <!-- api-example: market.fund_flow_snapshot -->
 ```python
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
-from finchx.datasets import MarketFundFlowRequest
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-request = MarketFundFlowRequest(instrumentId=instrument_id)
-result = fx.market.fund_flow_snapshot(request)
+result = fx.market.fund_flow_snapshot("600519")
 ```
 
 ### `fx.market.index_intraday(...)`
@@ -1212,18 +1160,18 @@ Fetch the market industry comparison in a FetchResult.
 #### Method signature
 
 ```python
-fx.market.industry_comparison(request: 'MarketIndustryComparisonRequest', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[MarketIndustryComparisonData]'
+fx.market.industry_comparison(request: 'MarketIndustryComparisonRequest | InstrumentInput', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[MarketIndustryComparisonData]'
 ```
 
 #### Parameters
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | MarketIndustryComparisonRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| request | MarketIndustryComparisonRequest \| InstrumentInput | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
 | provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
 | use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-**Minimum business input:** request (instrumentId).
+**Minimum business input:** instrument (InstrumentId or six-digit equity code), or request.
 
 #### Request model `MarketIndustryComparisonRequest`
 
@@ -1299,18 +1247,9 @@ The public return annotation is `FetchResult[MarketIndustryComparisonData]`.
 <!-- api-example: market.industry_comparison -->
 ```python
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
-from finchx.datasets import MarketIndustryComparisonRequest
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-request = MarketIndustryComparisonRequest(instrumentId=instrument_id)
-result = fx.market.industry_comparison(request)
+result = fx.market.industry_comparison("600519")
 ```
 
 ### `fx.market.instrument_sector_snapshot(...)`
@@ -1325,18 +1264,18 @@ Fetch sector tags and snapshots for an instrument in a FetchResult.
 #### Method signature
 
 ```python
-fx.market.instrument_sector_snapshot(request: 'MarketInstrumentSectorSnapshotRequest', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[MarketInstrumentSectorSnapshotData]'
+fx.market.instrument_sector_snapshot(request: 'MarketInstrumentSectorSnapshotRequest | InstrumentInput', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[MarketInstrumentSectorSnapshotData]'
 ```
 
 #### Parameters
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | MarketInstrumentSectorSnapshotRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| request | MarketInstrumentSectorSnapshotRequest \| InstrumentInput | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
 | provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
 | use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-**Minimum business input:** request (instrumentId).
+**Minimum business input:** instrument (InstrumentId or six-digit equity code), or request.
 
 #### Request model `MarketInstrumentSectorSnapshotRequest`
 
@@ -1379,18 +1318,9 @@ The public return annotation is `FetchResult[MarketInstrumentSectorSnapshotData]
 <!-- api-example: market.instrument_sector_snapshot -->
 ```python
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
-from finchx.datasets import MarketInstrumentSectorSnapshotRequest
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-request = MarketInstrumentSectorSnapshotRequest(instrumentId=instrument_id)
-result = fx.market.instrument_sector_snapshot(request)
+result = fx.market.instrument_sector_snapshot("600519")
 ```
 
 ### `fx.market.stock_keyword(...)`
@@ -1405,18 +1335,18 @@ Fetch EastMoney source-ranked hot keywords for an instrument.
 #### Method signature
 
 ```python
-fx.market.stock_keyword(request: 'MarketStockKeywordRequest', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[MarketStockKeywordData]'
+fx.market.stock_keyword(request: 'MarketStockKeywordRequest | InstrumentInput', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[MarketStockKeywordData]'
 ```
 
 #### Parameters
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | MarketStockKeywordRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| request | MarketStockKeywordRequest \| InstrumentInput | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
 | provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
 | use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-**Minimum business input:** request (instrumentId).
+**Minimum business input:** instrument (InstrumentId or six-digit equity code), or request.
 
 #### Request model `MarketStockKeywordRequest`
 
@@ -1457,18 +1387,9 @@ The public return annotation is `FetchResult[MarketStockKeywordData]`.
 <!-- api-example: market.stock_keyword -->
 ```python
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
-from finchx.datasets import MarketStockKeywordRequest
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-request = MarketStockKeywordRequest(instrumentId=instrument_id)
-result = fx.market.stock_keyword(request)
+result = fx.market.stock_keyword("600519")
 ```
 
 ### `fx.market.limit_down_pool(...)`
@@ -1642,14 +1563,14 @@ Fetch OHLCV history for one instrument in a FetchResult.
 #### Method signature
 
 ```python
-fx.market.ohlcv(instrument_id: 'InstrumentId | None' = None, start_date: 'date | None' = None, end_date: 'date | None' = None, adjustment: 'KlineAdjustment | None' = None, *, request: 'KlinesRequest | None' = None, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[MarketKlineData]'
+fx.market.ohlcv(instrument_id: 'InstrumentInput | None' = None, start_date: 'date | None' = None, end_date: 'date | None' = None, adjustment: 'KlineAdjustment | None' = None, *, request: 'KlinesRequest | None' = None, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[MarketKlineData]'
 ```
 
 #### Parameters
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| instrument_id | InstrumentId \| None | Required in convenience mode | None | Complete InstrumentId. |
+| instrument_id | InstrumentInput \| None | Required in convenience mode | None | Complete InstrumentId. |
 | start_date | date \| None | Required in convenience mode | None | Inclusive start date. |
 | end_date | date \| None | Required in convenience mode | None | Inclusive end date. |
 | adjustment | KlineAdjustment \| None | Required for equities; omit for indexes | None | Kline adjustment; required for equity calls and omitted for index calls. |
@@ -1657,7 +1578,7 @@ fx.market.ohlcv(instrument_id: 'InstrumentId | None' = None, start_date: 'date |
 | provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
 | use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-**Minimum business input:** instrument_id, start_date, end_date, and adjustment for equity.
+**Minimum business input:** instrument_id (InstrumentId or six-digit equity code), start_date, end_date, and adjustment for equity.
 
 #### Request model `KlinesRequest`
 
@@ -1700,17 +1621,10 @@ The public return annotation is `FetchResult[MarketKlineData]`.
 from datetime import date
 from finchx import FinchX
 from finchx.datasets import KlineAdjustment
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
 result = fx.market.ohlcv(
-    instrument_id,
+    "600519",
     date(2026, 9, 1),
     date(2026, 9, 18),
     adjustment=KlineAdjustment.QFQ,
@@ -1729,18 +1643,18 @@ Fetch the order book in a FetchResult.
 #### Method signature
 
 ```python
-fx.market.orderbook(request: 'MarketOrderbookRequest', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[MarketOrderbookData]'
+fx.market.orderbook(request: 'MarketOrderbookRequest | InstrumentInput', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[MarketOrderbookData]'
 ```
 
 #### Parameters
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | MarketOrderbookRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| request | MarketOrderbookRequest \| InstrumentInput | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
 | provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
 | use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-**Minimum business input:** request (instrumentId).
+**Minimum business input:** instrument (InstrumentId or six-digit equity code), or request.
 
 #### Request model `MarketOrderbookRequest`
 
@@ -1780,18 +1694,9 @@ The public return annotation is `FetchResult[MarketOrderbookData]`.
 <!-- api-example: market.orderbook -->
 ```python
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
-from finchx.datasets import MarketOrderbookRequest
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-request = MarketOrderbookRequest(instrumentId=instrument_id)
-result = fx.market.orderbook(request)
+result = fx.market.orderbook("600519")
 ```
 
 ### `fx.market.quote(...)`
@@ -1888,18 +1793,18 @@ Fetch one quote snapshot in a FetchResult.
 #### Method signature
 
 ```python
-fx.market.quote_snapshot(request: 'MarketQuoteSnapshotRequest', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[MarketQuoteSnapshotData]'
+fx.market.quote_snapshot(request: 'MarketQuoteSnapshotRequest | InstrumentInput', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[MarketQuoteSnapshotData]'
 ```
 
 #### Parameters
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | MarketQuoteSnapshotRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| request | MarketQuoteSnapshotRequest \| InstrumentInput | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
 | provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
 | use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-**Minimum business input:** request (instrumentId).
+**Minimum business input:** instrument (InstrumentId or six-digit equity code), or request.
 
 #### Request model `MarketQuoteSnapshotRequest`
 
@@ -1939,18 +1844,9 @@ The public return annotation is `FetchResult[MarketQuoteSnapshotData]`.
 <!-- api-example: market.quote_snapshot -->
 ```python
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
-from finchx.datasets import MarketQuoteSnapshotRequest
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-request = MarketQuoteSnapshotRequest(instrumentId=instrument_id)
-result = fx.market.quote_snapshot(request)
+result = fx.market.quote_snapshot("600519")
 ```
 
 ### `fx.market.ranking(...)`
@@ -2301,19 +2197,19 @@ Fetch a company's profile in a FetchResult.
 #### Method signature
 
 ```python
-fx.fundamental.company_profile(instrument_id: 'InstrumentId | None' = None, *, request: 'CompanyProfileRequest | None' = None, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[CompanyProfileData]'
+fx.fundamental.company_profile(instrument_id: 'InstrumentInput | None' = None, *, request: 'CompanyProfileRequest | None' = None, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[CompanyProfileData]'
 ```
 
 #### Parameters
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| instrument_id | InstrumentId \| None | Required in convenience mode | None | Complete InstrumentId. |
+| instrument_id | InstrumentInput \| None | Required in convenience mode | None | Complete InstrumentId. |
 | request | CompanyProfileRequest \| None | Conditional request alternative | None | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
 | provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
 | use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-**Minimum business input:** instrument_id or request.
+**Minimum business input:** instrument_id (InstrumentId or six-digit equity code) or request.
 
 #### Request model `CompanyProfileRequest`
 
@@ -2338,16 +2234,9 @@ The public return annotation is `FetchResult[CompanyProfileData]`.
 <!-- api-example: fundamental.company_profile -->
 ```python
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-result = fx.fundamental.company_profile(instrument_id)
+result = fx.fundamental.company_profile("600519")
 ```
 
 ### `fx.fundamental.financial_summary(...)`
@@ -2362,18 +2251,18 @@ Fetch a company's financial summary in a FetchResult.
 #### Method signature
 
 ```python
-fx.fundamental.financial_summary(request: 'FinancialSummaryRequest', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[FinancialSummaryData]'
+fx.fundamental.financial_summary(request: 'FinancialSummaryRequest | InstrumentInput', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[FinancialSummaryData]'
 ```
 
 #### Parameters
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | FinancialSummaryRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| request | FinancialSummaryRequest \| InstrumentInput | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
 | provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
 | use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-**Minimum business input:** request (instrumentId).
+**Minimum business input:** instrument (InstrumentId or six-digit equity code), or request.
 
 #### Request model `FinancialSummaryRequest`
 
@@ -2415,18 +2304,9 @@ The public return annotation is `FetchResult[FinancialSummaryData]`.
 <!-- api-example: fundamental.financial_summary -->
 ```python
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
-from finchx.datasets import FinancialSummaryRequest
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-request = FinancialSummaryRequest(instrumentId=instrument_id)
-result = fx.fundamental.financial_summary(request)
+result = fx.fundamental.financial_summary("600519")
 ```
 
 ### `fx.fundamental.industry_comparison(...)`
@@ -2441,18 +2321,18 @@ Fetch the fundamental industry comparison in a FetchResult.
 #### Method signature
 
 ```python
-fx.fundamental.industry_comparison(request: 'FundamentalIndustryComparisonRequest', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[IndustryComparisonData]'
+fx.fundamental.industry_comparison(request: 'FundamentalIndustryComparisonRequest | InstrumentInput', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[IndustryComparisonData]'
 ```
 
 #### Parameters
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | FundamentalIndustryComparisonRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| request | FundamentalIndustryComparisonRequest \| InstrumentInput | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
 | provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
 | use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-**Minimum business input:** request (instrumentId).
+**Minimum business input:** instrument (InstrumentId or six-digit equity code), or request.
 
 **Naming note:** The Client annotation spells this local alias as `FundamentalIndustryComparisonRequest`; the real public class and Dataset request type are `finchx.datasets.IndustryComparisonRequest`.
 
@@ -2491,18 +2371,9 @@ The public return annotation is `FetchResult[IndustryComparisonData]`.
 <!-- api-example: fundamental.industry_comparison -->
 ```python
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
-from finchx.datasets import IndustryComparisonRequest
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-request = IndustryComparisonRequest(instrumentId=instrument_id)
-result = fx.fundamental.industry_comparison(request)
+result = fx.fundamental.industry_comparison("600519")
 ```
 
 ### `fx.fundamental.revenue_breakdown(...)`
@@ -2517,18 +2388,18 @@ Fetch a company's revenue breakdown in a FetchResult.
 #### Method signature
 
 ```python
-fx.fundamental.revenue_breakdown(request: 'RevenueBreakdownRequest', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[RevenueBreakdownData]'
+fx.fundamental.revenue_breakdown(request: 'RevenueBreakdownRequest | InstrumentInput', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[RevenueBreakdownData]'
 ```
 
 #### Parameters
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | RevenueBreakdownRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| request | RevenueBreakdownRequest \| InstrumentInput | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
 | provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
 | use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-**Minimum business input:** request (instrumentId).
+**Minimum business input:** instrument (InstrumentId or six-digit equity code), or request.
 
 #### Request model `RevenueBreakdownRequest`
 
@@ -2564,18 +2435,9 @@ The public return annotation is `FetchResult[RevenueBreakdownData]`.
 <!-- api-example: fundamental.revenue_breakdown -->
 ```python
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
-from finchx.datasets import RevenueBreakdownRequest
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-request = RevenueBreakdownRequest(instrumentId=instrument_id)
-result = fx.fundamental.revenue_breakdown(request)
+result = fx.fundamental.revenue_breakdown("600519")
 ```
 
 ## `financial`
@@ -2592,14 +2454,14 @@ Fetch financial statements in a FetchResult.
 #### Method signature
 
 ```python
-fx.financial.statements(instrument_id: 'InstrumentId | None' = None, statement_type: 'StatementType | None' = None, *, period_end: 'date | None' = None, max_periods: 'int | None' = None, request: 'FinancialStatementRequest | None' = None, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[FinancialStatementData]'
+fx.financial.statements(instrument_id: 'InstrumentInput | None' = None, statement_type: 'StatementType | None' = None, *, period_end: 'date | None' = None, max_periods: 'int | None' = None, request: 'FinancialStatementRequest | None' = None, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[FinancialStatementData]'
 ```
 
 #### Parameters
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| instrument_id | InstrumentId \| None | Required in convenience mode | None | Complete InstrumentId. |
+| instrument_id | InstrumentInput \| None | Required in convenience mode | None | Complete InstrumentId. |
 | statement_type | StatementType \| None | Required in convenience mode | None | balance_sheet, income_statement, or cash_flow_statement. |
 | period_end | date \| None | No | None | Optional report-period end date. |
 | max_periods | int \| None | No | None | Optional maximum number of report periods. |
@@ -2607,7 +2469,7 @@ fx.financial.statements(instrument_id: 'InstrumentId | None' = None, statement_t
 | provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
 | use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-**Minimum business input:** instrument_id and statement_type, or request.
+**Minimum business input:** instrument_id (InstrumentId or six-digit equity code) and statement_type, or request.
 
 #### Request model `FinancialStatementRequest`
 
@@ -2662,16 +2524,9 @@ The public return annotation is `FetchResult[FinancialStatementData]`.
 <!-- api-example: financial.statements -->
 ```python
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-result = fx.financial.statements(instrument_id, "income_statement")
+result = fx.financial.statements("600519", "income_statement")
 ```
 
 ## `news`
@@ -2889,18 +2744,18 @@ Fetch a capital snapshot in a FetchResult.
 #### Method signature
 
 ```python
-fx.ownership.capital_snapshot(request: 'CapitalSnapshotRequest', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[CapitalSnapshotData]'
+fx.ownership.capital_snapshot(request: 'CapitalSnapshotRequest | InstrumentInput', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[CapitalSnapshotData]'
 ```
 
 #### Parameters
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | CapitalSnapshotRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| request | CapitalSnapshotRequest \| InstrumentInput | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
 | provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
 | use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-**Minimum business input:** request (instrumentId).
+**Minimum business input:** instrument (InstrumentId or six-digit equity code), or request.
 
 #### Request model `CapitalSnapshotRequest`
 
@@ -2923,18 +2778,9 @@ The public return annotation is `FetchResult[CapitalSnapshotData]`.
 <!-- api-example: ownership.capital_snapshot -->
 ```python
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
-from finchx.datasets import CapitalSnapshotRequest
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-request = CapitalSnapshotRequest(instrumentId=instrument_id)
-result = fx.ownership.capital_snapshot(request)
+result = fx.ownership.capital_snapshot("600519")
 ```
 
 ### `fx.ownership.float_holder(...)`
@@ -2949,18 +2795,18 @@ Fetch floating-holder data in a FetchResult.
 #### Method signature
 
 ```python
-fx.ownership.float_holder(request: 'FloatHolderRequest', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[FloatHolderData]'
+fx.ownership.float_holder(request: 'FloatHolderRequest | InstrumentInput', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[FloatHolderData]'
 ```
 
 #### Parameters
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | FloatHolderRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| request | FloatHolderRequest \| InstrumentInput | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
 | provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
 | use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-**Minimum business input:** request (instrumentId; optional asOf).
+**Minimum business input:** instrument (InstrumentId or six-digit equity code), or request.
 
 #### Request model `FloatHolderRequest`
 
@@ -3005,18 +2851,9 @@ The public return annotation is `FetchResult[FloatHolderData]`.
 <!-- api-example: ownership.float_holder -->
 ```python
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
-from finchx.datasets import FloatHolderRequest
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-request = FloatHolderRequest(instrumentId=instrument_id)
-result = fx.ownership.float_holder(request)
+result = fx.ownership.float_holder("600519")
 ```
 
 ### `fx.ownership.holder_summary_snapshot(...)`
@@ -3031,18 +2868,18 @@ Fetch a holder-summary snapshot in a FetchResult.
 #### Method signature
 
 ```python
-fx.ownership.holder_summary_snapshot(request: 'HolderSummarySnapshotRequest', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[HolderSummarySnapshotData]'
+fx.ownership.holder_summary_snapshot(request: 'HolderSummarySnapshotRequest | InstrumentInput', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[HolderSummarySnapshotData]'
 ```
 
 #### Parameters
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | HolderSummarySnapshotRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| request | HolderSummarySnapshotRequest \| InstrumentInput | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
 | provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
 | use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-**Minimum business input:** request (instrumentId).
+**Minimum business input:** instrument (InstrumentId or six-digit equity code), or request.
 
 #### Request model `HolderSummarySnapshotRequest`
 
@@ -3068,18 +2905,9 @@ The public return annotation is `FetchResult[HolderSummarySnapshotData]`.
 <!-- api-example: ownership.holder_summary_snapshot -->
 ```python
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
-from finchx.datasets import HolderSummarySnapshotRequest
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-request = HolderSummarySnapshotRequest(instrumentId=instrument_id)
-result = fx.ownership.holder_summary_snapshot(request)
+result = fx.ownership.holder_summary_snapshot("600519")
 ```
 
 ## `company`
@@ -3096,18 +2924,18 @@ Fetch executive share changes in a FetchResult.
 #### Method signature
 
 ```python
-fx.company.executive_share_change(request: 'ExecutiveShareChangeRequest', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[ExecutiveShareChangeData]'
+fx.company.executive_share_change(request: 'ExecutiveShareChangeRequest | InstrumentInput', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[ExecutiveShareChangeData]'
 ```
 
 #### Parameters
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | ExecutiveShareChangeRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| request | ExecutiveShareChangeRequest \| InstrumentInput | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
 | provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
 | use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-**Minimum business input:** request (instrumentId).
+**Minimum business input:** instrument (InstrumentId or six-digit equity code), or request.
 
 #### Request model `ExecutiveShareChangeRequest`
 
@@ -3138,18 +2966,9 @@ The public return annotation is `FetchResult[ExecutiveShareChangeData]`.
 <!-- api-example: company.executive_share_change -->
 ```python
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
-from finchx.datasets import ExecutiveShareChangeRequest
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-request = ExecutiveShareChangeRequest(instrumentId=instrument_id)
-result = fx.company.executive_share_change(request)
+result = fx.company.executive_share_change("600519")
 ```
 
 ### `fx.company.executive_snapshot(...)`
@@ -3164,18 +2983,18 @@ Fetch an executive snapshot in a FetchResult.
 #### Method signature
 
 ```python
-fx.company.executive_snapshot(request: 'ExecutiveSnapshotRequest', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[ExecutiveSnapshotData]'
+fx.company.executive_snapshot(request: 'ExecutiveSnapshotRequest | InstrumentInput', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[ExecutiveSnapshotData]'
 ```
 
 #### Parameters
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | ExecutiveSnapshotRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| request | ExecutiveSnapshotRequest \| InstrumentInput | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
 | provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
 | use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-**Minimum business input:** request (instrumentId).
+**Minimum business input:** instrument (InstrumentId or six-digit equity code), or request.
 
 #### Request model `ExecutiveSnapshotRequest`
 
@@ -3206,18 +3025,9 @@ The public return annotation is `FetchResult[ExecutiveSnapshotData]`.
 <!-- api-example: company.executive_snapshot -->
 ```python
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
-from finchx.datasets import ExecutiveSnapshotRequest
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-request = ExecutiveSnapshotRequest(instrumentId=instrument_id)
-result = fx.company.executive_snapshot(request)
+result = fx.company.executive_snapshot("600519")
 ```
 
 ## `corporate_action`
@@ -3234,18 +3044,18 @@ Fetch dividend actions in a FetchResult.
 #### Method signature
 
 ```python
-fx.corporate_action.dividend(request: 'DividendRequest', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[DividendData]'
+fx.corporate_action.dividend(request: 'DividendRequest | InstrumentInput', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[DividendData]'
 ```
 
 #### Parameters
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | DividendRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| request | DividendRequest \| InstrumentInput | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
 | provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
 | use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-**Minimum business input:** request (instrumentId).
+**Minimum business input:** instrument (InstrumentId or six-digit equity code), or request.
 
 #### Request model `DividendRequest`
 
@@ -3281,18 +3091,9 @@ The public return annotation is `FetchResult[DividendData]`.
 <!-- api-example: corporate_action.dividend -->
 ```python
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
-from finchx.datasets import DividendRequest
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-request = DividendRequest(instrumentId=instrument_id)
-result = fx.corporate_action.dividend(request)
+result = fx.corporate_action.dividend("600519")
 ```
 
 ### `fx.corporate_action.repurchase(...)`
@@ -3307,18 +3108,18 @@ Fetch repurchase actions in a FetchResult.
 #### Method signature
 
 ```python
-fx.corporate_action.repurchase(request: 'RepurchaseRequest', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[RepurchaseData]'
+fx.corporate_action.repurchase(request: 'RepurchaseRequest | InstrumentInput', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[RepurchaseData]'
 ```
 
 #### Parameters
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| request | RepurchaseRequest | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
+| request | RepurchaseRequest \| InstrumentInput | Yes | — | Typed request model; valid combinations are governed by the Client and Pydantic validation. |
 | provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
 | use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-**Minimum business input:** request (instrumentId).
+**Minimum business input:** instrument (InstrumentId or six-digit equity code), or request.
 
 #### Request model `RepurchaseRequest`
 
@@ -3351,18 +3152,9 @@ The public return annotation is `FetchResult[RepurchaseData]`.
 <!-- api-example: corporate_action.repurchase -->
 ```python
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
-from finchx.datasets import RepurchaseRequest
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-request = RepurchaseRequest(instrumentId=instrument_id)
-result = fx.corporate_action.repurchase(request)
+result = fx.corporate_action.repurchase("600519")
 ```
 
 ## `market.deviation`
@@ -3377,21 +3169,21 @@ Compute close-based 10-day/30-day deviation from existing data.
 #### Method signature
 
 ```python
-fx.market.deviation(instrument_id: 'InstrumentId', *, windows: 'Sequence[int]' = (10, 30), as_of: 'date | None' = None, window_convention: 'DeviationWindowConvention' = <DeviationWindowConvention.MAX_DEVIATION_SCAN: 'max_deviation_scan'>, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[DeviationData]'
+fx.market.deviation(instrument_id: 'InstrumentInput', *, windows: 'Sequence[int]' = (10, 30), as_of: 'date | None' = None, window_convention: 'DeviationWindowConvention' = <DeviationWindowConvention.MAX_DEVIATION_SCAN: 'max_deviation_scan'>, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[DeviationData]'
 ```
 
 #### Parameters
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| instrument_id | InstrumentId | Yes | — | Complete InstrumentId. |
+| instrument_id | InstrumentInput | Yes | — | Complete InstrumentId. |
 | windows | Sequence[int] | No | (10, 30) | Supported deviation windows: 10 and 30 trading sessions. |
 | as_of | date \| None | No | None | Optional completed-session date. |
 | window_convention | DeviationWindowConvention | No | DeviationWindowConvention.MAX_DEVIATION_SCAN | Deviation window interpretation. |
 | provider | str \| None | No | None | Strict Provider id pin; a failure is not silently redirected. |
 | use_cache | bool \| None | No | None | Cache control; None follows the configured CachePolicy. |
 
-**Minimum business input:** instrument_id.
+**Minimum business input:** instrument_id (InstrumentId or six-digit equity code).
 
 #### Request model `DeviationRequest`
 
@@ -3459,14 +3251,7 @@ The public return annotation is `FetchResult[DeviationData]`.
 <!-- api-example: market.deviation -->
 ```python
 from finchx import FinchX
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
 
 fx = FinchX()
-instrument_id = InstrumentId(
-    code="600519",
-    market=Market.CN_A,
-    kind=InstrumentKind.EQUITY,
-    exchange=Exchange.SSE,
-)
-result = fx.market.deviation(instrument_id, windows=(10, 30))
+result = fx.market.deviation("600519", windows=(10, 30))
 ```
