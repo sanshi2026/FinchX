@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/fundamental-company-profile.schema.json",
+  "title": "Fundamental Company Profile Dataset Payload v1",
+  "type": "object",
+  "properties": {
+    "symbol": {"type": "string", "minLength": 1, "pattern": ".*\\S.*"},
+    "companyName": {"anyOf": [{"type": "string", "minLength": 1}, {"type": "null"}]},
+    "businessDescription": {"anyOf": [{"type": "string", "minLength": 1}, {"type": "null"}]},
+    "issuePrice": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Price"}, {"type": "null"}]},
+    "listingDate": {"anyOf": [{"type": "string", "format": "date"}, {"type": "null"}]}
+  },
+  "required": ["symbol"],
+  "additionalProperties": false
+}

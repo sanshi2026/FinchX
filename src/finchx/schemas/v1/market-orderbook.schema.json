@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/market-orderbook.schema.json",
+  "title": "FinchX Market Orderbook Dataset Payload v1",
+  "type": "object",
+  "properties": {
+    "instrumentId": {
+      "$ref": "https://schemas.finchx.invalid/v1/instrument-identity.schema.json"
+    },
+    "bids": {
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "$ref": "#/$defs/OrderbookLevel"
+      }
+    },
+    "asks": {
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "$ref": "#/$defs/OrderbookLevel"
+      }
+    }
+  },
+  "required": [
+    "instrumentId",
+    "bids",
+    "asks"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "OrderbookLevel": {
+      "title": "OrderbookLevel",
+      "type": "object",
+      "properties": {
+        "level": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "price": {
+          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Price"
+        },
+        "size": {
+          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Shares",
+          "exclusiveMinimum": 0
+        }
+      },
+      "required": [
+        "level",
+        "price",
+        "size"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "allOf": [
+    {
+      "anyOf": [
+        {
+          "properties": {
+            "instrumentId": {
+              "properties": {
+                "market": {
+                  "const": "cn_a"
+                },
+                "kind": {
+                  "const": "equity"
+                },
+                "exchange": {
+                  "const": "sse"
+                },
+                "code": {
+                  "pattern": "^(60|68)[0-9]{4}$"
+                }
+              },
+              "required": [
+                "market",
+                "kind",
+                "exchange",
+                "code"
+              ]
+            }
+          }
+        },
+        {
+          "properties": {
+            "instrumentId": {
+              "properties": {
+                "market": {
+                  "const": "cn_a"
+                },
+                "kind": {
+                  "const": "equity"
+                },
+                "exchange": {
+                  "const": "szse"
+                },
+                "code": {
+                  "pattern": "^(00|30)[0-9]{4}$"
+                }
+              },
+              "required": [
+                "market",
+                "kind",
+                "exchange",
+                "code"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

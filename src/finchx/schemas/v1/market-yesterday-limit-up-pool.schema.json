@@ -1,0 +1,196 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/market-yesterday-limit-up-pool.schema.json",
+  "title": "MarketYesterdayLimitUpPoolData",
+  "$defs": {
+    "Exchange": {
+      "enum": [
+        "sse",
+        "szse",
+        "bse"
+      ],
+      "title": "Exchange",
+      "type": "string"
+    },
+    "InstrumentId": {
+      "additionalProperties": false,
+      "description": "Identity for an instrument whose code, market, and kind are already known.",
+      "properties": {
+        "code": {
+          "minLength": 1,
+          "pattern": ".*\\S.*",
+          "title": "Code",
+          "type": "string"
+        },
+        "market": {
+          "$ref": "#/$defs/Market"
+        },
+        "kind": {
+          "$ref": "#/$defs/InstrumentKind"
+        },
+        "exchange": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Exchange"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "code",
+        "market",
+        "kind"
+      ],
+      "title": "InstrumentId",
+      "type": "object"
+    },
+    "InstrumentKind": {
+      "enum": [
+        "equity",
+        "index",
+        "etf"
+      ],
+      "title": "InstrumentKind",
+      "type": "string"
+    },
+    "Market": {
+      "enum": [
+        "cn_a"
+      ],
+      "title": "Market",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "instrumentId": {
+      "$ref": "#/$defs/InstrumentId"
+    },
+    "tradeDate": {
+      "description": "Current observed source date, not the prior limit-up event date.",
+      "format": "date",
+      "title": "Tradedate",
+      "type": "string"
+    },
+    "name": {
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+    },
+    "currentPrice": {
+      "description": "Current-session price in CNY per share.",
+      "examples": [
+        "12.34"
+      ],
+      "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+      "title": "Currentprice",
+      "type": "string"
+    },
+    "currentLimitUpPrice": {
+      "description": "Current-session limit-up price in CNY per share.",
+      "examples": [
+        "12.34"
+      ],
+      "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+      "title": "Currentlimitupprice",
+      "type": "string"
+    },
+    "currentChangeRate": {
+      "description": "Current-session ratio fraction.",
+      "examples": [
+        "0.0424"
+      ],
+      "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+      "title": "Currentchangerate",
+      "type": "string"
+    },
+    "currentAmount": {
+      "description": "Current-session traded amount in CNY.",
+      "examples": [
+        "123456.78"
+      ],
+      "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+      "title": "Currentamount",
+      "type": "string"
+    },
+    "floatMarketCapitalization": {
+      "description": "Monetary amount in CNY.",
+      "examples": [
+        "123456.78"
+      ],
+      "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+      "title": "Floatmarketcapitalization",
+      "type": "string"
+    },
+    "marketCapitalization": {
+      "description": "Monetary amount in CNY.",
+      "examples": [
+        "123456.78"
+      ],
+      "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+      "title": "Marketcapitalization",
+      "type": "string"
+    },
+    "currentTurnoverRate": {
+      "description": "Current-session turnover ratio fraction.",
+      "examples": [
+        "0.0424"
+      ],
+      "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+      "title": "Currentturnoverrate",
+      "type": "string"
+    },
+    "currentAmplitude": {
+      "description": "Current-session amplitude as a ratio fraction.",
+      "examples": [
+        "0.0424"
+      ],
+      "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+      "title": "Currentamplitude",
+      "type": "string"
+    },
+    "yesterdayFirstLimitUpTime": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Previous-session first limit-up time, market-local HH:MM:SS.",
+      "title": "Yesterdayfirstlimituptime"
+    },
+    "yesterdayConsecutiveLimitUpDays": {
+      "minimum": 1,
+      "title": "Yesterdayconsecutivelimitupdays",
+      "type": "integer"
+    },
+    "industry": {
+      "minLength": 1,
+      "title": "Industry",
+      "type": "string"
+    }
+  },
+  "required": [
+    "instrumentId",
+    "tradeDate",
+    "name",
+    "currentPrice",
+    "currentLimitUpPrice",
+    "currentChangeRate",
+    "currentAmount",
+    "floatMarketCapitalization",
+    "marketCapitalization",
+    "currentTurnoverRate",
+    "currentAmplitude",
+    "yesterdayConsecutiveLimitUpDays",
+    "industry"
+  ],
+  "type": "object"
+}

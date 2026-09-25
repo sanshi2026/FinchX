@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/market-index-intraday.schema.json",
+  "title": "FinchX Index Intraday Dataset Payload v1",
+  "type": "object",
+  "properties": {
+    "instrumentId": {
+      "$ref": "https://schemas.finchx.invalid/v1/instrument-identity.schema.json"
+    },
+    "tradeDate": {
+      "description": "Source trading-date label; not FinchX capturedAt.",
+      "format": "date",
+      "title": "Tradedate",
+      "type": "string"
+    },
+    "time": {
+      "description": "Source trading time in HHMM normalized to HH:MM; not capturedAt.",
+      "pattern": "^(?:[01][0-9]|2[0-3]):[0-5][0-9]$",
+      "title": "Time",
+      "type": "string"
+    },
+    "price": {
+      "description": "Exact decimal in the source price unit (CNY per share for equities; index points for indices).",
+      "pattern": "^(?:[1-9][0-9]*(?:\\.[0-9]+)?|0\\.[0-9]*[1-9][0-9]*)$",
+      "title": "Price",
+      "type": "string"
+    },
+    "volume": {
+      "description": "Volume traded during this minute, in whole shares.",
+      "examples": [
+        100
+      ],
+      "minimum": 0,
+      "title": "Volume",
+      "type": "integer"
+    },
+    "amount": {
+      "description": "Amount traded during this minute, in CNY.",
+      "examples": [
+        "123456.78"
+      ],
+      "pattern": "^(?:0|[1-9][0-9]*(?:\\.[0-9]+)?|0\\.[0-9]+)$",
+      "title": "Amount",
+      "type": "string"
+    },
+    "cumulativeVolume": {
+      "description": "Tencent source cumulative traded volume, normalized to whole shares from lots (source lots multiplied by 100).",
+      "examples": [
+        100
+      ],
+      "minimum": 0,
+      "title": "Cumulativevolume",
+      "type": "integer"
+    },
+    "cumulativeAmount": {
+      "description": "Tencent source cumulative traded amount in CNY, unchanged from source.",
+      "examples": [
+        "123456.78"
+      ],
+      "pattern": "^(?:0|[1-9][0-9]*(?:\\.[0-9]+)?|0\\.[0-9]+)$",
+      "title": "Cumulativeamount",
+      "type": "string"
+    }
+  },
+  "required": [
+    "instrumentId",
+    "tradeDate",
+    "time",
+    "price",
+    "volume",
+    "amount",
+    "cumulativeVolume",
+    "cumulativeAmount"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "anyOf": [
+        {
+          "properties": {
+            "instrumentId": {
+              "properties": {
+                "market": {
+                  "const": "cn_a"
+                },
+                "kind": {
+                  "const": "index"
+                },
+                "exchange": {
+                  "const": "sse"
+                },
+                "code": {
+                  "const": "000001"
+                }
+              },
+              "required": [
+                "market",
+                "kind",
+                "exchange",
+                "code"
+              ]
+            }
+          }
+        },
+        {
+          "properties": {
+            "instrumentId": {
+              "properties": {
+                "market": {
+                  "const": "cn_a"
+                },
+                "kind": {
+                  "const": "index"
+                },
+                "exchange": {
+                  "const": "szse"
+                },
+                "code": {
+                  "const": "399001"
+                }
+              },
+              "required": [
+                "market",
+                "kind",
+                "exchange",
+                "code"
+              ]
+            }
+          }
+        },
+        {
+          "properties": {
+            "instrumentId": {
+              "properties": {
+                "market": {
+                  "const": "cn_a"
+                },
+                "kind": {
+                  "const": "index"
+                },
+                "exchange": {
+                  "const": "szse"
+                },
+                "code": {
+                  "const": "399006"
+                }
+              },
+              "required": [
+                "market",
+                "kind",
+                "exchange",
+                "code"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

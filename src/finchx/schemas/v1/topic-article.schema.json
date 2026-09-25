@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/topic-article.schema.json",
+  "additionalProperties": false,
+  "description": "A discovered news or long-article ref accepted by ``articles.get``.",
+  "properties": {
+    "topicCode": {
+      "pattern": "^T[A-Za-z0-9]{6}$",
+      "title": "Topiccode",
+      "type": "string"
+    },
+    "rank": {
+      "description": "Position in the source-ordered, filtered article list.",
+      "minimum": 1,
+      "title": "Rank",
+      "type": "integer"
+    },
+    "contentId": {
+      "description": "Numeric Tonghuashun article sequence ID from the topic item.",
+      "pattern": "^\\d{6,16}$",
+      "title": "Contentid",
+      "type": "string"
+    },
+    "contentType": {
+      "description": "Verified type=8 news and type=2 long articles use the existing news or zhibo detail route.",
+      "enum": [
+        "news",
+        "zhibo"
+      ],
+      "title": "Contenttype",
+      "type": "string"
+    },
+    "title": {
+      "description": "Article title supplied by the topic feed.",
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    },
+    "url": {
+      "description": "Public news or zhibo article URL accepted by fx.articles.get(url).",
+      "title": "Url",
+      "type": "string"
+    },
+    "publishedAt": {
+      "description": "Source article timestamp normalized from epoch milliseconds to Asia/Shanghai.",
+      "format": "date-time",
+      "title": "Publishedat",
+      "type": "string"
+    },
+    "sourceName": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Publisher or media label supplied by the topic feed item.",
+      "title": "Sourcename"
+    }
+  },
+  "required": [
+    "topicCode",
+    "rank",
+    "contentId",
+    "contentType",
+    "title",
+    "url",
+    "publishedAt"
+  ],
+  "title": "TopicArticleData",
+  "type": "object"
+}

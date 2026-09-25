@@ -1,0 +1,17 @@
+{
+  "dataset": "market.quote",
+  "schemaVersion": "1.0",
+  "recordId": "finchx-synthetic-estimated-001",
+  "entityId": {"code": "TEST-000001", "market": "cn_a", "kind": "equity"},
+  "capturedAt": "2026-01-02T09:30:01+08:00",
+  "source": {"providerId": "finchx.derived"},
+  "status": "estimated",
+  "quality": {"issues": [{"kind": "estimated", "detail": "Synthetic estimate."}]},
+  "provenance": {
+    "recordClass": "derived",
+    "transformationVersion": "sample-estimator/1",
+    "sourceReferences": [{"providerId": "synthetic", "sourceRecordId": "fixture-001"}],
+    "adjustments": [{"name": "sample-estimator", "version": "1"}]
+  },
+  "data": {"changeRatio": "0.0424"}
+}

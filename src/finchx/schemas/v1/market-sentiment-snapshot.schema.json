@@ -1,0 +1,227 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/market-sentiment-snapshot.schema.json",
+  "additionalProperties": false,
+  "description": "Source-defined short-term market sentiment metrics.",
+  "properties": {
+    "marketTemperature": {
+      "description": "Aigupiao source-defined sentiment temperature; not a physical temperature or ratio.",
+      "title": "Markettemperature",
+      "type": "string"
+    },
+    "totalTurnover": {
+      "anyOf": [
+        {
+          "description": "Monetary amount in CNY.",
+          "examples": [
+            "123456.78"
+          ],
+          "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Totalturnover"
+    },
+    "forecastedTurnover": {
+      "anyOf": [
+        {
+          "description": "Monetary amount in CNY.",
+          "examples": [
+            "123456.78"
+          ],
+          "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Source forecast, not observed turnover.",
+      "title": "Forecastedturnover"
+    },
+    "turnoverChangeAmount": {
+      "anyOf": [
+        {
+          "description": "Monetary amount in CNY.",
+          "examples": [
+            "123456.78"
+          ],
+          "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Source-reported change in turnover amount versus the prior day.",
+      "title": "Turnoverchangeamount"
+    },
+    "blastBreakRatio": {
+      "anyOf": [
+        {
+          "description": "A ratio fraction, not percentage points: 4.24% is 0.0424.",
+          "examples": [
+            "0.0424"
+          ],
+          "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Source-defined ratio; FinchX does not reproduce the denominator.",
+      "title": "Blastbreakratio"
+    },
+    "previousLimitUpBreakChangeRatio": {
+      "anyOf": [
+        {
+          "description": "A ratio fraction, not percentage points: 4.24% is 0.0424.",
+          "examples": [
+            "0.0424"
+          ],
+          "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Source-defined previous broken-limit performance ratio.",
+      "title": "Previouslimitupbreakchangeratio"
+    },
+    "stopTradingCount": {
+      "minimum": 0,
+      "title": "Stoptradingcount",
+      "type": "integer"
+    },
+    "oneLimitUpCount": {
+      "minimum": 0,
+      "title": "Onelimitupcount",
+      "type": "integer"
+    },
+    "twoLimitUpCount": {
+      "minimum": 0,
+      "title": "Twolimitupcount",
+      "type": "integer"
+    },
+    "threeLimitUpCount": {
+      "minimum": 0,
+      "title": "Threelimitupcount",
+      "type": "integer"
+    },
+    "highLimitUpCount": {
+      "minimum": 0,
+      "title": "Highlimitupcount",
+      "type": "integer"
+    },
+    "twoLimitUpPromotionRatio": {
+      "anyOf": [
+        {
+          "description": "A ratio fraction, not percentage points: 4.24% is 0.0424.",
+          "examples": [
+            "0.0424"
+          ],
+          "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Source-defined promotion ratio; FinchX does not reproduce the denominator.",
+      "title": "Twolimituppromotionratio"
+    },
+    "threeLimitUpPromotionRatio": {
+      "anyOf": [
+        {
+          "description": "A ratio fraction, not percentage points: 4.24% is 0.0424.",
+          "examples": [
+            "0.0424"
+          ],
+          "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Source-defined promotion ratio; FinchX does not reproduce the denominator.",
+      "title": "Threelimituppromotionratio"
+    },
+    "highLimitUpPromotionRatio": {
+      "anyOf": [
+        {
+          "description": "A ratio fraction, not percentage points: 4.24% is 0.0424.",
+          "examples": [
+            "0.0424"
+          ],
+          "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Source-defined promotion ratio; FinchX does not reproduce the denominator.",
+      "title": "Highlimituppromotionratio"
+    },
+    "previousLimitUpThemeChangeRatio": {
+      "anyOf": [
+        {
+          "description": "A ratio fraction, not percentage points: 4.24% is 0.0424.",
+          "examples": [
+            "0.0424"
+          ],
+          "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Source-defined previous limit-up group performance ratio.",
+      "title": "Previouslimitupthemechangeratio"
+    },
+    "previousConsecutiveLimitUpThemeChangeRatio": {
+      "anyOf": [
+        {
+          "description": "A ratio fraction, not percentage points: 4.24% is 0.0424.",
+          "examples": [
+            "0.0424"
+          ],
+          "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Source-defined previous consecutive-limit-up group performance ratio.",
+      "title": "Previousconsecutivelimitupthemechangeratio"
+    }
+  },
+  "required": [
+    "marketTemperature",
+    "stopTradingCount",
+    "oneLimitUpCount",
+    "twoLimitUpCount",
+    "threeLimitUpCount",
+    "highLimitUpCount"
+  ],
+  "title": "MarketSentimentData",
+  "type": "object"
+}

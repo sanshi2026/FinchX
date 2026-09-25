@@ -1,0 +1,262 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/market-daily-replay.schema.json",
+  "$defs": {
+    "Exchange": {
+      "enum": [
+        "sse",
+        "szse",
+        "bse"
+      ],
+      "title": "Exchange",
+      "type": "string"
+    },
+    "InstrumentId": {
+      "additionalProperties": false,
+      "description": "Identity for an instrument whose code, market, and kind are already known.",
+      "properties": {
+        "code": {
+          "minLength": 1,
+          "pattern": ".*\\S.*",
+          "title": "Code",
+          "type": "string"
+        },
+        "market": {
+          "$ref": "#/$defs/Market"
+        },
+        "kind": {
+          "$ref": "#/$defs/InstrumentKind"
+        },
+        "exchange": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Exchange"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "code",
+        "market",
+        "kind"
+      ],
+      "title": "InstrumentId",
+      "type": "object"
+    },
+    "InstrumentKind": {
+      "enum": [
+        "equity",
+        "index",
+        "etf"
+      ],
+      "title": "InstrumentKind",
+      "type": "string"
+    },
+    "Market": {
+      "enum": [
+        "cn_a"
+      ],
+      "title": "Market",
+      "type": "string"
+    },
+    "ReplayStock": {
+      "additionalProperties": false,
+      "properties": {
+        "instrumentId": {
+          "$ref": "#/$defs/InstrumentId"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "limitUpTime": {
+          "anyOf": [
+            {
+              "format": "time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Limituptime"
+        },
+        "streakText": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Streaktext"
+        },
+        "price": {
+          "anyOf": [
+            {
+              "description": "Price per share; currency is CNY.",
+              "examples": [
+                "12.34"
+              ],
+              "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Price"
+        },
+        "changeRatio": {
+          "anyOf": [
+            {
+              "description": "A ratio fraction, not percentage points: 4.24% is 0.0424.",
+              "examples": [
+                "0.0424"
+              ],
+              "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Changeratio"
+        },
+        "day": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Day"
+        },
+        "edition": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Edition"
+        },
+        "expound": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expound"
+        }
+      },
+      "required": [
+        "instrumentId",
+        "name"
+      ],
+      "title": "ReplayStock",
+      "type": "object"
+    },
+    "ReplayTheme": {
+      "additionalProperties": false,
+      "properties": {
+        "themeName": {
+          "minLength": 1,
+          "title": "Themename",
+          "type": "string"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason"
+        },
+        "stockCount": {
+          "minimum": 0,
+          "title": "Stockcount",
+          "type": "integer"
+        },
+        "sourceThemeId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sourcethemeid"
+        },
+        "stocks": {
+          "items": {
+            "$ref": "#/$defs/ReplayStock"
+          },
+          "title": "Stocks",
+          "type": "array"
+        }
+      },
+      "required": [
+        "themeName",
+        "stockCount"
+      ],
+      "title": "ReplayTheme",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "requestedDate": {
+      "format": "date",
+      "title": "Requesteddate",
+      "type": "string"
+    },
+    "tradeDate": {
+      "format": "date",
+      "title": "Tradedate",
+      "type": "string"
+    },
+    "themes": {
+      "items": {
+        "$ref": "#/$defs/ReplayTheme"
+      },
+      "title": "Themes",
+      "type": "array"
+    }
+  },
+  "required": [
+    "requestedDate",
+    "tradeDate",
+    "themes"
+  ],
+  "title": "MarketDailyReplayData",
+  "type": "object"
+}

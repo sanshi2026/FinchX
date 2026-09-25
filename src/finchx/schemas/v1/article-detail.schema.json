@@ -1,0 +1,388 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/article-detail.schema.json",
+  "$defs": {
+    "ArticleRelatedStock": {
+      "additionalProperties": false,
+      "description": "A merged article association with explicit contributing sources.",
+      "properties": {
+        "symbol": {
+          "description": "Original source security code, retained verbatim.",
+          "maxLength": 32,
+          "minLength": 1,
+          "title": "Symbol",
+          "type": "string"
+        },
+        "instrumentId": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/InstrumentId"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "FinchX identity when the security and market can be classified; otherwise null."
+        },
+        "name": {
+          "description": "Source-provided security name.",
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "changePct": {
+          "anyOf": [
+            {
+              "description": "A ratio fraction, not percentage points: 4.24% is 0.0424.",
+              "examples": [
+                "0.0424"
+              ],
+              "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Price change as a ratio fraction; source percentage points are divided by 100.",
+          "title": "Changepct"
+        },
+        "sourceMarket": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Original Tonghuashun stockMarket marker; not a FinchX market enum.",
+          "title": "Sourcemarket"
+        },
+        "sources": {
+          "description": "Input sources that contributed this association.",
+          "items": {
+            "enum": [
+              "hotlist",
+              "detail"
+            ],
+            "type": "string"
+          },
+          "title": "Sources",
+          "type": "array"
+        }
+      },
+      "required": [
+        "symbol",
+        "name"
+      ],
+      "title": "ArticleRelatedStock",
+      "type": "object"
+    },
+    "Exchange": {
+      "enum": [
+        "sse",
+        "szse",
+        "bse"
+      ],
+      "title": "Exchange",
+      "type": "string"
+    },
+    "InstrumentId": {
+      "additionalProperties": false,
+      "description": "Identity for an instrument whose code, market, and kind are already known.",
+      "properties": {
+        "code": {
+          "minLength": 1,
+          "pattern": ".*\\S.*",
+          "title": "Code",
+          "type": "string"
+        },
+        "market": {
+          "$ref": "#/$defs/Market"
+        },
+        "kind": {
+          "$ref": "#/$defs/InstrumentKind"
+        },
+        "exchange": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Exchange"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "code",
+        "market",
+        "kind"
+      ],
+      "title": "InstrumentId",
+      "type": "object"
+    },
+    "InstrumentKind": {
+      "enum": [
+        "equity",
+        "index",
+        "etf"
+      ],
+      "title": "InstrumentKind",
+      "type": "string"
+    },
+    "Market": {
+      "enum": [
+        "cn_a"
+      ],
+      "title": "Market",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "CamelCase business payload carried by an ``articles.detail`` record.",
+  "properties": {
+    "contentId": {
+      "description": "Tonghuashun article identifier from the source URL.",
+      "minLength": 1,
+      "title": "Contentid",
+      "type": "string"
+    },
+    "contentType": {
+      "description": "Article category: ordinary news or community zhibo.",
+      "enum": [
+        "news",
+        "zhibo"
+      ],
+      "title": "Contenttype",
+      "type": "string"
+    },
+    "title": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Article title.",
+      "title": "Title"
+    },
+    "contentHtml": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Sanitized article-body HTML, excluding comments and disclaimers.",
+      "title": "Contenthtml"
+    },
+    "contentText": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Plain-text extraction of the sanitized article body; may be empty when the body contains a sourced image.",
+      "title": "Contenttext"
+    },
+    "publishedAt": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Timezone-aware publication time when supplied by the source.",
+      "title": "Publishedat"
+    },
+    "sourceName": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Publisher or media name supplied by the source.",
+      "title": "Sourcename"
+    },
+    "author": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Article author or byline.",
+      "title": "Author"
+    },
+    "sourceUrl": {
+      "anyOf": [
+        {
+          "format": "uri",
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Upstream API or page URL used to retrieve the article.",
+      "title": "Sourceurl"
+    },
+    "pageUrl": {
+      "anyOf": [
+        {
+          "format": "uri",
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Canonical public article page URL derived from the input URL.",
+      "title": "Pageurl"
+    },
+    "aiSummary": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Source-provided AI summary, when available.",
+      "title": "Aisummary"
+    },
+    "disclaimer": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Disclaimer text extracted separately from the article body.",
+      "title": "Disclaimer"
+    },
+    "comments": {
+      "description": "Community comments extracted separately from the article body.",
+      "items": {
+        "type": "string"
+      },
+      "title": "Comments",
+      "type": "array"
+    },
+    "relatedStocks": {
+      "description": "Stock associations reported by the article detail source.",
+      "items": {
+        "$ref": "#/$defs/ArticleRelatedStock"
+      },
+      "title": "Relatedstocks",
+      "type": "array"
+    },
+    "fetchMethod": {
+      "anyOf": [
+        {
+          "enum": [
+            "detail_api",
+            "embedded_state",
+            "dom",
+            "zhibo_html"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Extraction path used for the article body.",
+      "title": "Fetchmethod"
+    },
+    "rawHash": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "SHA-256 of the raw API article body or fetched HTML page.",
+      "title": "Rawhash"
+    },
+    "contentAvailable": {
+      "description": "Whether a usable article title and body were retrieved.",
+      "title": "Contentavailable",
+      "type": "boolean"
+    },
+    "errorCode": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Categorized fetch failure code when content is unavailable.",
+      "title": "Errorcode"
+    },
+    "errorMessage": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Short source or parsing failure reason when content is unavailable.",
+      "title": "Errormessage"
+    }
+  },
+  "required": [
+    "contentId",
+    "contentType",
+    "contentAvailable"
+  ],
+  "title": "ArticleDetailData",
+  "type": "object"
+}

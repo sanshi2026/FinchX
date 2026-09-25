@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/market-deviation.schema.json",
+  "title": "Market Deviation Computed Capability v1",
+  "type": "object",
+  "$defs": {
+    "Decimal": {
+      "anyOf": [
+        {"type": "number"},
+        {"type": "string", "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"}
+      ]
+    },
+    "DeviationWindowConvention": {
+      "type": "string",
+      "enum": ["strict_exchange_window", "max_deviation_scan"]
+    },
+    "DeviationWindowData": {
+      "type": "object",
+      "properties": {
+        "windowDays": {"type": "integer", "enum": [10, 30]},
+        "windowConvention": {"$ref": "#/$defs/DeviationWindowConvention"},
+        "tradingSessions": {"type": "integer", "minimum": 2},
+        "startDate": {"type": "string", "format": "date"},
+        "baselineDate": {"type": "string", "format": "date"},
+        "endDate": {"type": "string", "format": "date"},
+        "startPrice": {"$ref": "#/$defs/PositiveDecimal"},
+        "windowStartPrice": {"$ref": "#/$defs/PositiveDecimal"},
+        "currentPrice": {"$ref": "#/$defs/PositiveDecimal"},
+        "benchmarkInstrument": {"$ref": "https://schemas.finchx.invalid/v1/instrument-identity.schema.json"},
+        "benchmarkName": {"type": "string", "minLength": 1},
+        "benchmarkStart": {"$ref": "#/$defs/PositiveDecimal"},
+        "benchmarkCurrent": {"$ref": "#/$defs/PositiveDecimal"},
+        "stockReturn": {"$ref": "#/$defs/Decimal"},
+        "benchmarkReturn": {"$ref": "#/$defs/Decimal"},
+        "deviation": {"$ref": "#/$defs/Decimal"},
+        "upperThreshold": {"$ref": "#/$defs/Decimal"},
+        "lowerThreshold": {"$ref": "#/$defs/Decimal"},
+        "remainingToUpper": {"$ref": "#/$defs/Decimal"},
+        "remainingToLower": {"$ref": "#/$defs/Decimal"},
+        "upperTriggerPrice": {"$ref": "#/$defs/PositiveDecimal"},
+        "lowerTriggerPrice": {"$ref": "#/$defs/PositiveDecimal"},
+        "remainingPricePctToUpper": {"$ref": "#/$defs/Decimal"},
+        "remainingPricePctToLower": {"$ref": "#/$defs/Decimal"}
+      },
+      "required": [
+        "windowDays", "windowConvention", "tradingSessions", "startDate",
+        "baselineDate", "endDate", "startPrice", "windowStartPrice",
+        "currentPrice", "benchmarkInstrument", "benchmarkName",
+        "benchmarkStart", "benchmarkCurrent", "stockReturn",
+        "benchmarkReturn", "deviation", "upperThreshold", "lowerThreshold",
+        "remainingToUpper", "remainingToLower", "upperTriggerPrice",
+        "lowerTriggerPrice", "remainingPricePctToUpper",
+        "remainingPricePctToLower"
+      ],
+      "additionalProperties": false
+    },
+    "PositiveDecimal": {
+      "anyOf": [
+        {"type": "number", "exclusiveMinimum": 0},
+        {"type": "string", "pattern": "^(?=\\d|\\.)(?:\\d+\\.?\\d*|\\.\\d+)$"}
+      ]
+    }
+  },
+  "properties": {
+    "instrumentId": {"$ref": "https://schemas.finchx.invalid/v1/instrument-identity.schema.json"},
+    "board": {"type": "string", "minLength": 1},
+    "effectiveAsOf": {"type": "string", "format": "date"},
+    "calculationMode": {"const": "official_close"},
+    "priceBasis": {"const": "qfq_stock__raw_index"},
+    "ruleVersion": {"type": "string", "minLength": 1},
+    "windows": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 2,
+      "items": {"$ref": "#/$defs/DeviationWindowData"}
+    }
+  },
+  "required": [
+    "instrumentId", "board", "effectiveAsOf", "calculationMode",
+    "priceBasis", "ruleVersion", "windows"
+  ],
+  "additionalProperties": false
+}

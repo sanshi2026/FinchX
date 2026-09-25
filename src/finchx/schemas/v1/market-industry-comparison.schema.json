@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/market-industry-comparison.schema.json",
+  "title": "Market Industry Comparison Dataset Payload v1",
+  "type": "object",
+  "$defs": {
+    "Identity": {
+      "type": "object",
+      "properties": {
+        "providerNamespace": {"type": "string", "const": "tencent_hypm"},
+        "providerIndustryId": {"type": "string", "minLength": 1, "pattern": ".*\\S.*"},
+        "name": {"type": "string", "minLength": 1, "pattern": ".*\\S.*"}
+      },
+      "required": ["providerNamespace", "providerIndustryId", "name"],
+      "additionalProperties": false
+    },
+    "Values": {
+      "type": "object",
+      "properties": {
+        "priceEarnings": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/ValuationMultiple"}, {"type": "null"}]},
+        "earningsPerShare": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Amount"}, {"type": "null"}]},
+        "marketCapitalization": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Amount"}, {"type": "null"}]}
+      },
+      "additionalProperties": false
+    },
+    "Ranks": {
+      "type": "object",
+      "properties": {
+        "priceEarningsRank": {"anyOf": [{"type": "integer", "minimum": 1}, {"type": "null"}]},
+        "earningsPerShareRank": {"anyOf": [{"type": "integer", "minimum": 1}, {"type": "null"}]},
+        "marketCapitalizationRank": {"anyOf": [{"type": "integer", "minimum": 1}, {"type": "null"}]}
+      },
+      "additionalProperties": false
+    },
+    "IndustryAggregate": {
+      "type": "object",
+      "properties": {
+        "priceEarnings": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/ValuationMultiple"}, {"type": "null"}]},
+        "earningsPerShare": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Amount"}, {"type": "null"}]},
+        "marketCapitalization": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Amount"}, {"type": "null"}]},
+        "count": {"anyOf": [{"type": "integer", "minimum": 0}, {"type": "null"}]}
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "instrumentId": {"$ref": "https://schemas.finchx.invalid/v1/instrument-identity.schema.json"},
+    "industry": {"$ref": "#/$defs/Identity"},
+    "instrumentValues": {"$ref": "#/$defs/Values"},
+    "industryRanks": {"$ref": "#/$defs/Ranks"},
+    "industryAggregate": {"$ref": "#/$defs/IndustryAggregate"},
+    "marketAggregate": {"$ref": "#/$defs/Values"}
+  },
+  "required": ["instrumentId", "industry", "instrumentValues", "industryRanks", "industryAggregate", "marketAggregate"],
+  "additionalProperties": false
+}

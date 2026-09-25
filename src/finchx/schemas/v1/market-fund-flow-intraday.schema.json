@@ -1,0 +1,203 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/market-fund-flow-intraday.schema.json",
+  "title": "Market Fund Flow Intraday Dataset Payload v1",
+  "type": "object",
+  "properties": {
+    "instrumentId": {
+      "$ref": "https://schemas.finchx.invalid/v1/instrument-identity.schema.json"
+    },
+    "tradeDate": {
+      "type": "string",
+      "format": "date",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+      "description": "Trading date reported by Tencent, not FinchX capture time."
+    },
+    "time": {
+      "type": "string",
+      "pattern": "^(?:[01][0-9]|2[0-3]):[0-5][0-9]$",
+      "description": "Source market-local time, HH:MM; values are cumulative from open."
+    },
+    "price": {
+      "allOf": [
+        {
+          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Price"
+        },
+        {
+          "type": "string",
+          "pattern": "^(?:[1-9]\\d*(?:\\.\\d+)?|0\\.\\d*[1-9]\\d*)$"
+        }
+      ],
+      "description": "Source price in CNY per share."
+    },
+    "cumulativeMainNetInflow": {
+      "allOf": [
+        {
+          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Amount"
+        },
+        {
+          "type": "string",
+          "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$"
+        }
+      ],
+      "description": "Cumulative main net inflow from open, CNY."
+    },
+    "cumulativeRetailNetInflow": {
+      "allOf": [
+        {
+          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Amount"
+        },
+        {
+          "type": "string",
+          "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$"
+        }
+      ],
+      "description": "Cumulative retail net inflow from open, CNY."
+    },
+    "cumulativeSuperLargeNetInflow": {
+      "allOf": [
+        {
+          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Amount"
+        },
+        {
+          "type": "string",
+          "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$"
+        }
+      ],
+      "description": "Cumulative super-large net inflow from open, CNY."
+    },
+    "cumulativeLargeNetInflow": {
+      "allOf": [
+        {
+          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Amount"
+        },
+        {
+          "type": "string",
+          "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$"
+        }
+      ],
+      "description": "Cumulative large net inflow from open, CNY."
+    },
+    "cumulativeMediumNetInflow": {
+      "allOf": [
+        {
+          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Amount"
+        },
+        {
+          "type": "string",
+          "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$"
+        }
+      ],
+      "description": "Cumulative medium net inflow from open, CNY."
+    },
+    "cumulativeSmallNetInflow": {
+      "allOf": [
+        {
+          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Amount"
+        },
+        {
+          "type": "string",
+          "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$"
+        }
+      ],
+      "description": "Cumulative small net inflow from open, CNY."
+    },
+    "cumulativeMainInflow": {
+      "allOf": [
+        {
+          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Amount"
+        },
+        {
+          "type": "string",
+          "pattern": "^(?:0|[1-9]\\d*(?:\\.\\d+)?|0\\.\\d+)$"
+        }
+      ],
+      "description": "Non-negative cumulative gross main inflow from open, CNY."
+    },
+    "cumulativeMainOutflow": {
+      "allOf": [
+        {
+          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Amount"
+        },
+        {
+          "type": "string",
+          "pattern": "^(?:0|[1-9]\\d*(?:\\.\\d+)?|0\\.\\d+)$"
+        }
+      ],
+      "description": "Non-negative cumulative gross main outflow from open, CNY."
+    }
+  },
+  "required": [
+    "instrumentId",
+    "tradeDate",
+    "time",
+    "price",
+    "cumulativeMainNetInflow",
+    "cumulativeRetailNetInflow",
+    "cumulativeSuperLargeNetInflow",
+    "cumulativeLargeNetInflow",
+    "cumulativeMediumNetInflow",
+    "cumulativeSmallNetInflow",
+    "cumulativeMainInflow",
+    "cumulativeMainOutflow"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "anyOf": [
+        {
+          "properties": {
+            "instrumentId": {
+              "properties": {
+                "market": {
+                  "const": "cn_a"
+                },
+                "exchange": {
+                  "const": "sse"
+                },
+                "kind": {
+                  "const": "equity"
+                },
+                "code": {
+                  "pattern": "^(60|68)[0-9]{4}$"
+                }
+              },
+              "required": [
+                "market",
+                "exchange",
+                "kind",
+                "code"
+              ]
+            }
+          }
+        },
+        {
+          "properties": {
+            "instrumentId": {
+              "properties": {
+                "market": {
+                  "const": "cn_a"
+                },
+                "exchange": {
+                  "const": "szse"
+                },
+                "kind": {
+                  "const": "equity"
+                },
+                "code": {
+                  "pattern": "^(00|30)[0-9]{4}$"
+                }
+              },
+              "required": [
+                "market",
+                "exchange",
+                "kind",
+                "code"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

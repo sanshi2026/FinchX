@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/news-document-ref.schema.json",
+  "title": "FinchX News DocumentRef v1",
+  "type": "object",
+  "additionalProperties": false,
+  "$defs": {
+    "NewsSourceOccurrence": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "providerId": {"type": "string", "minLength": 1},
+        "sourceDocumentId": {"type": "string", "minLength": 1},
+        "sourceUrl": {"anyOf": [{"type": "string", "format": "uri"}, {"type": "null"}]},
+        "documentUrl": {"anyOf": [{"type": "string", "format": "uri"}, {"type": "null"}]},
+        "publishedAt": {"anyOf": [{"type": "string", "format": "date-time"}, {"type": "null"}]},
+        "capturedAt": {"type": "string", "format": "date-time"}
+      },
+      "required": ["providerId", "sourceDocumentId", "capturedAt"]
+    },
+    "Source": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "providerId": {"type": "string", "minLength": 1},
+        "sourceRecordId": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+        "sourceUrl": {"anyOf": [{"type": "string", "format": "uri"}, {"type": "null"}]}
+      },
+      "required": ["providerId"]
+    },
+    "Provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "recordClass": {"enum": ["raw", "standardized", "derived"]},
+        "transformationVersion": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+        "sourceReferences": {"type": "array", "items": {"type": "object"}},
+        "adjustments": {"type": "array", "items": {"type": "object"}}
+      },
+      "required": ["recordClass", "sourceReferences", "adjustments"]
+    }
+  },
+  "properties": {
+    "documentId": {"type": "string", "minLength": 1},
+    "sourceDocumentId": {"type": "string", "minLength": 1},
+    "title": {"type": "string", "minLength": 1},
+    "summary": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+    "publishedAt": {"type": "string", "format": "date-time"},
+    "sourceUrl": {"type": "string", "format": "uri", "description": "The provider page or query URL where this source occurrence was found."},
+    "documentUrl": {"type": "string", "format": "uri", "description": "The URL of the article body used when fetching its full content."},
+    "originalUrl": {"anyOf": [{"type": "string", "format": "uri"}, {"type": "null"}]},
+    "relatedInstruments": {
+      "type": "array",
+      "items": {"$ref": "https://schemas.finchx.invalid/v1/instrument-identity.schema.json"}
+    },
+    "source": {"$ref": "#/$defs/Source"},
+    "capturedAt": {"type": "string", "format": "date-time"},
+    "provenance": {"$ref": "#/$defs/Provenance"},
+    "sourceOccurrences": {"type": "array", "items": {"$ref": "#/$defs/NewsSourceOccurrence"}}
+  },
+  "required": ["documentId", "sourceDocumentId", "title", "publishedAt", "sourceUrl", "documentUrl", "relatedInstruments", "source", "capturedAt", "provenance"]
+}

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/market-concept-list.schema.json",
+  "title": "Market Concept List Dataset Payload v1",
+  "type": "object",
+  "properties": {
+    "sectorType": {"type": "string", "const": "concept"},
+    "sectorName": {"type": "string", "minLength": 1, "pattern": ".*\\S.*"},
+    "providerNamespace": {"type": "string", "const": "tonghuashun_concept"},
+    "providerSectorId": {"type": "string", "minLength": 1, "pattern": "^[0-9]+$"}
+  },
+  "required": ["sectorType", "sectorName", "providerNamespace", "providerSectorId"],
+  "additionalProperties": false
+}

@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/provenance.schema.json",
+  "title": "FinchX Provenance",
+  "type": "object",
+  "properties": {
+    "recordClass": {
+      "type": "string",
+      "enum": ["raw", "standardized", "derived"]
+    },
+    "transformationVersion": {
+      "anyOf": [{"type": "string"}, {"type": "null"}],
+      "default": null
+    },
+    "sourceReferences": {
+      "type": "array",
+      "items": {"$ref": "https://schemas.finchx.invalid/v1/source-reference.schema.json"},
+      "default": []
+    },
+    "adjustments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string", "minLength": 1},
+          "version": {
+            "anyOf": [{"type": "string"}, {"type": "null"}],
+            "default": null
+          },
+          "details": {
+            "type": "object",
+            "additionalProperties": true,
+            "default": {}
+          }
+        },
+        "required": ["name"],
+        "additionalProperties": false
+      },
+      "default": []
+    }
+  },
+  "required": ["recordClass"],
+  "additionalProperties": false
+}

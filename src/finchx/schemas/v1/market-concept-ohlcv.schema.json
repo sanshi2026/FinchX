@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/market-concept-ohlcv.schema.json",
+  "title": "Market Concept OHLCV Dataset Payload v1",
+  "type": "object",
+  "properties": {
+    "concept": {"$ref": "https://schemas.finchx.invalid/v1/market-concept-list.schema.json"},
+    "barDate": {"type": "string", "format": "date"},
+    "open": {"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/IndexPoints", "description": "Open level in index points."},
+    "high": {"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/IndexPoints", "description": "High level in index points."},
+    "low": {"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/IndexPoints", "description": "Low level in index points."},
+    "close": {"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/IndexPoints", "description": "Close level in index points."},
+    "volume": {"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Shares", "description": "Aggregate constituent trading volume in shares."},
+    "amount": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Amount"}, {"type": "null"}], "description": "Aggregate constituent traded amount in CNY."}
+  },
+  "required": ["concept", "barDate", "open", "high", "low", "close", "volume"],
+  "additionalProperties": false
+}

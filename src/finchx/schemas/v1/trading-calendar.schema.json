@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/trading-calendar.schema.json",
+  "title": "FinchX Trading Calendar Dataset Payload v1",
+  "description": "One row for each natural date in the inclusive CN_A calendar request range.",
+  "type": "object",
+  "properties": {
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "isTradingDay": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "date",
+    "isTradingDay"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/fundamental-financial-summary.schema.json",
+  "title": "Fundamental Financial Summary Dataset Payload v1",
+  "type": "object",
+  "$defs": {
+    "Period": {
+      "type": "object",
+      "properties": {
+        "periodEnd": {"anyOf": [{"type": "string", "format": "date"}, {"type": "null"}]},
+        "reportedPeriodLabel": {"type": "string", "minLength": 1},
+        "periodType": {"type": "string", "enum": ["annual", "interim", "unknown"]},
+        "eps": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Amount"}, {"type": "null"}]},
+        "revenue": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Amount"}, {"type": "null"}]},
+        "revenueGrowth": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Percentage"}, {"type": "null"}]},
+        "netProfit": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Amount"}, {"type": "null"}]},
+        "netProfitGrowth": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Percentage"}, {"type": "null"}]},
+        "bookValuePerShare": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Amount"}, {"type": "null"}]},
+        "netAssets": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Amount"}, {"type": "null"}]},
+        "goodwill": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Amount"}, {"type": "null"}]},
+        "goodwillToNetAssets": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Percentage"}, {"type": "null"}]},
+        "roe": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Percentage"}, {"type": "null"}]},
+        "debtRatio": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Percentage"}, {"type": "null"}]},
+        "grossMargin": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Percentage"}, {"type": "null"}]}
+      },
+      "required": ["reportedPeriodLabel", "periodType"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "symbol": {"type": "string", "minLength": 1, "pattern": ".*\\S.*"},
+    "periods": {"type": "array", "items": {"$ref": "#/$defs/Period"}}
+  },
+  "required": ["symbol", "periods"],
+  "additionalProperties": false
+}

@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/ownership-float-holder.schema.json",
+  "title": "Ownership Float Holder Dataset Payload v1",
+  "type": "object",
+  "properties": {
+    "symbol": {"type": "string", "minLength": 1},
+    "periods": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "periodEnd": {"type": "string", "format": "date"},
+          "publishedAt": {"type": "string", "format": "date-time"},
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "rank": {"type": "integer", "minimum": 1},
+                "holderId": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+                "holderName": {"type": "string", "minLength": 1},
+                "shares": {"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Shares"},
+                "holderType": {"type": "string", "minLength": 1},
+                "floatShareRatio": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Percentage"}, {"type": "null"}]},
+                "previousShares": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Shares"}, {"type": "null"}]},
+                "shareChange": {"anyOf": [{"type": "integer"}, {"type": "null"}]},
+                "isNewTopFloatHolderEntry": {"anyOf": [{"type": "boolean"}, {"type": "null"}]}
+              },
+              "required": ["rank", "holderName", "shares", "holderType"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["periodEnd", "publishedAt", "rows"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["symbol", "periods"],
+  "additionalProperties": false
+}

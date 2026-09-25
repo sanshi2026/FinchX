@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/fundamental-industry-comparison.schema.json",
+  "title": "Fundamental Industry Comparison Dataset Payload v1",
+  "type": "object",
+  "$defs": {
+    "Metric": {
+      "type": "object",
+      "properties": {
+        "metric": {"type": "string", "enum": ["eps", "revenue", "net_profit", "book_value_per_share", "roe", "debt_ratio", "gross_margin", "revenue_growth", "net_profit_growth", "market_cap", "pe", "pb", "dividend_yield"]},
+        "metricBasis": {"type": "string", "enum": ["financial_period", "market_snapshot"]},
+        "companyValue": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Amount"}, {"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Percentage"}, {"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/ValuationMultiple"}, {"type": "null"}]},
+        "industryAvg": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Amount"}, {"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Percentage"}, {"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/ValuationMultiple"}, {"type": "null"}]},
+        "industryMax": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Amount"}, {"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Percentage"}, {"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/ValuationMultiple"}, {"type": "null"}]},
+        "industryMin": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Amount"}, {"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Percentage"}, {"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/ValuationMultiple"}, {"type": "null"}]},
+        "periodEnd": {"anyOf": [{"type": "string", "format": "date"}, {"type": "null"}]},
+        "reportedPeriodLabel": {"type": "string", "minLength": 1},
+        "observationAt": {"anyOf": [{"type": "string", "format": "date-time"}, {"type": "null"}]}
+      },
+      "required": ["metric", "metricBasis", "reportedPeriodLabel"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "symbol": {"type": "string", "minLength": 1, "pattern": ".*\\S.*"},
+    "industryName": {"anyOf": [{"type": "string", "minLength": 1}, {"type": "null"}]},
+    "metrics": {"type": "array", "items": {"$ref": "#/$defs/Metric"}}
+  },
+  "required": ["symbol", "metrics"],
+  "additionalProperties": false
+}

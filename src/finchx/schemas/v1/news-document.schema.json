@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/news-document.schema.json",
+  "title": "FinchX News Document Dataset Payload v1",
+  "type": "object",
+  "additionalProperties": false,
+  "$defs": {
+    "NewsSourceOccurrence": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "providerId": {"type": "string", "minLength": 1},
+        "sourceDocumentId": {"type": "string", "minLength": 1},
+        "sourceUrl": {"anyOf": [{"type": "string", "format": "uri"}, {"type": "null"}]},
+        "documentUrl": {"anyOf": [{"type": "string", "format": "uri"}, {"type": "null"}]},
+        "publishedAt": {"anyOf": [{"type": "string", "format": "date-time"}, {"type": "null"}]},
+        "capturedAt": {"type": "string", "format": "date-time"}
+      },
+      "required": ["providerId", "sourceDocumentId", "capturedAt"]
+    }
+  },
+  "properties": {
+    "documentId": {"type": "string", "minLength": 1},
+    "sourceDocumentId": {"type": "string", "minLength": 1},
+    "title": {"type": "string", "minLength": 1},
+    "contentText": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+    "summary": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+    "publishedAt": {"anyOf": [{"type": "string", "format": "date-time"}, {"type": "null"}]},
+    "sourceOccurrences": {"type": "array", "items": {"$ref": "#/$defs/NewsSourceOccurrence"}},
+    "url": {"type": "string", "format": "uri", "minLength": 1},
+    "originalUrl": {"anyOf": [{"type": "string", "format": "uri", "minLength": 1}, {"type": "null"}]},
+    "contentAvailable": {"type": "boolean"},
+    "source": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+    "relatedInstruments": {
+      "type": "array",
+      "items": {"$ref": "https://schemas.finchx.invalid/v1/instrument-identity.schema.json"}
+    }
+  },
+  "required": ["documentId", "sourceDocumentId", "title", "url", "contentAvailable", "relatedInstruments"]
+}

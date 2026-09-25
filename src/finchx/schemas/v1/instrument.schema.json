@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/instrument.schema.json",
+  "title": "FinchX Instrument Dataset Payload v1",
+  "type": "object",
+  "properties": {
+    "instrumentId": {
+      "$ref": "https://schemas.finchx.invalid/v1/instrument-identity.schema.json"
+    },
+    "name": {"type": "string", "minLength": 1, "pattern": ".*\\S.*"}
+  },
+  "required": ["instrumentId", "name"],
+  "additionalProperties": false
+}

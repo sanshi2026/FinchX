@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/corporate-action-dividend.schema.json",
+  "title": "Corporate Action Dividend Dataset Payload v1",
+  "type": "object",
+  "properties": {
+    "symbol": {"type": "string", "minLength": 1},
+    "dividends": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "fiscalYear": {"anyOf": [{"type": "integer"}, {"type": "null"}]},
+          "announcementDate": {"anyOf": [{"type": "string", "format": "date"}, {"type": "null"}]},
+          "stockDividendPer10": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/ShareQuantity"}, {"type": "null"}]},
+          "capitalizationPer10": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/ShareQuantity"}, {"type": "null"}]},
+          "cashDividendPer10": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Amount"}, {"type": "null"}]},
+          "rightsIssuePer10": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/ShareQuantity"}, {"type": "null"}]},
+          "recordDate": {"anyOf": [{"type": "string", "format": "date"}, {"type": "null"}]},
+          "exDate": {"anyOf": [{"type": "string", "format": "date"}, {"type": "null"}]},
+          "description": {"anyOf": [{"type": "string"}, {"type": "null"}]}
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["symbol", "dividends"],
+  "additionalProperties": false
+}

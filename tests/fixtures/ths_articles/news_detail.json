@@ -1,0 +1,21 @@
+{
+  "detailData": {
+    "article": {
+      "seq": "680232196",
+      "title": "普通新闻样例标题",
+      "sourceUrl": "https://stock.10jqka.com.cn/20260924/c680232196.shtml",
+      "ctime": "2026-09-24 09:30:00",
+      "author": "财经编辑",
+      "media": {"name": "同花顺财经"},
+      "content": "<div class=\"article-content\"><p>第一段正文，包含 <strong>重点</strong> 内容。</p><p>第二段正文继续说明市场变化。</p><table><tr><th>指标</th><th>数值</th></tr><tr><td>涨幅</td><td>2%</td></tr></table><img src=\"/images/chart.png\" alt=\"走势图片\"><div class=\"disclaimer\">免责声明不得进入正文。</div><div class=\"comment-list\">评论不得进入正文。</div></div>"
+    },
+    "relatedModules": {
+      "aiSummary": {"content": "新闻摘要"},
+      "associatedStocks": [
+        {"code": "600000", "name": "浦发银行", "stockMarket": "17", "rise_and_fall": "0.012"},
+        {"code": "000001", "name": "平安银行", "stockMarket": "33"}
+      ]
+    },
+    "pageSettings": {"disclaimer": "投资有风险，入市需谨慎。"}
+  }
+}

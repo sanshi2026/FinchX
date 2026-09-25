@@ -1,0 +1,1 @@
+{"status_code":0,"status_msg":"成功","data":{"total":2,"indexes":[{"idx":0,"index_id":"price_change_ratio_pct"}],"data":[{"code":"17:510050","values":[{"idx":0,"value":"0.75"}]},{"code":"18:159915","values":[{"idx":0,"value":"1.5"}]}]}}

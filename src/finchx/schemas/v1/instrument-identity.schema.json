@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/instrument-identity.schema.json",
+  "title": "FinchX Instrument Identity",
+  "type": "object",
+  "properties": {
+    "code": {"type": "string", "minLength": 1, "pattern": ".*\\S.*"},
+    "market": {"type": "string", "enum": ["cn_a"]},
+    "kind": {"type": "string", "enum": ["equity", "index", "etf"]},
+    "exchange": {
+      "anyOf": [
+        {"type": "string", "enum": ["sse", "szse", "bse"]},
+        {"type": "null"}
+      ],
+      "default": null
+    }
+  },
+  "required": ["code", "market", "kind"],
+  "additionalProperties": false
+}

@@ -1,0 +1,473 @@
+{
+  "$defs": {
+    "Exchange": {
+      "enum": [
+        "sse",
+        "szse",
+        "bse"
+      ],
+      "title": "Exchange",
+      "type": "string"
+    },
+    "HotArticleData": {
+      "additionalProperties": false,
+      "properties": {
+        "contentType": {
+          "const": "article",
+          "title": "Contenttype",
+          "type": "string"
+        },
+        "rank": {
+          "minimum": 1,
+          "title": "Rank",
+          "type": "integer"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "heat": {
+          "anyOf": [
+            {
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Heat"
+        },
+        "likeRatio": {
+          "anyOf": [
+            {
+              "description": "A ratio fraction, not percentage points: 4.24% is 0.0424.",
+              "examples": [
+                "0.0424"
+              ],
+              "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Likeratio"
+        },
+        "commentRatio": {
+          "anyOf": [
+            {
+              "description": "A ratio fraction, not percentage points: 4.24% is 0.0424.",
+              "examples": [
+                "0.0424"
+              ],
+              "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Commentratio"
+        },
+        "contentId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Contentid"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Url"
+        },
+        "relatedStocks": {
+          "description": "Article associations preserve source codes, names, and stockMarket markers; instrumentId is null if market or security type cannot be represented.",
+          "items": {
+            "$ref": "#/$defs/HotArticleRelatedStock"
+          },
+          "title": "Relatedstocks",
+          "type": "array"
+        }
+      },
+      "required": [
+        "contentType",
+        "rank",
+        "title"
+      ],
+      "title": "HotArticleData",
+      "type": "object"
+    },
+    "HotArticleRelatedStock": {
+      "additionalProperties": false,
+      "description": "Article associations can reference markets outside FinchX's CN_A identity model.",
+      "properties": {
+        "symbol": {
+          "description": "Original source instrument code, retained verbatim.",
+          "maxLength": 32,
+          "minLength": 1,
+          "title": "Symbol",
+          "type": "string"
+        },
+        "instrumentId": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/InstrumentId"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "A classified CN_A equity or ETF identity when the source market and code range are verified; otherwise null."
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "changePct": {
+          "anyOf": [
+            {
+              "description": "A ratio fraction, not percentage points: 4.24% is 0.0424.",
+              "examples": [
+                "0.0424"
+              ],
+              "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Changepct"
+        },
+        "sourceMarket": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Original Tonghuashun stockMarket identifier; not a FinchX market enum.",
+          "title": "Sourcemarket"
+        }
+      },
+      "required": [
+        "symbol",
+        "name"
+      ],
+      "title": "HotArticleRelatedStock",
+      "type": "object"
+    },
+    "HotCommentData": {
+      "additionalProperties": false,
+      "properties": {
+        "contentType": {
+          "const": "comment",
+          "title": "Contenttype",
+          "type": "string"
+        },
+        "rank": {
+          "minimum": 1,
+          "title": "Rank",
+          "type": "integer"
+        },
+        "symbol": {
+          "maxLength": 6,
+          "minLength": 6,
+          "title": "Symbol",
+          "type": "string"
+        },
+        "instrumentId": {
+          "$ref": "#/$defs/InstrumentId"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "changePct": {
+          "anyOf": [
+            {
+              "description": "A ratio fraction, not percentage points: 4.24% is 0.0424.",
+              "examples": [
+                "0.0424"
+              ],
+              "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Changepct"
+        },
+        "heat": {
+          "anyOf": [
+            {
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Heat"
+        },
+        "text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Text"
+        },
+        "likes": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Likes"
+        },
+        "contentId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Contentid"
+        }
+      },
+      "required": [
+        "contentType",
+        "rank",
+        "symbol",
+        "instrumentId",
+        "name"
+      ],
+      "title": "HotCommentData",
+      "type": "object"
+    },
+    "HotRelatedStock": {
+      "additionalProperties": false,
+      "properties": {
+        "symbol": {
+          "maxLength": 6,
+          "minLength": 6,
+          "title": "Symbol",
+          "type": "string"
+        },
+        "instrumentId": {
+          "$ref": "#/$defs/InstrumentId"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "changePct": {
+          "anyOf": [
+            {
+              "description": "A ratio fraction, not percentage points: 4.24% is 0.0424.",
+              "examples": [
+                "0.0424"
+              ],
+              "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Changepct"
+        }
+      },
+      "required": [
+        "symbol",
+        "instrumentId",
+        "name"
+      ],
+      "title": "HotRelatedStock",
+      "type": "object"
+    },
+    "HotTopicData": {
+      "additionalProperties": false,
+      "properties": {
+        "contentType": {
+          "const": "topic",
+          "title": "Contenttype",
+          "type": "string"
+        },
+        "rank": {
+          "minimum": 1,
+          "title": "Rank",
+          "type": "integer"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "summary": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Summary"
+        },
+        "heat": {
+          "anyOf": [
+            {
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Heat"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Url"
+        },
+        "relatedStocks": {
+          "items": {
+            "$ref": "#/$defs/HotRelatedStock"
+          },
+          "title": "Relatedstocks",
+          "type": "array"
+        }
+      },
+      "required": [
+        "contentType",
+        "rank",
+        "title"
+      ],
+      "title": "HotTopicData",
+      "type": "object"
+    },
+    "InstrumentId": {
+      "additionalProperties": false,
+      "description": "Identity for an instrument whose code, market, and kind are already known.",
+      "properties": {
+        "code": {
+          "minLength": 1,
+          "pattern": ".*\\S.*",
+          "title": "Code",
+          "type": "string"
+        },
+        "market": {
+          "$ref": "#/$defs/Market"
+        },
+        "kind": {
+          "$ref": "#/$defs/InstrumentKind"
+        },
+        "exchange": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Exchange"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "code",
+        "market",
+        "kind"
+      ],
+      "title": "InstrumentId",
+      "type": "object"
+    },
+    "InstrumentKind": {
+      "enum": [
+        "equity",
+        "index",
+        "etf"
+      ],
+      "title": "InstrumentKind",
+      "type": "string"
+    },
+    "Market": {
+      "enum": [
+        "cn_a"
+      ],
+      "title": "Market",
+      "type": "string"
+    }
+  },
+  "description": "A schema-generating discriminated union for content榜 shapes.",
+  "discriminator": {
+    "mapping": {
+      "article": "#/$defs/HotArticleData",
+      "comment": "#/$defs/HotCommentData",
+      "topic": "#/$defs/HotTopicData"
+    },
+    "propertyName": "contentType"
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/HotTopicData"
+    },
+    {
+      "$ref": "#/$defs/HotCommentData"
+    },
+    {
+      "$ref": "#/$defs/HotArticleData"
+    }
+  ],
+  "title": "Hotlist Content Dataset Payload v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/hotlist-content.schema.json"
+}

@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/market-concept-quote-snapshot.schema.json",
+  "title": "Market Concept Quote Snapshot Dataset Payload v1",
+  "type": "object",
+  "properties": {
+    "concept": {"$ref": "https://schemas.finchx.invalid/v1/market-concept-list.schema.json"},
+    "indexLevel": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/IndexPoints"}, {"type": "null"}], "description": "Current concept index level in index points."},
+    "previousClose": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/IndexPoints"}, {"type": "null"}], "description": "Previous close in index points."},
+    "open": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/IndexPoints"}, {"type": "null"}], "description": "Open in index points."},
+    "high": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/IndexPoints"}, {"type": "null"}], "description": "Session high in index points."},
+    "low": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/IndexPoints"}, {"type": "null"}], "description": "Session low in index points."},
+    "levelChange": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/IndexPoints"}, {"type": "null"}], "description": "Change from previous close in index points."},
+    "changeRate": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Percentage"}, {"type": "null"}], "description": "Ratio fraction; -0.85% is -0.0085."},
+    "volume": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Shares"}, {"type": "null"}], "description": "Aggregate constituent trading volume in shares."},
+    "amount": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Amount"}, {"type": "null"}], "description": "Aggregate constituent traded amount in CNY."},
+    "netMoneyFlow": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Amount"}, {"type": "null"}], "description": "Net money flow in CNY."},
+    "riseCount": {"type": ["integer", "null"], "minimum": 0},
+    "fallCount": {"type": ["integer", "null"], "minimum": 0},
+    "sourceTimestamp": {"type": ["string", "null"], "format": "date-time"}
+  },
+  "required": ["concept"],
+  "additionalProperties": false
+}

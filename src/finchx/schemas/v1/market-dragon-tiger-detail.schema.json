@@ -1,0 +1,278 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/market-dragon-tiger-detail.schema.json",
+  "$defs": {
+    "DragonTigerSeat": {
+      "additionalProperties": false,
+      "properties": {
+        "rank": {
+          "description": "Derived from the source array order.",
+          "minimum": 1,
+          "title": "Rank",
+          "type": "integer"
+        },
+        "seatName": {
+          "minLength": 1,
+          "title": "Seatname",
+          "type": "string"
+        },
+        "sourceSeatCode": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sourceseatcode"
+        },
+        "hasDetails": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Hasdetails"
+        },
+        "buyAmount": {
+          "description": "Monetary amount in CNY.",
+          "examples": [
+            "123456.78"
+          ],
+          "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+          "title": "Buyamount",
+          "type": "string"
+        },
+        "sellAmount": {
+          "description": "Monetary amount in CNY.",
+          "examples": [
+            "123456.78"
+          ],
+          "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+          "title": "Sellamount",
+          "type": "string"
+        },
+        "netAmount": {
+          "description": "Monetary amount in CNY.",
+          "examples": [
+            "123456.78"
+          ],
+          "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+          "title": "Netamount",
+          "type": "string"
+        }
+      },
+      "required": [
+        "rank",
+        "seatName",
+        "buyAmount",
+        "sellAmount",
+        "netAmount"
+      ],
+      "title": "DragonTigerSeat",
+      "type": "object"
+    },
+    "Exchange": {
+      "enum": [
+        "sse",
+        "szse",
+        "bse"
+      ],
+      "title": "Exchange",
+      "type": "string"
+    },
+    "InstrumentId": {
+      "additionalProperties": false,
+      "description": "Identity for an instrument whose code, market, and kind are already known.",
+      "properties": {
+        "code": {
+          "minLength": 1,
+          "pattern": ".*\\S.*",
+          "title": "Code",
+          "type": "string"
+        },
+        "market": {
+          "$ref": "#/$defs/Market"
+        },
+        "kind": {
+          "$ref": "#/$defs/InstrumentKind"
+        },
+        "exchange": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Exchange"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "code",
+        "market",
+        "kind"
+      ],
+      "title": "InstrumentId",
+      "type": "object"
+    },
+    "InstrumentKind": {
+      "enum": [
+        "equity",
+        "index",
+        "etf"
+      ],
+      "title": "InstrumentKind",
+      "type": "string"
+    },
+    "Market": {
+      "enum": [
+        "cn_a"
+      ],
+      "title": "Market",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "instrumentId": {
+      "$ref": "#/$defs/InstrumentId"
+    },
+    "name": {
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+    },
+    "tradeDate": {
+      "format": "date",
+      "title": "Tradedate",
+      "type": "string"
+    },
+    "tradeId": {
+      "minLength": 1,
+      "title": "Tradeid",
+      "type": "string"
+    },
+    "closePrice": {
+      "description": "Price per share; currency is CNY.",
+      "examples": [
+        "12.34"
+      ],
+      "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+      "title": "Closeprice",
+      "type": "string"
+    },
+    "changeRatio": {
+      "description": "A ratio fraction, not percentage points: 4.24% is 0.0424.",
+      "examples": [
+        "0.0424"
+      ],
+      "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+      "title": "Changeratio",
+      "type": "string"
+    },
+    "amount": {
+      "description": "Monetary amount in CNY.",
+      "examples": [
+        "123456.78"
+      ],
+      "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+      "title": "Amount",
+      "type": "string"
+    },
+    "totalBuy": {
+      "description": "Monetary amount in CNY.",
+      "examples": [
+        "123456.78"
+      ],
+      "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+      "title": "Totalbuy",
+      "type": "string"
+    },
+    "totalSell": {
+      "description": "Monetary amount in CNY.",
+      "examples": [
+        "123456.78"
+      ],
+      "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+      "title": "Totalsell",
+      "type": "string"
+    },
+    "totalNet": {
+      "description": "Monetary amount in CNY.",
+      "examples": [
+        "123456.78"
+      ],
+      "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+      "title": "Totalnet",
+      "type": "string"
+    },
+    "explanation": {
+      "minLength": 1,
+      "title": "Explanation",
+      "type": "string"
+    },
+    "commentKind": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Commentkind"
+    },
+    "commentObjectId": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Commentobjectid"
+    },
+    "buySeats": {
+      "items": {
+        "$ref": "#/$defs/DragonTigerSeat"
+      },
+      "title": "Buyseats",
+      "type": "array"
+    },
+    "sellSeats": {
+      "items": {
+        "$ref": "#/$defs/DragonTigerSeat"
+      },
+      "title": "Sellseats",
+      "type": "array"
+    }
+  },
+  "required": [
+    "instrumentId",
+    "name",
+    "tradeDate",
+    "tradeId",
+    "closePrice",
+    "changeRatio",
+    "amount",
+    "totalBuy",
+    "totalSell",
+    "totalNet",
+    "explanation",
+    "buySeats",
+    "sellSeats"
+  ],
+  "title": "MarketDragonTigerDetailData",
+  "type": "object"
+}

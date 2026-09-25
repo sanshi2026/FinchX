@@ -1,0 +1,6 @@
+[
+  {"exchange": "sse", "code": "600519", "benchmark": "000002", "board": "sse_main_board"},
+  {"exchange": "sse", "code": "688001", "benchmark": "000688", "board": "star"},
+  {"exchange": "szse", "code": "000001", "benchmark": "399107", "board": "szse_main_board"},
+  {"exchange": "szse", "code": "300750", "benchmark": "399102", "board": "chinext"}
+]

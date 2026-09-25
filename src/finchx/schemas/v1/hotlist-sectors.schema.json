@@ -1,0 +1,145 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "rank": {
+      "minimum": 1,
+      "title": "Rank",
+      "type": "integer"
+    },
+    "sectorCode": {
+      "minLength": 1,
+      "title": "Sectorcode",
+      "type": "string"
+    },
+    "name": {
+      "title": "Name",
+      "type": "string"
+    },
+    "sectorType": {
+      "enum": [
+        "concept",
+        "industry",
+        "index"
+      ],
+      "title": "Sectortype",
+      "type": "string"
+    },
+    "changePct": {
+      "anyOf": [
+        {
+          "description": "A ratio fraction, not percentage points: 4.24% is 0.0424.",
+          "examples": [
+            "0.0424"
+          ],
+          "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Changepct"
+    },
+    "heat": {
+      "anyOf": [
+        {
+          "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Heat"
+    },
+    "rankChange": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Rankchange"
+    },
+    "tag": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Tag"
+    },
+    "hotTag": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Hottag"
+    },
+    "relatedEtfSymbol": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Relatedetfsymbol"
+    },
+    "relatedEtfName": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Relatedetfname"
+    },
+    "relatedEtfChangePct": {
+      "anyOf": [
+        {
+          "description": "A ratio fraction, not percentage points: 4.24% is 0.0424.",
+          "examples": [
+            "0.0424"
+          ],
+          "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Relatedetfchangepct"
+    }
+  },
+  "required": [
+    "rank",
+    "sectorCode",
+    "name",
+    "sectorType"
+  ],
+  "title": "Hotlist Sectors Dataset Payload v1",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/hotlist-sectors.schema.json"
+}

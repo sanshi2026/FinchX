@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/market-breadth.schema.json",
+  "title": "MarketBreadthData",
+  "$defs": {
+    "MarketBreadthBucket": {
+      "enum": [
+        "limit_down",
+        "down_over_10_percent",
+        "down_8_to_9_percent",
+        "down_7_to_8_percent",
+        "down_6_to_7_percent",
+        "down_5_to_6_percent",
+        "down_4_to_5_percent",
+        "down_3_to_4_percent",
+        "down_2_to_3_percent",
+        "down_1_to_2_percent",
+        "down_0_to_1_percent",
+        "unchanged",
+        "up_0_to_1_percent",
+        "up_1_to_2_percent",
+        "up_2_to_3_percent",
+        "up_3_to_4_percent",
+        "up_4_to_5_percent",
+        "up_5_to_6_percent",
+        "up_6_to_7_percent",
+        "up_7_to_8_percent",
+        "up_8_to_9_percent",
+        "up_over_10_percent",
+        "limit_up"
+      ],
+      "title": "MarketBreadthBucket",
+      "type": "string"
+    },
+    "MarketBreadthDistributionEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "bucket": {
+          "$ref": "#/$defs/MarketBreadthBucket"
+        },
+        "count": {
+          "description": "Number of listed stocks in this return bucket.",
+          "minimum": 0,
+          "title": "Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "bucket",
+        "count"
+      ],
+      "title": "MarketBreadthDistributionEntry",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "A current market breadth snapshot with the full source distribution.",
+  "properties": {
+    "tradeDate": {
+      "description": "Trade date reported by EastMoney.",
+      "format": "date",
+      "title": "Tradedate",
+      "type": "string"
+    },
+    "advancing": {
+      "minimum": 0,
+      "title": "Advancing",
+      "type": "integer"
+    },
+    "declining": {
+      "minimum": 0,
+      "title": "Declining",
+      "type": "integer"
+    },
+    "unchanged": {
+      "minimum": 0,
+      "title": "Unchanged",
+      "type": "integer"
+    },
+    "total": {
+      "minimum": 0,
+      "title": "Total",
+      "type": "integer"
+    },
+    "limitUpCount": {
+      "minimum": 0,
+      "title": "Limitupcount",
+      "type": "integer"
+    },
+    "limitDownCount": {
+      "minimum": 0,
+      "title": "Limitdowncount",
+      "type": "integer"
+    },
+    "upOver10PercentCount": {
+      "minimum": 0,
+      "title": "Upover10Percentcount",
+      "type": "integer"
+    },
+    "downOver10PercentCount": {
+      "minimum": 0,
+      "title": "Downover10Percentcount",
+      "type": "integer"
+    },
+    "distribution": {
+      "items": {
+        "$ref": "#/$defs/MarketBreadthDistributionEntry"
+      },
+      "maxItems": 23,
+      "minItems": 23,
+      "title": "Distribution",
+      "type": "array"
+    }
+  },
+  "required": [
+    "tradeDate",
+    "advancing",
+    "declining",
+    "unchanged",
+    "total",
+    "limitUpCount",
+    "limitDownCount",
+    "upOver10PercentCount",
+    "downOver10PercentCount",
+    "distribution"
+  ],
+  "type": "object"
+}

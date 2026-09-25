@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/standard-record.schema.json",
+  "title": "FinchX Standard Record Envelope v1",
+  "type": "object",
+  "properties": {
+    "dataset": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[a-z][a-z0-9]*(?:[._][a-z][a-z0-9_]*)*$",
+      "examples": [
+        "instrument",
+        "trading_calendar",
+        "market.quote",
+        "market.klines"
+      ]
+    },
+    "schemaVersion": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "recordId": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": ".*\\S.*",
+      "description": "FinchX-owned stable identity, distinct from a provider record ID."
+    },
+    "entityId": {
+      "anyOf": [
+        {
+          "$ref": "https://schemas.finchx.invalid/v1/instrument-identity.schema.json"
+        },
+        {
+          "type": "string",
+          "minLength": 1
+        }
+      ]
+    },
+    "eventAt": {
+      "anyOf": [
+        {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?!.*-00:00$)[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,6})?(?:[Zz]|[+-][0-9]{2}:[0-9]{2})$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "publishedAt": {
+      "anyOf": [
+        {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?!.*-00:00$)[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,6})?(?:[Zz]|[+-][0-9]{2}:[0-9]{2})$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "updatedAt": {
+      "anyOf": [
+        {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?!.*-00:00$)[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,6})?(?:[Zz]|[+-][0-9]{2}:[0-9]{2})$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "capturedAt": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^(?!.*-00:00$)[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,6})?(?:[Zz]|[+-][0-9]{2}:[0-9]{2})$"
+    },
+    "asOf": {
+      "anyOf": [
+        {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?!.*-00:00$)[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,6})?(?:[Zz]|[+-][0-9]{2}:[0-9]{2})$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "source": {
+      "$ref": "https://schemas.finchx.invalid/v1/source.schema.json"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "live",
+        "delayed",
+        "reused",
+        "missing",
+        "failed",
+        "estimated"
+      ]
+    },
+    "quality": {
+      "$ref": "https://schemas.finchx.invalid/v1/quality.schema.json"
+    },
+    "provenance": {
+      "$ref": "https://schemas.finchx.invalid/v1/provenance.schema.json"
+    },
+    "data": {
+      "type": "object",
+      "description": "Dataset payload, governed by that dataset's later schema."
+    }
+  },
+  "required": [
+    "dataset",
+    "schemaVersion",
+    "recordId",
+    "entityId",
+    "capturedAt",
+    "source",
+    "status",
+    "quality",
+    "provenance",
+    "data"
+  ],
+  "additionalProperties": false
+}

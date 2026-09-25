@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/fundamental-revenue-breakdown.schema.json",
+  "title": "Fundamental Revenue Breakdown Dataset Payload v1",
+  "type": "object",
+  "$defs": {
+    "Breakdown": {
+      "type": "object",
+      "properties": {
+        "reportedPeriodLabel": {"type": "string", "minLength": 1},
+        "periodEnd": {"anyOf": [{"type": "string", "format": "date"}, {"type": "null"}]},
+        "dimension": {"type": "string", "enum": ["product", "region", "industry"]},
+        "itemName": {"type": "string", "minLength": 1},
+        "revenue": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Amount"}, {"type": "null"}]},
+        "revenueShare": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Percentage"}, {"type": "null"}]},
+        "currency": {"const": "CNY"},
+        "sourceGroup": {"type": "string", "enum": ["detail", "others"]},
+        "isRollup": {"type": "boolean"}
+      },
+      "required": ["reportedPeriodLabel", "dimension", "itemName", "currency", "sourceGroup", "isRollup"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "symbol": {"type": "string", "minLength": 1, "pattern": ".*\\S.*"},
+    "breakdowns": {"type": "array", "items": {"$ref": "#/$defs/Breakdown"}}
+  },
+  "required": ["symbol", "breakdowns"],
+  "additionalProperties": false
+}

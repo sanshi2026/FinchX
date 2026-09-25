@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/company-executive-snapshot.schema.json",
+  "title": "Company Executive Snapshot Dataset Payload v1",
+  "type": "object",
+  "properties": {
+    "symbol": {"type": "string", "minLength": 1},
+    "executives": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string", "minLength": 1},
+          "roles": {"type": "array", "items": {"type": "string"}},
+          "shares": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Shares"}, {"type": "null"}]},
+          "compensation": {"anyOf": [{"$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Amount"}, {"type": "null"}]}
+        },
+        "required": ["name", "roles"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["symbol", "executives"],
+  "additionalProperties": false
+}
