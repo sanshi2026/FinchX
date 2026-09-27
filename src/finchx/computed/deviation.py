@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Literal
+from typing import Any, Literal, TypeAlias
 
 from pydantic import Field, field_validator, model_validator
 
@@ -42,6 +42,11 @@ class DeviationWindowConvention(str, Enum):
 
     STRICT_EXCHANGE_WINDOW = "strict_exchange_window"
     MAX_DEVIATION_SCAN = "max_deviation_scan"
+
+
+DeviationWindowConventionInput: TypeAlias = DeviationWindowConvention | Literal[
+    "max_deviation_scan", "strict_exchange_window"
+]
 
 
 @dataclass(frozen=True)
@@ -227,7 +232,7 @@ def calculate_deviation(
     benchmark: BenchmarkSpec,
     window_days: Literal[10, 30],
     end_date: date,
-    window_convention: DeviationWindowConvention = DeviationWindowConvention.MAX_DEVIATION_SCAN,
+    window_convention: DeviationWindowConventionInput = DeviationWindowConvention.MAX_DEVIATION_SCAN,
 ) -> DeviationWindowData:
     """Calculate one window without network, storage, Provider, or global state."""
 
@@ -339,7 +344,7 @@ class DeviationService:
         *,
         windows: Sequence[int] = (10, 30),
         as_of: date | None = None,
-        window_convention: DeviationWindowConvention = DeviationWindowConvention.MAX_DEVIATION_SCAN,
+        window_convention: DeviationWindowConventionInput = DeviationWindowConvention.MAX_DEVIATION_SCAN,
         provider: str | None = None,
         use_cache: bool | None = None,
     ) -> FetchResult[DeviationData]:
@@ -347,7 +352,7 @@ class DeviationService:
             instrumentId=instrument_id,
             asOf=as_of,
             windows=tuple(windows),
-            windowConvention=window_convention,
+            windowConvention=_coerce_window_convention(window_convention),
         )
         benchmark = resolve_deviation_benchmark(request.instrument_id, as_of=request.as_of)
         requested_as_of = request.as_of or self._today()
@@ -492,7 +497,7 @@ class DeviationService:
                 pass
 
 
-def _coerce_window_convention(value: DeviationWindowConvention | str) -> DeviationWindowConvention:
+def _coerce_window_convention(value: DeviationWindowConventionInput) -> DeviationWindowConvention:
     try:
         return value if isinstance(value, DeviationWindowConvention) else DeviationWindowConvention(value)
     except (TypeError, ValueError) as exc:
@@ -569,6 +574,7 @@ __all__ = [
     "DeviationRequest",
     "DeviationService",
     "DeviationWindowConvention",
+    "DeviationWindowConventionInput",
     "DeviationWindowData",
     "PricePoint",
     "calculate_deviation",

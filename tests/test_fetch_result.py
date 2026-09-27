@@ -247,6 +247,44 @@ def test_empty_standard_record_result_converts_to_empty_rows():
     assert result.to_dicts() == []
 
 
+def test_fetch_result_metadata_defaults_empty_and_preserves_to_dicts_behavior():
+    result = _result(())
+
+    assert result.metadata == {}
+    assert result.to_dicts() == []
+
+
+def test_fetch_result_metadata_is_json_compatible_and_recursively_immutable():
+    source = {"pagination": {"page": 1, "pages": 2, "warnings": ["partial"]}}
+    result = FetchResult(
+        data=(),
+        dataset=DATASET,
+        provider="test.provider",
+        captured_at=CAPTURED_AT,
+        metadata=source,
+    )
+
+    source["pagination"]["pages"] = 99
+    assert result.metadata["pagination"]["pages"] == 2
+    assert result.metadata["pagination"]["warnings"] == ("partial",)
+    with pytest.raises(TypeError):
+        result.metadata["pagination"]["pages"] = 3
+    with pytest.raises(TypeError):
+        result.metadata["pagination"]["warnings"][0] = "changed"
+
+
+@pytest.mark.parametrize("metadata", [None, {1: "invalid-key"}, {"bad": Decimal("1.2")}, {"bad": float("nan")}])
+def test_fetch_result_rejects_non_json_metadata(metadata):
+    with pytest.raises((TypeError, ValueError)):
+        FetchResult(
+            data=(),
+            dataset=DATASET,
+            provider="test.provider",
+            captured_at=CAPTURED_AT,
+            metadata=metadata,
+        )
+
+
 def test_fetch_result_is_not_a_sequence():
     result = _result(())
 

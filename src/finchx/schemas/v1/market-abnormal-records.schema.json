@@ -1,0 +1,643 @@
+{
+  "$defs": {
+    "AbnormalEventData": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "description": "Six-digit instrument code reported by EastMoney.",
+          "title": "Code",
+          "type": "string"
+        },
+        "name": {
+          "description": "Security name supplied by EastMoney.",
+          "title": "Name",
+          "type": "string"
+        },
+        "instrumentId": {
+          "$ref": "#/$defs/InstrumentId",
+          "description": "Instrument identity decoded from SECUCODE."
+        },
+        "exchange": {
+          "$ref": "#/$defs/Exchange",
+          "description": "Exchange decoded from the SECUCODE suffix."
+        },
+        "eventStartDate": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Source event start date when supplied.",
+          "title": "Eventstartdate"
+        },
+        "eventEndDate": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Source event end date when supplied.",
+          "title": "Eventenddate"
+        },
+        "announcementId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Source INFO_CODE when supplied.",
+          "title": "Announcementid"
+        },
+        "announcementDate": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Announcement date supplied by EastMoney.",
+          "title": "Announcementdate"
+        },
+        "announcementUrl": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "EastMoney notice URL formed from INFO_CODE when present.",
+          "title": "Announcementurl"
+        },
+        "reasonText": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Source abnormality reason text.",
+          "title": "Reasontext"
+        },
+        "reasonTypeText": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Source abnormality reason-type text.",
+          "title": "Reasontypetext"
+        },
+        "disclosureExchange": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Original disclosure-market text; not normalized to FinchX Exchange.",
+          "title": "Disclosureexchange"
+        },
+        "providerEventType": {
+          "description": "Original UNUSUAL_TYPE marker: 001 ordinary or 002 severe.",
+          "title": "Providereventtype",
+          "type": "string"
+        },
+        "providerValues": {
+          "additionalProperties": true,
+          "description": "Original EastMoney values retained for audit.",
+          "title": "Providervalues",
+          "type": "object"
+        },
+        "dataset": {
+          "const": "abnormal_events",
+          "title": "Dataset",
+          "type": "string"
+        },
+        "eventType": {
+          "const": "ordinary",
+          "description": "Normalized event class for UNUSUAL_TYPE=001.",
+          "title": "Eventtype",
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "name",
+        "instrumentId",
+        "exchange",
+        "providerEventType",
+        "providerValues",
+        "dataset",
+        "eventType"
+      ],
+      "title": "AbnormalEventData",
+      "type": "object"
+    },
+    "Exchange": {
+      "enum": [
+        "sse",
+        "szse",
+        "bse"
+      ],
+      "title": "Exchange",
+      "type": "string"
+    },
+    "InstrumentId": {
+      "additionalProperties": false,
+      "description": "Identity for an instrument whose code, market, and kind are already known.",
+      "properties": {
+        "code": {
+          "minLength": 1,
+          "pattern": ".*\\S.*",
+          "title": "Code",
+          "type": "string"
+        },
+        "market": {
+          "$ref": "#/$defs/Market"
+        },
+        "kind": {
+          "$ref": "#/$defs/InstrumentKind"
+        },
+        "exchange": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Exchange"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "code",
+        "market",
+        "kind"
+      ],
+      "title": "InstrumentId",
+      "type": "object"
+    },
+    "InstrumentKind": {
+      "enum": [
+        "equity",
+        "index",
+        "etf"
+      ],
+      "title": "InstrumentKind",
+      "type": "string"
+    },
+    "Market": {
+      "enum": [
+        "cn_a"
+      ],
+      "title": "Market",
+      "type": "string"
+    },
+    "PredictionHistoryData": {
+      "additionalProperties": false,
+      "properties": {
+        "dataset": {
+          "const": "prediction_history",
+          "title": "Dataset",
+          "type": "string"
+        },
+        "code": {
+          "description": "Six-digit instrument code reported by EastMoney.",
+          "title": "Code",
+          "type": "string"
+        },
+        "name": {
+          "description": "Security name supplied by EastMoney.",
+          "title": "Name",
+          "type": "string"
+        },
+        "instrumentId": {
+          "$ref": "#/$defs/InstrumentId",
+          "description": "Instrument identity decoded from SECUCODE."
+        },
+        "exchange": {
+          "$ref": "#/$defs/Exchange",
+          "description": "Exchange decoded from the SECUCODE suffix."
+        },
+        "tradeDate": {
+          "description": "Prediction-history trade date.",
+          "format": "date",
+          "title": "Tradedate",
+          "type": "string"
+        },
+        "changeRatio": {
+          "anyOf": [
+            {
+              "description": "A ratio fraction, not percentage points: 4.24% is 0.0424.",
+              "examples": [
+                "0.0424"
+              ],
+              "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Source CHANGE_RATE percentage points divided by 100; 3% is 0.03.",
+          "title": "Changeratio"
+        },
+        "deviationWindowDays": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Source MAX_DAYS value; preserved as supplied without asserting a calculation convention.",
+          "title": "Deviationwindowdays"
+        },
+        "deviation": {
+          "anyOf": [
+            {
+              "description": "A ratio fraction, not percentage points: 4.24% is 0.0424.",
+              "examples": [
+                "0.0424"
+              ],
+              "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Source DEVUATION_VALUE percentage points divided by 100.",
+          "title": "Deviation"
+        },
+        "triggerChangeRatio": {
+          "anyOf": [
+            {
+              "description": "A ratio fraction, not percentage points: 4.24% is 0.0424.",
+              "examples": [
+                "0.0424"
+              ],
+              "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Source CHANGE_RATE_TARGET percentage points divided by 100.",
+          "title": "Triggerchangeratio"
+        },
+        "isTriggered": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "IS_HAPPEN 1 maps to true, 0 to false; unknown values remain null.",
+          "title": "Istriggered"
+        },
+        "providerRuleText": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Original UNUSUAL_TYPE text; it is not coerced to an event-code enum.",
+          "title": "Providerruletext"
+        },
+        "providerCurrentSessionFlag": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "IS_SYSDATE 1 maps to true, 0 to false; unknown values remain null.",
+          "title": "Providercurrentsessionflag"
+        },
+        "providerPositiveFlag": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "IS_POSITIVE 1 maps to true, 0 to false; unknown values remain null.",
+          "title": "Providerpositiveflag"
+        },
+        "providerMarketCode": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Original MARKET_CODE value; its semantics are provider-specific.",
+          "title": "Providermarketcode"
+        },
+        "providerValues": {
+          "additionalProperties": true,
+          "description": "Original EastMoney values retained for audit, including RANK_TYPE.",
+          "title": "Providervalues",
+          "type": "object"
+        }
+      },
+      "required": [
+        "dataset",
+        "code",
+        "name",
+        "instrumentId",
+        "exchange",
+        "tradeDate",
+        "providerValues"
+      ],
+      "title": "PredictionHistoryData",
+      "type": "object"
+    },
+    "SevereEventData": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "description": "Six-digit instrument code reported by EastMoney.",
+          "title": "Code",
+          "type": "string"
+        },
+        "name": {
+          "description": "Security name supplied by EastMoney.",
+          "title": "Name",
+          "type": "string"
+        },
+        "instrumentId": {
+          "$ref": "#/$defs/InstrumentId",
+          "description": "Instrument identity decoded from SECUCODE."
+        },
+        "exchange": {
+          "$ref": "#/$defs/Exchange",
+          "description": "Exchange decoded from the SECUCODE suffix."
+        },
+        "eventStartDate": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Source event start date when supplied.",
+          "title": "Eventstartdate"
+        },
+        "eventEndDate": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Source event end date when supplied.",
+          "title": "Eventenddate"
+        },
+        "announcementId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Source INFO_CODE when supplied.",
+          "title": "Announcementid"
+        },
+        "announcementDate": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Announcement date supplied by EastMoney.",
+          "title": "Announcementdate"
+        },
+        "announcementUrl": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "EastMoney notice URL formed from INFO_CODE when present.",
+          "title": "Announcementurl"
+        },
+        "reasonText": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Source abnormality reason text.",
+          "title": "Reasontext"
+        },
+        "reasonTypeText": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Source abnormality reason-type text.",
+          "title": "Reasontypetext"
+        },
+        "disclosureExchange": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Original disclosure-market text; not normalized to FinchX Exchange.",
+          "title": "Disclosureexchange"
+        },
+        "providerEventType": {
+          "description": "Original UNUSUAL_TYPE marker: 001 ordinary or 002 severe.",
+          "title": "Providereventtype",
+          "type": "string"
+        },
+        "providerValues": {
+          "additionalProperties": true,
+          "description": "Original EastMoney values retained for audit.",
+          "title": "Providervalues",
+          "type": "object"
+        },
+        "dataset": {
+          "const": "severe_events",
+          "title": "Dataset",
+          "type": "string"
+        },
+        "eventType": {
+          "const": "severe",
+          "description": "Normalized event class for UNUSUAL_TYPE=002.",
+          "title": "Eventtype",
+          "type": "string"
+        },
+        "expectedMonitorStartDate": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Provider prediction monitoring start date.",
+          "title": "Expectedmonitorstartdate"
+        },
+        "expectedMonitorEndDate": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Provider prediction monitoring end date.",
+          "title": "Expectedmonitorenddate"
+        },
+        "providerMonitorStatus": {
+          "description": "IS_HIS=1 maps to current, 0 to history; other values remain unknown.",
+          "enum": [
+            "current",
+            "history",
+            "unknown"
+          ],
+          "title": "Providermonitorstatus",
+          "type": "string"
+        },
+        "providerMonitorStatusRaw": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Original IS_HIS marker.",
+          "title": "Providermonitorstatusraw"
+        }
+      },
+      "required": [
+        "code",
+        "name",
+        "instrumentId",
+        "exchange",
+        "providerEventType",
+        "providerValues",
+        "dataset",
+        "eventType",
+        "providerMonitorStatus"
+      ],
+      "title": "SevereEventData",
+      "type": "object"
+    }
+  },
+  "anyOf": [
+    {
+      "$ref": "#/$defs/AbnormalEventData"
+    },
+    {
+      "$ref": "#/$defs/SevereEventData"
+    },
+    {
+      "$ref": "#/$defs/PredictionHistoryData"
+    }
+  ],
+  "description": "The one public abnormal-record Dataset's discriminated row types.",
+  "title": "FinchX Market Abnormal Records Dataset Payload v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/market-abnormal-records.schema.json"
+}

@@ -506,7 +506,7 @@ def test_every_public_dataset_has_one_explicit_client_endpoint():
     }
     mapped_datasets = {endpoint.dataset.name for endpoint in CLIENT_ENDPOINTS}
 
-    assert len(CLIENT_ENDPOINTS) == 54
+    assert len(CLIENT_ENDPOINTS) == 58
     assert len(mapped_datasets) == len(CLIENT_ENDPOINTS)
     assert mapped_datasets == public_datasets - {"instrument", "forum.replies"}
     for endpoint in CLIENT_ENDPOINTS:

@@ -8,7 +8,8 @@
       "$ref": "https://schemas.finchx.invalid/v1/instrument-identity.schema.json"
     },
     "price": {
-      "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Price"
+      "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Price",
+      "description": "Latest equity price in CNY per share or index level in points."
     },
     "previousClose": {
       "anyOf": [
@@ -18,7 +19,8 @@
         {
           "type": "null"
         }
-      ]
+      ],
+      "description": "Previous equity close in CNY per share or index close in points."
     },
     "open": {
       "anyOf": [
@@ -29,7 +31,7 @@
           "type": "null"
         }
       ],
-      "description": "Session open in CNY per share."
+      "description": "Session open in CNY per share for equities or points for indices."
     },
     "high": {
       "anyOf": [
@@ -40,7 +42,7 @@
           "type": "null"
         }
       ],
-      "description": "Session high in CNY per share."
+      "description": "Session high in CNY per share for equities or points for indices."
     },
     "low": {
       "anyOf": [
@@ -51,7 +53,7 @@
           "type": "null"
         }
       ],
-      "description": "Session low in CNY per share."
+      "description": "Session low in CNY per share for equities or points for indices."
     },
     "priceChange": {
       "anyOf": [
@@ -61,7 +63,8 @@
         {
           "type": "null"
         }
-      ]
+      ],
+      "description": "Change from previous close in CNY for equities or points for indices."
     },
     "changeRate": {
       "anyOf": [
@@ -179,7 +182,9 @@
                 },
                 "code": {
                   "enum": [
-                    "000001"
+                    "000001",
+                    "000002",
+                    "000688"
                   ]
                 }
               },
@@ -208,7 +213,9 @@
                 "code": {
                   "enum": [
                     "399001",
-                    "399006"
+                    "399006",
+                    "399102",
+                    "399107"
                   ]
                 }
               },

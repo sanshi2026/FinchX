@@ -10,6 +10,7 @@ from finchx.providers.eastmoney_market import (
     EastmoneyStrongPoolProvider,
     EastmoneyYesterdayLimitUpPoolProvider,
 )
+from finchx.providers.eastmoney_regulation import EastmoneyRegulationProvider
 from finchx.providers.eastmoney_stock_keyword import EastMoneyStockKeywordProvider
 from finchx.providers.instrument import InstrumentListingProvider, InstrumentProvider
 from finchx.providers.market_klines import KlinesProvider
@@ -86,6 +87,7 @@ __all__ = [
     "EastmoneyLimitUpPoolProvider",
     "EastmoneyStrongPoolProvider",
     "EastmoneyYesterdayLimitUpPoolProvider",
+    "EastmoneyRegulationProvider",
     "EastMoneyStockKeywordProvider",
     "InstrumentListingProvider",
     "InstrumentProvider",

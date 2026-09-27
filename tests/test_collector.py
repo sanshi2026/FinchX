@@ -5,7 +5,9 @@ import pytest
 from finchx.collector import (
     AllProvidersFailed,
     AuthenticationError,
+    CachePolicy,
     Collector,
+    CollectorRoute,
     FetchResult,
     InvalidRequest,
     MissingOptionalDependency,
@@ -26,6 +28,7 @@ from finchx.datasets import (
     TRADING_CALENDAR_DATASET,
     TradingCalendarRequest,
 )
+from finchx.collectors.core import _RouteResult
 from finchx.entities import Market
 from finchx.providers import (
     DatasetRoutingSemantics,
@@ -34,6 +37,7 @@ from finchx.providers import (
     ProviderRegistry,
     ProviderSpec,
 )
+from finchx.storage import Cache, MemoryStorage
 
 
 class FakeRequest:
@@ -142,6 +146,41 @@ def test_provider_failure_is_wrapped_once_and_never_falls_back():
     with pytest.raises(ProviderExecutionError, match="first provider failed"):
         collector.fetch(FAKE_DATASET, value=1)
     assert SecondProvider.calls == []
+
+
+def test_route_metadata_survives_collector_cache_round_trip_including_empty_data():
+    calls = []
+
+    def route(provider, definition, kwargs):
+        calls.append(kwargs)
+        return _RouteResult(
+            data=(),
+            metadata={
+                "pagination": {
+                    "page": 3,
+                    "upstreamPages": 3,
+                    "pageComplete": True,
+                    "collectionComplete": False,
+                }
+            },
+        )
+
+    collector = Collector(
+        registry=_fake_registry(first=FirstProvider, second=SecondProvider),
+        routes=(CollectorRoute(FAKE_DATASET, "fake.first", route),),
+        cache=Cache(MemoryStorage()),
+        cache_policy={FAKE_DATASET.name: CachePolicy(enabled=True, ttl=60)},
+        clock=lambda: datetime(2026, 9, 22, 1, 0, tzinfo=timezone.utc),
+    )
+
+    first = collector.fetch(FAKE_DATASET, request={"key": "value"})
+    cached = collector.fetch(FAKE_DATASET, request={"key": "value"})
+
+    assert first.data == cached.data == ()
+    assert first.metadata == cached.metadata
+    assert cached.cache_hit is True
+    assert cached.metadata["pagination"]["collectionComplete"] is False
+    assert len(calls) == 1
 
 
 class ProviderErrorProvider:

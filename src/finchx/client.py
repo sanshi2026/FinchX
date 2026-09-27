@@ -7,8 +7,13 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Any, Literal, Protocol
 
-from finchx.collectors import CachePolicy, Collector, FetchResult, RoutingPolicy
-from finchx.computed import DeviationData, DeviationService, DeviationWindowConvention
+from finchx.collectors import CachePolicy, Collector, FetchResult, InvalidRequest, RoutingPolicy
+from finchx.computed import (
+    DeviationData,
+    DeviationService,
+    DeviationWindowConvention,
+    DeviationWindowConventionInput,
+)
 from finchx.contracts import StandardRecord
 from finchx.datasets import (
     ARTICLE_DETAIL_DATASET,
@@ -43,6 +48,10 @@ from finchx.datasets import (
     FUNDAMENTAL_INDUSTRY_COMPARISON_DATASET,
     FUNDAMENTAL_REVENUE_BREAKDOWN_DATASET,
     MARKET_BREADTH_DATASET,
+    MARKET_ABNORMAL_COUNTS_DATASET,
+    MARKET_ABNORMAL_RECORDS_DATASET,
+    MARKET_REGULATION_WATCHLIST_DATASET,
+    MARKET_SEVERE_PREDICTIONS_DATASET,
     MARKET_BROKEN_LIMIT_POOL_DATASET,
     MARKET_CONSECUTIVE_LIMIT_UP_DATASET,
     MARKET_DAILY_REPLAY_DATASET,
@@ -94,6 +103,10 @@ from finchx.datasets import (
     KlineAdjustment,
     KlinesRequest,
     MarketBreadthRequest,
+    AbnormalCountsRequest,
+    AbnormalRecordsRequest,
+    RegulationWatchlistRequest,
+    SeverePredictionsRequest,
     MarketBrokenLimitPoolRequest,
     MarketConsecutiveLimitUpRequest,
     MarketDailyReplayRequest,
@@ -151,6 +164,13 @@ class CollectorLike(Protocol):
         use_cache: bool | None = None,
         **kwargs: Any,
     ) -> FetchResult[Any]: ...
+
+
+def _regulation_request(request_type: type[Any], **values: Any) -> Any:
+    try:
+        return request_type(**values)
+    except (TypeError, ValueError) as exc:
+        raise InvalidRequest(f"invalid {request_type.__name__}: {exc}") from exc
 
 
 class _Namespace:
@@ -321,7 +341,7 @@ class MarketNamespace(_RequestNamespace):
         *,
         windows: Sequence[int] = (10, 30),
         as_of: date | str | None = None,
-        window_convention: DeviationWindowConvention = DeviationWindowConvention.MAX_DEVIATION_SCAN,
+        window_convention: DeviationWindowConventionInput = DeviationWindowConvention.MAX_DEVIATION_SCAN,
         provider: str | None = None,
         use_cache: bool | None = None,
     ) -> FetchResult[DeviationData]:
@@ -344,6 +364,94 @@ class MarketNamespace(_RequestNamespace):
         """Fetch the current market breadth snapshot in a FetchResult."""
         request = MarketBreadthRequest()
         return self._fetch_request(MARKET_BREADTH_DATASET, request, provider=provider, use_cache=use_cache)
+
+    def regulation_watchlist(
+        self,
+        *,
+        provider: str | None = None,
+        use_cache: bool | None = None,
+    ) -> FetchResult[tuple[StandardRecord, ...]]:
+        """Fetch EastMoney's latest risk watchlist and preserve unknown kinds."""
+        request = RegulationWatchlistRequest()
+        return self._fetch_request(
+            MARKET_REGULATION_WATCHLIST_DATASET,
+            request,
+            provider=provider,
+            use_cache=use_cache,
+        )
+
+    def abnormal_records(
+        self,
+        *,
+        dataset: Literal["abnormal_events", "severe_events", "prediction_history"],
+        page: int = 1,
+        page_size: int = 20,
+        status: Literal["current", "history", "all"] | None = None,
+        triggered: Literal["all", "yes", "no"] | None = None,
+        rise_only: bool | None = None,
+        include_current: bool | None = None,
+        provider: str | None = None,
+        use_cache: bool | None = None,
+    ) -> FetchResult[tuple[StandardRecord, ...]]:
+        """Fetch exactly one upstream page of one supported abnormal-record dataset."""
+        request = _regulation_request(
+            AbnormalRecordsRequest,
+            dataset=dataset,
+            page=page,
+            pageSize=page_size,
+            status=status,
+            triggered=triggered,
+            riseOnly=rise_only,
+            includeCurrent=include_current,
+        )
+        return self._fetch_request(
+            MARKET_ABNORMAL_RECORDS_DATASET,
+            request,
+            provider=provider,
+            use_cache=use_cache,
+        )
+
+    def severe_predictions(
+        self,
+        *,
+        rise_only: bool = False,
+        include_bse: bool = True,
+        provider: str | None = None,
+        use_cache: bool | None = None,
+    ) -> FetchResult[tuple[StandardRecord, ...]]:
+        """Fetch the bounded EastMoney severe-prediction pool."""
+        request = _regulation_request(
+            SeverePredictionsRequest,
+            riseOnly=rise_only,
+            includeBse=include_bse,
+        )
+        return self._fetch_request(
+            MARKET_SEVERE_PREDICTIONS_DATASET,
+            request,
+            provider=provider,
+            use_cache=use_cache,
+        )
+
+    def abnormal_counts(
+        self,
+        *,
+        sort_by: Literal["count", "price", "max_deviation"] = "count",
+        order: Literal["asc", "desc"] = "desc",
+        provider: str | None = None,
+        use_cache: bool | None = None,
+    ) -> FetchResult[tuple[StandardRecord, ...]]:
+        """Fetch the bounded EastMoney abnormal-count pool."""
+        request = _regulation_request(
+            AbnormalCountsRequest,
+            sortBy=sort_by,
+            order=order,
+        )
+        return self._fetch_request(
+            MARKET_ABNORMAL_COUNTS_DATASET,
+            request,
+            provider=provider,
+            use_cache=use_cache,
+        )
 
     def broken_limit_pool(
         self,
@@ -643,7 +751,7 @@ class MarketNamespace(_RequestNamespace):
         provider: str | None = None,
         use_cache: bool | None = None,
     ) -> FetchResult[tuple[StandardRecord, ...]]:
-        """Fetch one quote snapshot in a FetchResult."""
+        """Fetch one SSE/SZSE equity or supported index quote snapshot."""
         return self._fetch_instrument_request(
             MARKET_QUOTE_SNAPSHOT_DATASET,
             instrument,
@@ -1421,6 +1529,10 @@ class FinchX:
 CLIENT_ENDPOINTS: tuple[ClientEndpoint, ...] = (
     ClientEndpoint("reference", "trading_calendar", TRADING_CALENDAR_DATASET, TradingCalendarRequest),
     ClientEndpoint("market", "breadth", MARKET_BREADTH_DATASET, MarketBreadthRequest),
+    ClientEndpoint("market", "regulation_watchlist", MARKET_REGULATION_WATCHLIST_DATASET, RegulationWatchlistRequest),
+    ClientEndpoint("market", "abnormal_records", MARKET_ABNORMAL_RECORDS_DATASET, AbnormalRecordsRequest),
+    ClientEndpoint("market", "severe_predictions", MARKET_SEVERE_PREDICTIONS_DATASET, SeverePredictionsRequest),
+    ClientEndpoint("market", "abnormal_counts", MARKET_ABNORMAL_COUNTS_DATASET, AbnormalCountsRequest),
     ClientEndpoint("market", "broken_limit_pool", MARKET_BROKEN_LIMIT_POOL_DATASET, MarketBrokenLimitPoolRequest),
     ClientEndpoint("market", "consecutive_limit_up", MARKET_CONSECUTIVE_LIMIT_UP_DATASET, MarketConsecutiveLimitUpRequest),
     ClientEndpoint("market", "daily_replay", MARKET_DAILY_REPLAY_DATASET, MarketDailyReplayRequest),

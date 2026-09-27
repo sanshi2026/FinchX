@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 import inspect
 from pathlib import Path
 import sys
-from typing import get_origin, get_type_hints
+from typing import Literal, get_args, get_origin, get_type_hints
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -15,6 +15,11 @@ import finchx
 from finchx import FinchX
 from finchx.client import CLIENT_ENDPOINTS
 from finchx.collectors import FetchResult
+from finchx.computed import (
+    DeviationService,
+    DeviationWindowConvention,
+    calculate_deviation,
+)
 from finchx.providers import __all__ as PROVIDER_EXPORTS
 from finchx.providers.registry import PROVIDER_REGISTRY
 from tools.generate_api_reference import all_endpoint_keys, computed_endpoint_keys
@@ -53,6 +58,7 @@ PUBLIC_PROVIDER_EXPORTS = {
     "EastmoneyLimitUpPoolProvider",
     "EastmoneyMarketNewsProvider",
     "EastmoneyNewsProvider",
+    "EastmoneyRegulationProvider",
     "EastmoneyStrongPoolProvider",
     "EastmoneyYesterdayLimitUpPoolProvider",
     "InstrumentListingProvider",
@@ -87,6 +93,10 @@ PUBLIC_ENDPOINTS = {
     "reference": ("trading_calendar",),
     "market": (
         "breadth",
+        "regulation_watchlist",
+        "abnormal_records",
+        "severe_predictions",
+        "abnormal_counts",
         "broken_limit_pool",
         "consecutive_limit_up",
         "daily_replay",
@@ -138,6 +148,10 @@ PUBLIC_ENDPOINTS = {
 PUBLIC_SIGNATURES = {
     "reference.trading_calendar": "start_date end_date provider* use_cache*",
     "market.breadth": "provider* use_cache*",
+    "market.regulation_watchlist": "provider* use_cache*",
+    "market.abnormal_records": "dataset page? page_size? status? triggered? rise_only? include_current? provider* use_cache*",
+    "market.severe_predictions": "rise_only? include_bse? provider* use_cache*",
+    "market.abnormal_counts": "sort_by? order? provider* use_cache*",
     "market.broken_limit_pool": "provider* use_cache*",
     "market.consecutive_limit_up": "provider* use_cache*",
     "market.daily_replay": "requested_date session provider* use_cache*",
@@ -284,11 +298,11 @@ def test_registry_inventory_and_client_routes_match_the_public_contract():
     )
 
     assert set(PROVIDER_EXPORTS) == PUBLIC_PROVIDER_EXPORTS
-    assert len(PROVIDER_EXPORTS) == 42
-    assert len(PROVIDER_REGISTRY.list_providers()) == 34
+    assert len(PROVIDER_EXPORTS) == 43
+    assert len(PROVIDER_REGISTRY.list_providers()) == 35
     assert len(registered_datasets) == len(client_datasets) + 1
     assert client_datasets == registered_datasets - {"instrument"}
-    assert registered_pairs == 60
+    assert registered_pairs == 64
     assert all(
         PROVIDER_REGISTRY.providers_for(endpoint.dataset)
         for endpoint in CLIENT_ENDPOINTS
@@ -315,6 +329,13 @@ def test_computed_deviation_surface_is_outside_provider_inventory():
         for parameter in parameters[1:]
     )
     assert get_origin(get_type_hints(method)["return"]) is FetchResult
+    convention_hint = get_type_hints(method)["window_convention"]
+    assert DeviationWindowConvention in get_args(convention_hint)
+    literals = [part for part in get_args(convention_hint) if get_origin(part) is Literal]
+    assert len(literals) == 1
+    assert get_args(literals[0]) == ("max_deviation_scan", "strict_exchange_window")
+    assert get_type_hints(DeviationService.calculate)["window_convention"] == convention_hint
+    assert get_type_hints(calculate_deviation)["window_convention"] == convention_hint
     assert all(
         endpoint.method != "deviation"
         for endpoint in CLIENT_ENDPOINTS
@@ -360,6 +381,14 @@ def _call_public_endpoint(client, endpoint):
 
     if key == "reference.trading_calendar":
         return invoke("2026-09-01", "2026-09-30")
+    if key == "market.abnormal_records":
+        return invoke(dataset="prediction_history")
+    if key in {
+        "market.regulation_watchlist",
+        "market.severe_predictions",
+        "market.abnormal_counts",
+    }:
+        return invoke()
     if key == "market.quote":
         return invoke()
     if key == "market.concept_list":

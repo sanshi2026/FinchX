@@ -2,7 +2,7 @@
 
 English | [简体中文](DATA_API_REFERENCE.zh-CN.md)
 
-This document covers 54 data interfaces and 1 computed capability, for 55 core capabilities.
+This document covers 58 data interfaces and 1 computed capability, for 59 core capabilities.
 
 ## 1. What FinchX is / Architecture overview
 
@@ -78,11 +78,11 @@ print(result.warnings)
 | `fx.market.fund_flow_daily(...)` | Fetch daily fund-flow data. | `tencent.finance.qq.fund_flow` |
 | `fx.market.fund_flow_intraday(...)` | Fetch intraday fund-flow data. | `tencent.finance.qq.fund_flow` |
 | `fx.market.fund_flow_snapshot(...)` | Fetch the fund-flow snapshot. | `tencent.finance.qq.fund_flow` |
-| `fx.market.ohlcv(...)` | Fetch OHLCV history for one instrument. | `tencent.finance.qq.klines`, `sohu.finance.klines` |
+| `fx.market.ohlcv(...)` | Fetch daily OHLCV history for an SSE/SZSE equity or supported index. | `tencent.finance.qq.klines`, `sohu.finance.klines` |
 | `fx.market.orderbook(...)` | Fetch the order book. | `tencent.finance.qq.quote` |
 | `fx.market.quote(...)` | Fetch a full-market A-share quote snapshot. | `tencent.finance.qq.market` |
 | `fx.market.ranking(...)` | Rank A-share stocks by traded amount, price change, or volume. | `tencent.finance.qq.market` |
-| `fx.market.quote_snapshot(...)` | Fetch one quote snapshot. | `tencent.finance.qq.quote` |
+| `fx.market.quote_snapshot(...)` | Fetch a current quote snapshot for an SSE/SZSE equity or supported index. | `tencent.finance.qq.quote` |
 
 ### Individual stock information and fundamentals
 
@@ -123,10 +123,14 @@ print(result.warnings)
 | `fx.market.dragon_tiger_detail(...)` | Fetch Dragon-Tiger detail data. | `aigupiao.dragon_tiger` |
 | `fx.market.dragon_tiger_list(...)` | Fetch Dragon-Tiger list data. | `aigupiao.dragon_tiger` |
 
-### Regulatory deviation
+### Regulatory monitoring and deviation
 
 | Interface | Purpose | Provider |
 | --- | --- | --- |
+| `fx.market.regulation_watchlist(...)` | Fetch EastMoney's latest regulation watchlist, including rows with unverified security kinds. | `eastmoney.regulation` |
+| `fx.market.abnormal_records(...)` | Fetch one upstream page from ordinary events, severe events, or prediction history. | `eastmoney.regulation` |
+| `fx.market.severe_predictions(...)` | Fetch the bounded severe-prediction pool and preserve unrecognized provider states. | `eastmoney.regulation` |
+| `fx.market.abnormal_counts(...)` | Fetch the bounded abnormal-count pool while keeping ambiguous provider counters as raw evidence. | `eastmoney.regulation` |
 | `fx.market.deviation(...)` | Calculate close-based relative returns for one supported A-share stock against its board benchmark over 10- or 30-session windows. | — |
 
 ### Other
@@ -1374,10 +1378,14 @@ Data model: `MarketFundFlowSnapshotData`
 ### `fx.market.ohlcv(...)`
 
 **What it provides**
-Fetch OHLCV history for one instrument.
+Fetch daily OHLCV history for an SSE/SZSE equity or supported index.
 
 **Data source**
 `tencent.finance.qq.klines`, `sohu.finance.klines`
+
+**Supported index identities**
+Use a full `market:exchange:index:code` identity, for example `cn_a:sse:index:000001` or `cn_a:szse:index:399001`. The current whitelist is SSE `000001`, `000002`, `000688` and SZSE `399001`, `399006`, `399102`, `399107`. On these generic methods, a bare `000001` resolves as the SZSE equity, not the SSE index.
+For an index, omit `adjustment` or pass `adjustment=None`; equities may use `qfq`, `hfq`, or no adjustment. OHLC fields are CNY per share for equities and index points for indices.
 
 **Example**
 
@@ -1397,6 +1405,10 @@ print(result.data)  # Native typed data or records.
 rows = result.to_dicts()  # JSON-compatible business rows.
 print(rows[:1])
 print(result.warnings)  # Check for partial or recoverable issues.
+
+# Index bars use explicit identity and no price adjustment.
+index_bars = fx.market.ohlcv("cn_a:sse:index:000001", "2026-09-01", "2026-09-23", adjustment=None)
+print(index_bars.to_dicts()[:1])
 ```
 
 **Returned value and recommended use**
@@ -1406,7 +1418,7 @@ Returns a `FetchResult`. `.data` is a tuple of normalized records; each record's
 
 | Parameter | Type | Required / mode | Default | Meaning |
 | --- | --- | --- | --- | --- |
-| instrument | str | Required | — | Six-digit instrument code; FinchX resolves its market context. |
+| instrument | str | Required | — | Six-digit equity code, or a full identity for one of the seven supported indices: `cn_a:sse:index:000001`, `cn_a:sse:index:000002`, `cn_a:sse:index:000688`, `cn_a:szse:index:399001`, `cn_a:szse:index:399006`, `cn_a:szse:index:399102`, or `cn_a:szse:index:399107`. In this generic endpoint a bare `000001` means a SZSE equity. |
 | start_date | date \| str | Required | — | Inclusive date; accepts YYYY-MM-DD, YYYYMMDD, or YYYY/MM/DD strings. |
 | end_date | date \| str | Required | — | Inclusive date; accepts YYYY-MM-DD, YYYYMMDD, or YYYY/MM/DD strings. |
 | adjustment | str \| None | Optional | None | Optional public adjustment: `qfq` means forward-adjusted, `hfq` means backward-adjusted, and Python `None` means unadjusted equities; indexes must use `None`. |
@@ -1417,14 +1429,14 @@ Data model: `MarketKlineData`
 
 | Field | Type | Meaning |
 | --- | --- | --- |
-| instrumentId | str | Instrument code. |
+| instrumentId | str | Complete FinchX identity; index bars retain market, exchange, kind, and code. |
 | barDate | date | — |
-| open | Decimal | Price per share; currency is CNY. |
-| high | Decimal | Price per share; currency is CNY. |
-| low | Decimal | Price per share; currency is CNY. |
-| close | Decimal | Price per share; currency is CNY. |
-| volume | int | A non-negative whole number of shares. |
-| amount | Decimal \| None | — |
+| open | Decimal | Open price: CNY per share for equities; index points for indices. |
+| high | Decimal | High price: CNY per share for equities; index points for indices. |
+| low | Decimal | Low price: CNY per share for equities; index points for indices. |
+| close | Decimal | Close price: CNY per share for equities; index points for indices. |
+| volume | int | Provider volume normalized to whole shares (source lots multiplied by 100). |
+| amount | Decimal \| None | Provider-reported traded amount in CNY when available. |
 | adjustment | KlineAdjustment | Output adjustment label: `none`, `qfq`, `hfq`, or `not_applicable`. |
 
 ### `fx.market.orderbook(...)`
@@ -1639,10 +1651,14 @@ Nested business model: `VolumeRankingMetric`
 ### `fx.market.quote_snapshot(...)`
 
 **What it provides**
-Fetch one quote snapshot.
+Fetch a current quote snapshot for an SSE/SZSE equity or supported index.
 
 **Data source**
 `tencent.finance.qq.quote`
+
+**Supported index identities**
+Use a full `market:exchange:index:code` identity, for example `cn_a:sse:index:000001` or `cn_a:szse:index:399001`. The current whitelist is SSE `000001`, `000002`, `000688` and SZSE `399001`, `399006`, `399102`, `399107`. On these generic methods, a bare `000001` resolves as the SZSE equity, not the SSE index.
+Quote price fields use CNY per share for equities and index points for indices.
 
 **Example**
 
@@ -1659,6 +1675,12 @@ print(result.data)  # Native typed data or records.
 rows = result.to_dicts()  # JSON-compatible business rows.
 print(rows[:1])
 print(result.warnings)  # Check for partial or recoverable issues.
+
+# Use complete identities; a bare 000001 means the SZSE equity on this generic endpoint.
+sse_index = fx.market.quote_snapshot(instrument="cn_a:sse:index:000001")
+szse_index = fx.market.quote_snapshot(instrument="cn_a:szse:index:399001")
+print(sse_index.to_dicts()[:1])
+print(szse_index.to_dicts()[:1])
 ```
 
 **Returned value and recommended use**
@@ -1668,7 +1690,7 @@ Returns a `FetchResult`. `.data` is a tuple of normalized records; each record's
 
 | Parameter | Type | Required / mode | Default | Meaning |
 | --- | --- | --- | --- | --- |
-| instrument | str | Required | — | Six-digit instrument code; FinchX resolves its market context. |
+| instrument | str | Required | — | Six-digit equity code, or a full index identity such as `cn_a:sse:index:000001` or `cn_a:szse:index:399001`. In this generic endpoint a bare `000001` means a SZSE equity. Supported indices are `cn_a:sse:index:000001`, `cn_a:sse:index:000002`, `cn_a:sse:index:000688`, `cn_a:szse:index:399001`, `cn_a:szse:index:399006`, `cn_a:szse:index:399102`, and `cn_a:szse:index:399107`. |
 
 **Output fields**
 
@@ -1677,12 +1699,12 @@ Data model: `MarketQuoteSnapshotData`
 | Field | Type | Meaning |
 | --- | --- | --- |
 | instrumentId | str | Instrument code. |
-| price | Decimal | Latest price in CNY per share. |
-| previousClose | Decimal \| None | — |
-| open | Decimal \| None | Session open in CNY per share. |
-| high | Decimal \| None | Session high in CNY per share. |
-| low | Decimal \| None | Session low in CNY per share. |
-| priceChange | Decimal \| None | — |
+| price | Decimal | Latest equity price in CNY per share or index level in points. |
+| previousClose | Decimal \| None | Previous equity close in CNY per share or index close in points. |
+| open | Decimal \| None | Session open in CNY per share for equities or points for indices. |
+| high | Decimal \| None | Session high in CNY per share for equities or points for indices. |
+| low | Decimal \| None | Session low in CNY per share for equities or points for indices. |
+| priceChange | Decimal \| None | Change from previous close in CNY for equities or points for indices. |
 | changeRate | Decimal \| None | Change from previous close as a ratio fraction; 3% is 0.03. |
 | volume | int \| None | Cumulative session volume in shares. |
 | amount | Decimal \| None | Cumulative session amount in CNY. |
@@ -3345,7 +3367,296 @@ Data model: `MarketDragonTigerListData`
 | themeId | int \| None | — |
 | themeName | str \| None | — |
 
-## 4.8 Regulatory deviation
+## 4.8 Regulatory monitoring and deviation
+
+### `fx.market.regulation_watchlist(...)`
+
+**What it provides**
+Fetch EastMoney's latest regulation watchlist, including rows with unverified security kinds.
+
+**Data source**
+`eastmoney.regulation`
+
+**Security-kind coverage**
+The endpoint does not expose verified security kinds. FinchX returns every source row, leaves `instrumentId` null, and sets `result.metadata.classification_complete` to false. Original fields, including `MARKET`, remain in `providerValues`.
+
+**Example**
+
+<!-- api-example: market.regulation_watchlist -->
+```python
+from finchx import FinchX
+
+fx = FinchX()
+result = fx.market.regulation_watchlist()
+
+print(result.data)  # Native typed data or records.
+rows = result.to_dicts()  # JSON-compatible business rows.
+print(rows[:1])
+print(result.warnings)  # Check for partial or recoverable issues.
+```
+
+**Returned value and recommended use**
+Returns a `FetchResult`. `.data` is a tuple of normalized records; each record's `.data` contains the Dataset row payload. The Dataset row schema `RegulationWatchlistData` has business fields such as `dataset`, `code`, `name`, `instrumentId`. Use the named business fields for follow-up filtering, comparisons, or charts. Export JSON-compatible rows with `.to_dicts()` and inspect `.warnings` for partial results. `result.metadata` reports `upstream_page`, `upstream_pages`, `has_more`, `page_complete`, and `collection_complete` where pagination applies. `.dataset_id`, `.provider_id`, `.captured_at`, `.provenance`, `.attempts`, `.fallback_used`, and `.cache_hit` carry retrieval and audit details.
+
+**Parameters**
+
+None.
+
+**Output fields**
+
+Data model: `RegulationWatchlistData`
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| dataset | Literal['regulation_watchlist'] | — |
+| code | str | Original source security code. |
+| name | str | Security name supplied by the source. |
+| instrumentId | str \| None | Null because stock_monitor.json does not provide a verified instrument identity. |
+| exchange | Exchange \| None | Exchange decoded from MARKET: 1 is SSE, 0 is SZSE, B is BSE; unknown codes remain null. |
+| monitorStartDate | date \| None | Source monitoring start date. |
+| expectedEndDate | date \| None | Source monitoring end date when supplied. |
+| noticeUrl | str \| None | Source-linked notice URL when supplied. |
+| providerValues | dict[str, Any] | Original EastMoney row values, including unrecognized markers. |
+
+### `fx.market.abnormal_records(...)`
+
+**What it provides**
+Fetch one upstream page from ordinary events, severe events, or prediction history.
+
+**Data source**
+`eastmoney.regulation`
+
+**Page and filter semantics**
+Each call requires one `dataset`: `abnormal_events`, `severe_events`, or `prediction_history`. It fetches exactly one 1-based upstream page (`page_size` maximum 200); it does not scan the full history automatically. Request later pages explicitly after checking `result.metadata.has_more`. `triggered` and `rise_only` are sent upstream through verified filters; `include_current` is applied locally and removes only rows explicitly marked as current. `page_complete` describes this fetched page; `collection_complete` is true only when the request covers the entire selected dataset result.
+Severe events default to current provider status. Unknown 0/1 flags stay null rather than becoming false.
+
+**Example**
+
+<!-- api-example: market.abnormal_records -->
+```python
+from finchx import FinchX
+
+fx = FinchX()
+# Each call fetches one page from the selected dataset; request later pages explicitly.
+ordinary = fx.market.abnormal_records(dataset="abnormal_events", page=1, page_size=20)
+severe = fx.market.abnormal_records(dataset="severe_events", page=1, page_size=20, status="current")
+history = fx.market.abnormal_records(dataset="prediction_history", page=1, page_size=20, triggered="all", rise_only=False, include_current=None)
+for name, result in (("ordinary", ordinary), ("severe", severe), ("history", history)):
+    print(name, result.to_dicts()[:1], result.metadata.get("has_more"))
+    print(result.warnings)
+```
+
+**Returned value and recommended use**
+Returns a `FetchResult`. `.data` is a tuple of normalized records; each record's `.data` contains the Dataset row payload. The Dataset row schema `AbnormalRecordData` has business fields such as `dataset`, `code`, `name`, `exchange`. Use the named business fields for follow-up filtering, comparisons, or charts. Export JSON-compatible rows with `.to_dicts()` and inspect `.warnings` for partial results. `result.metadata` reports `upstream_page`, `upstream_pages`, `has_more`, `page_complete`, and `collection_complete` where pagination applies. `.dataset_id`, `.provider_id`, `.captured_at`, `.provenance`, `.attempts`, `.fallback_used`, and `.cache_hit` carry retrieval and audit details.
+
+**Parameters**
+
+| Parameter | Type | Required / mode | Default | Meaning |
+| --- | --- | --- | --- | --- |
+| dataset | Literal['abnormal_events', 'severe_events', 'prediction_history'] | Required | — | Required selector: `abnormal_events`, `severe_events`, or `prediction_history`. |
+| page | int | Optional | 1 | One-based upstream page number. A request fetches this page only; local current-session exclusion does not scan other pages. |
+| page_size | int | Optional | 20 | Rows requested from the upstream page; maximum 200. Local current-session exclusion may reduce the returned row count. |
+| status | Literal['current', 'history', 'all'] \| None | Optional | None | For severe events: `current`, `history`, or `all`; omitted/None selects current rows. |
+| triggered | Literal['all', 'yes', 'no'] \| None | Optional | None | Prediction-history filter: `yes`, `no`, or `all`; unknown flags match neither yes nor no. |
+| rise_only | bool \| None | Optional | None | Prediction-history positive-only filter; only the verified provider flag is sent upstream. |
+| include_current | bool \| None | Optional | None | When false, remove current-session rows locally; unknown current flags remain unknown. |
+
+**Output fields**
+
+Data model: `AbnormalRecordData`
+
+A tagged union of the row models below; `dataset` identifies the row type.
+
+Nested business model: `AbnormalEventData`
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| code | str | Six-digit instrument code reported by EastMoney. |
+| name | str | Security name supplied by EastMoney. |
+| instrumentId | str | Instrument identity decoded from SECUCODE. |
+| exchange | Exchange | Exchange decoded from the SECUCODE suffix. |
+| eventStartDate | date \| None | Source event start date when supplied. |
+| eventEndDate | date \| None | Source event end date when supplied. |
+| announcementId | str \| None | Source INFO_CODE when supplied. |
+| announcementDate | date \| None | Announcement date supplied by EastMoney. |
+| announcementUrl | str \| None | EastMoney notice URL formed from INFO_CODE when present. |
+| reasonText | str \| None | Source abnormality reason text. |
+| reasonTypeText | str \| None | Source abnormality reason-type text. |
+| disclosureExchange | str \| None | Original disclosure-market text; not normalized to FinchX Exchange. |
+| providerEventType | str | Original UNUSUAL_TYPE marker: 001 ordinary or 002 severe. |
+| providerValues | dict[str, Any] | Original EastMoney values retained for audit. |
+| dataset | Literal['abnormal_events'] | — |
+| eventType | Literal['ordinary'] | Normalized event class for UNUSUAL_TYPE=001. |
+
+Nested business model: `PredictionHistoryData`
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| dataset | Literal['prediction_history'] | — |
+| code | str | Six-digit instrument code reported by EastMoney. |
+| name | str | Security name supplied by EastMoney. |
+| instrumentId | str | Instrument identity decoded from SECUCODE. |
+| exchange | Exchange | Exchange decoded from the SECUCODE suffix. |
+| tradeDate | date | Prediction-history trade date. |
+| changeRatio | Decimal \| None | Source CHANGE_RATE percentage points divided by 100; 3% is 0.03. |
+| deviationWindowDays | int \| None | Source MAX_DAYS value; preserved as supplied without asserting a calculation convention. |
+| deviation | Decimal \| None | Source DEVUATION_VALUE percentage points divided by 100. |
+| triggerChangeRatio | Decimal \| None | Source CHANGE_RATE_TARGET percentage points divided by 100. |
+| isTriggered | bool \| None | IS_HAPPEN 1 maps to true, 0 to false; unknown values remain null. |
+| providerRuleText | str \| None | Original UNUSUAL_TYPE text; it is not coerced to an event-code enum. |
+| providerCurrentSessionFlag | bool \| None | IS_SYSDATE 1 maps to true, 0 to false; unknown values remain null. |
+| providerPositiveFlag | bool \| None | IS_POSITIVE 1 maps to true, 0 to false; unknown values remain null. |
+| providerMarketCode | str \| None | Original MARKET_CODE value; its semantics are provider-specific. |
+| providerValues | dict[str, Any] | Original EastMoney values retained for audit, including RANK_TYPE. |
+
+Nested business model: `SevereEventData`
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| code | str | Six-digit instrument code reported by EastMoney. |
+| name | str | Security name supplied by EastMoney. |
+| instrumentId | str | Instrument identity decoded from SECUCODE. |
+| exchange | Exchange | Exchange decoded from the SECUCODE suffix. |
+| eventStartDate | date \| None | Source event start date when supplied. |
+| eventEndDate | date \| None | Source event end date when supplied. |
+| announcementId | str \| None | Source INFO_CODE when supplied. |
+| announcementDate | date \| None | Announcement date supplied by EastMoney. |
+| announcementUrl | str \| None | EastMoney notice URL formed from INFO_CODE when present. |
+| reasonText | str \| None | Source abnormality reason text. |
+| reasonTypeText | str \| None | Source abnormality reason-type text. |
+| disclosureExchange | str \| None | Original disclosure-market text; not normalized to FinchX Exchange. |
+| providerEventType | str | Original UNUSUAL_TYPE marker: 001 ordinary or 002 severe. |
+| providerValues | dict[str, Any] | Original EastMoney values retained for audit. |
+| dataset | Literal['severe_events'] | — |
+| eventType | Literal['severe'] | Normalized event class for UNUSUAL_TYPE=002. |
+| expectedMonitorStartDate | date \| None | Provider prediction monitoring start date. |
+| expectedMonitorEndDate | date \| None | Provider prediction monitoring end date. |
+| providerMonitorStatus | Literal['current', 'history', 'unknown'] | IS_HIS=1 maps to current, 0 to history; other values remain unknown. |
+| providerMonitorStatusRaw | str \| None | Original IS_HIS marker. |
+
+### `fx.market.severe_predictions(...)`
+
+**What it provides**
+Fetch the bounded severe-prediction pool and preserve unrecognized provider states.
+
+**Data source**
+`eastmoney.regulation`
+
+**Pool and source-field semantics**
+The client requests pages of 200 and stops after at most 10 pages. `collection_complete` is false when source pages remain or pagination changes while fetching. `provider_count_raw` and `provider_open_raw` retain source fields without treating them as result totals or boolean state. Row percentages are normalized to ratio fractions (`95.69` becomes `0.9569`) while `providerValues` keeps source values.
+Current- and next-session rows are returned together. Unknown provider states remain `horizon="unknown"` with the source marker preserved in `providerValues`.
+
+**Example**
+
+<!-- api-example: market.severe_predictions -->
+```python
+from finchx import FinchX
+
+fx = FinchX()
+result = fx.market.severe_predictions(
+    rise_only=False,  # Request only rows the provider marks as rising.
+    include_bse=True,  # Request BSE rows from the provider.
+)
+
+print(result.data)  # Native typed data or records.
+rows = result.to_dicts()  # JSON-compatible business rows.
+print(rows[:1])
+print(result.warnings)  # Check for partial or recoverable issues.
+```
+
+**Returned value and recommended use**
+Returns a `FetchResult`. `.data` is a tuple of normalized records; each record's `.data` contains the Dataset row payload. The Dataset row schema `SeverePredictionData` has business fields such as `dataset`, `code`, `name`, `instrumentId`. Use the named business fields for follow-up filtering, comparisons, or charts. Export JSON-compatible rows with `.to_dicts()` and inspect `.warnings` for partial results. `result.metadata` reports `upstream_page`, `upstream_pages`, `has_more`, `page_complete`, and `collection_complete` where pagination applies. `.dataset_id`, `.provider_id`, `.captured_at`, `.provenance`, `.attempts`, `.fallback_used`, and `.cache_hit` carry retrieval and audit details.
+
+**Parameters**
+
+| Parameter | Type | Required / mode | Default | Meaning |
+| --- | --- | --- | --- | --- |
+| rise_only | bool | Optional | False | When true, request only rows the provider marks as rising. |
+| include_bse | bool | Optional | True | Request BSE rows from the provider. |
+
+**Output fields**
+
+Data model: `SeverePredictionData`
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| dataset | Literal['severe_predictions'] | — |
+| code | str | Six-digit instrument code supplied by the prediction pool. |
+| name | str | Security name supplied by the prediction pool. |
+| instrumentId | str \| None | Identity decoded from the provider board code when recognized; otherwise null. |
+| exchange | Exchange \| None | Exchange decoded from s: 4 is SZSE, 5 is SSE, 6 is BSE; unknown board codes remain null. |
+| providerMarketCode | int \| str \| None | Original m value; it is not used alone to infer the exchange. |
+| providerBoardCode | int \| str \| None | Original s board code. |
+| providerRuleCode | int \| str \| None | Original e rule code; retained even when FinchX cannot interpret it. |
+| ruleSemanticId | str \| None | Stable FinchX interpretation derived from recognized board and rule codes; null for unknown rules. |
+| ruleLabel | str \| None | Readable label for the recognized rule; the provider values remain available separately. |
+| deviation | Decimal \| None | Source x percentage points divided by 100; 95.69 becomes 0.9569. |
+| deviationWindowDays | int \| None | Source d value retained as supplied. |
+| triggerChangeRatio | Decimal \| None | Source t trigger percentage points divided by 100. |
+| changeRatio | Decimal \| None | Source a percentage points divided by 100. |
+| horizon | Literal['current_session', 'next_session', 'unknown'] | Derived from o: 0/1 are current-session states, 2 is next-session, other values are unknown. |
+| isTriggered | bool \| None | o=0 maps to false, 1 to true, and 2 or unknown values to null. |
+| providerSignalState | int \| str \| None | Original o signal-state value. |
+| providerValues | dict[str, Any] | Original provider row, including source percentage values. |
+
+### `fx.market.abnormal_counts(...)`
+
+**What it provides**
+Fetch the bounded abnormal-count pool while keeping ambiguous provider counters as raw evidence.
+
+**Data source**
+`eastmoney.regulation`
+
+**Pool and source-field semantics**
+The client requests pages of 200 and stops after at most 10 pages. `collection_complete` is false when source pages remain or pagination changes while fetching. `provider_count_raw` and `provider_open_raw` retain source fields without treating them as result totals or boolean state. Row percentages are normalized to ratio fractions (`95.69` becomes `0.9569`) while `providerValues` keeps source values.
+`/count.t` is the row's event count, not the pool total. The source meaning of `d` is not asserted; it remains in `providerValues`.
+
+**Example**
+
+<!-- api-example: market.abnormal_counts -->
+```python
+from finchx import FinchX
+
+fx = FinchX()
+result = fx.market.abnormal_counts(
+    sort_by='count',  # Provider order key: `count`, `price`, or `max_deviation`.
+    order='desc',  # Provider sort direction: `asc` or `desc`.
+)
+
+print(result.data)  # Native typed data or records.
+rows = result.to_dicts()  # JSON-compatible business rows.
+print(rows[:1])
+print(result.warnings)  # Check for partial or recoverable issues.
+```
+
+**Returned value and recommended use**
+Returns a `FetchResult`. `.data` is a tuple of normalized records; each record's `.data` contains the Dataset row payload. The Dataset row schema `AbnormalCountData` has business fields such as `dataset`, `code`, `name`, `instrumentId`. Use the named business fields for follow-up filtering, comparisons, or charts. Export JSON-compatible rows with `.to_dicts()` and inspect `.warnings` for partial results. `result.metadata` reports `upstream_page`, `upstream_pages`, `has_more`, `page_complete`, and `collection_complete` where pagination applies. `.dataset_id`, `.provider_id`, `.captured_at`, `.provenance`, `.attempts`, `.fallback_used`, and `.cache_hit` carry retrieval and audit details.
+
+**Parameters**
+
+| Parameter | Type | Required / mode | Default | Meaning |
+| --- | --- | --- | --- | --- |
+| sort_by | Literal['count', 'price', 'max_deviation'] | Optional | 'count' | Provider order key: `count`, `price`, or `max_deviation`. |
+| order | Literal['asc', 'desc'] | Optional | 'desc' | Provider sort direction: `asc` or `desc`. |
+
+**Output fields**
+
+Data model: `AbnormalCountData`
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| dataset | Literal['abnormal_counts'] | — |
+| code | str | Six-digit instrument code supplied by the count pool. |
+| name | str | Security name supplied by the count pool. |
+| instrumentId | str \| None | Identity decoded from the provider board code when recognized; otherwise null. |
+| exchange | Exchange \| None | Exchange decoded from s: 4 is SZSE, 5 is SSE, 6 is BSE; unknown board codes remain null. |
+| providerMarketCode | int \| str \| None | Original m value; it is not used alone to infer the exchange. |
+| providerBoardCode | int \| str \| None | Original s board code. |
+| price | Decimal \| None | Source price in CNY per share. |
+| changeRatio | Decimal \| None | Source a percentage points divided by 100. |
+| abnormalCount | int \| None | Number from /count.t; it is a row-level count, not a pool total. |
+| maxDeviation10d | Decimal \| None | Source x percentage points divided by 100. |
+| providerValues | dict[str, Any] | Original provider row retained, including d whose semantics are not asserted. |
 
 ### `fx.market.deviation(...)`
 
@@ -3374,7 +3685,7 @@ benchmark_return = current_index_close / baseline_index_close - 1
 deviation = stock_return - benchmark_return
 ```
 
-The baseline is the close immediately before the selected window starts. Values are ratio fractions (`0.03` means 3%). `max_deviation_scan` selects the eligible start with the largest stock-minus-benchmark return; `strict_exchange_window` uses the exchange-shaped start. Unsupported codes or insufficient aligned history raise an error instead of returning zero.
+The baseline is the close immediately before the selected window starts. Values are ratio fractions (`0.03` means 3%). The default is `DeviationWindowConvention.MAX_DEVIATION_SCAN` and can be omitted; `STRICT_EXCHANGE_WINDOW` uses the exchange-shaped start. Unsupported codes or insufficient aligned history raise an error instead of returning zero.
 The result reports `calculationMode = "official_close"`, `priceBasis = "qfq_stock__raw_index"`, and the frozen rule-set identifier in `ruleVersion`.
 
 | Window | Upper threshold | Lower threshold |
@@ -3387,13 +3698,15 @@ The result reports `calculationMode = "official_close"`, `priceBasis = "qfq_stoc
 <!-- api-example: market.deviation -->
 ```python
 from finchx import FinchX
+from finchx.computed import DeviationWindowConvention
 
 fx = FinchX()
+
 result = fx.market.deviation(
     instrument="600519",  # Six-digit A-share code; the endpoint resolves its market.
     windows=(10, 30),  # Compare 10- and 30-session windows.
     as_of="2026-09-23",  # Last completed session to include.
-    window_convention="max_deviation_scan",  # Scan the documented deviation convention.
+    window_convention=DeviationWindowConvention.MAX_DEVIATION_SCAN,  # Choose a convention; omit this argument to use the default MAX_DEVIATION_SCAN.
 )
 
 print(result.data)  # Native typed data or records.
@@ -3412,7 +3725,7 @@ Returns a `FetchResult`. `.data` is one `DeviationData` model. The Dataset row s
 | instrument | str | Required | — | Six-digit instrument code; FinchX resolves its market context. |
 | windows | Sequence[int] | Optional | (10, 30) | Deviation windows, in trading sessions. |
 | as_of | date \| str \| None | Optional | None | Optional completed-session date; accepts YYYY-MM-DD, YYYYMMDD, or YYYY/MM/DD strings. |
-| window_convention | DeviationWindowConvention | Optional | DeviationWindowConvention.MAX_DEVIATION_SCAN | Deviation window interpretation. |
+| window_convention | DeviationWindowConvention \| Literal['max_deviation_scan', 'strict_exchange_window'] | Optional | DeviationWindowConvention.MAX_DEVIATION_SCAN | Choose a deviation convention; omit it to use the default MAX_DEVIATION_SCAN. |
 
 **Output fields**
 
@@ -3645,9 +3958,7 @@ Returns a `FetchResult`. `.data` is a tuple of normalized records; each record's
 
 Data model: `HotContentData`
 
-| Field | Type | Meaning |
-| --- | --- | --- |
-| root | HotTopicData \| HotCommentData \| HotArticleData | — |
+A tagged union of the row models below; `dataset` identifies the row type.
 
 Nested business model: `HotArticleData`
 

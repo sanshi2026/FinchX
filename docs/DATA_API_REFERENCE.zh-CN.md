@@ -2,7 +2,7 @@
 
 [English](DATA_API_REFERENCE.md) | 简体中文
 
-本文档覆盖 54 个数据接口 + 1 个计算能力 = 55 个核心能力。
+本文档覆盖 58 个数据接口 + 1 个计算能力 = 59 个核心能力。
 
 ## 1. FinchX 是什么 / 架构概览
 
@@ -78,11 +78,11 @@ print(result.warnings)
 | `fx.market.fund_flow_daily(...)` | 获取个股每日资金流数据。 | `tencent.finance.qq.fund_flow` |
 | `fx.market.fund_flow_intraday(...)` | 获取个股盘中资金流数据。 | `tencent.finance.qq.fund_flow` |
 | `fx.market.fund_flow_snapshot(...)` | 获取资金流快照。 | `tencent.finance.qq.fund_flow` |
-| `fx.market.ohlcv(...)` | 获取个股日线 OHLCV 数据。 | `tencent.finance.qq.klines`, `sohu.finance.klines` |
+| `fx.market.ohlcv(...)` | 获取股票或受支持指数的日线 OHLCV 数据。 | `tencent.finance.qq.klines`, `sohu.finance.klines` |
 | `fx.market.orderbook(...)` | 获取个股盘口数据。 | `tencent.finance.qq.quote` |
 | `fx.market.quote(...)` | 获取全市场行情快照。 | `tencent.finance.qq.market` |
 | `fx.market.ranking(...)` | 按指定指标获取 A 股个股排行。 | `tencent.finance.qq.market` |
-| `fx.market.quote_snapshot(...)` | 获取单个标的的行情快照。 | `tencent.finance.qq.quote` |
+| `fx.market.quote_snapshot(...)` | 获取 SSE/SZSE 股票或受支持指数的行情快照。 | `tencent.finance.qq.quote` |
 
 ### 个股信息与基本面
 
@@ -123,10 +123,14 @@ print(result.warnings)
 | `fx.market.dragon_tiger_detail(...)` | 获取指定标的的龙虎榜明细。 | `aigupiao.dragon_tiger` |
 | `fx.market.dragon_tiger_list(...)` | 获取指定交易日的龙虎榜列表。 | `aigupiao.dragon_tiger` |
 
-### 监管类：偏离值
+### 监管监测与偏离值
 
 | 接口 | 用途 | Provider |
 | --- | --- | --- |
+| `fx.market.regulation_watchlist(...)` | 获取东方财富最新监管监控名单，保留所有来源行，包括无法核实证券类别的行。 | `eastmoney.regulation` |
+| `fx.market.abnormal_records(...)` | 按 abnormal_events、severe_events 或 prediction_history 获取单个上游分页。 | `eastmoney.regulation` |
+| `fx.market.severe_predictions(...)` | 获取有页数上限的严重异常预测池，保留未知预测状态和来源原值。 | `eastmoney.regulation` |
+| `fx.market.abnormal_counts(...)` | 获取有页数上限的异常次数榜；保留来源 count 与 open 等未解释元数据。 | `eastmoney.regulation` |
 | `fx.market.deviation(...)` | 计算经过审计的基于收盘价的偏离值。 | — |
 
 ### 其他
@@ -1352,10 +1356,14 @@ print(result.warnings)  # 检查部分数据和可恢复问题。
 ### `fx.market.ohlcv(...)`
 
 **提供什么数据**
-获取个股日线 OHLCV 数据。
+获取股票或受支持指数的日线 OHLCV 数据。
 
 **数据源**
 `tencent.finance.qq.klines`, `sohu.finance.klines`
+
+**受支持的指数标识**
+请使用 `market:exchange:index:code` 完整标识，例如 `cn_a:sse:index:000001` 或 `cn_a:szse:index:399001`。当前白名单为 SSE `000001`、`000002`、`000688` 及 SZSE `399001`、`399006`、`399102`、`399107`。在这两个通用接口中，裸代码 `000001` 会解析为深交所股票，而不是上证指数。
+指数请求请省略 `adjustment` 或传入 `adjustment=None`；股票可使用 `qfq`、`hfq` 或不复权。OHLC 字段对股票表示每股 CNY，对指数表示指数点数。
 
 **示例**
 
@@ -1374,6 +1382,10 @@ print(result.data)  # 原生类型数据或记录。
 rows = result.to_dicts()  # JSON 兼容的业务数据行。
 print(rows[:1])
 print(result.warnings)  # 检查部分数据和可恢复问题。
+
+# 指数 K 线使用完整标识，且不复权。
+index_bars = fx.market.ohlcv("cn_a:sse:index:000001", "2026-09-01", "2026-09-23", adjustment=None)
+print(index_bars.to_dicts()[:1])
 ```
 
 **返回值与推荐用法**
@@ -1383,7 +1395,7 @@ print(result.warnings)  # 检查部分数据和可恢复问题。
 
 | 参数 | 类型 | 必填 / 模式 | 默认值 | 含义 |
 | --- | --- | --- | --- | --- |
-| instrument | str | 必填 | — | 六位证券代码；FinchX 根据接口语义解析市场。 |
+| instrument | str | 必填 | — | 六位股票代码，或以下七个受支持指数之一的完整标识：`cn_a:sse:index:000001`、`cn_a:sse:index:000002`、`cn_a:sse:index:000688`、`cn_a:szse:index:399001`、`cn_a:szse:index:399006`、`cn_a:szse:index:399102` 或 `cn_a:szse:index:399107`。此通用接口中裸代码 `000001` 表示深交所股票。 |
 | start_date | date \| str | 必填 | — | 包含在内的开始日期。 |
 | end_date | date \| str | 必填 | — | 包含在内的结束日期；支持 YYYY-MM-DD、YYYYMMDD 或 YYYY/MM/DD 字符串。 |
 | adjustment | str \| None | 可选 | None | 可选的公开复权参数：`qfq` 表示前复权，`hfq` 表示后复权，Python `None` 表示股票不复权；指数必须使用 `None`。 |
@@ -1394,14 +1406,14 @@ print(result.warnings)  # 检查部分数据和可恢复问题。
 
 | 字段 | 类型 | 含义 |
 | --- | --- | --- |
-| instrumentId | str | 证券代码。 |
+| instrumentId | str | 完整 FinchX 标识；指数 K 线会保留 market、exchange、kind 和 code。 |
 | barDate | date | — |
-| open | Decimal | 每股价格；币种为 CNY。 |
-| high | Decimal | 每股价格；币种为 CNY。 |
-| low | Decimal | 每股价格；币种为 CNY。 |
-| close | Decimal | 每股价格；币种为 CNY。 |
-| volume | int | 非负整数股数。 |
-| amount | Decimal \| None | — |
+| open | Decimal | 开盘价：股票单位为每股 CNY；指数单位为点数。 |
+| high | Decimal | 最高价：股票单位为每股 CNY；指数单位为点数。 |
+| low | Decimal | 最低价：股票单位为每股 CNY；指数单位为点数。 |
+| close | Decimal | 收盘价：股票单位为每股 CNY；指数单位为点数。 |
+| volume | int | 来源成交量规范化为整股（来源手数乘以 100）。 |
+| amount | Decimal \| None | 来源提供时的成交金额，单位为 CNY。 |
 | adjustment | KlineAdjustment | 输出复权标记：`none`、`qfq`、`hfq` 或 `not_applicable`。 |
 
 ### `fx.market.orderbook(...)`
@@ -1613,10 +1625,14 @@ print(result.warnings)  # 检查部分数据和可恢复问题。
 ### `fx.market.quote_snapshot(...)`
 
 **提供什么数据**
-获取单个标的的行情快照。
+获取 SSE/SZSE 股票或受支持指数的行情快照。
 
 **数据源**
 `tencent.finance.qq.quote`
+
+**受支持的指数标识**
+请使用 `market:exchange:index:code` 完整标识，例如 `cn_a:sse:index:000001` 或 `cn_a:szse:index:399001`。当前白名单为 SSE `000001`、`000002`、`000688` 及 SZSE `399001`、`399006`、`399102`、`399107`。在这两个通用接口中，裸代码 `000001` 会解析为深交所股票，而不是上证指数。
+行情价格字段对股票表示每股 CNY，对指数表示指数点数。
 
 **示例**
 
@@ -1632,6 +1648,12 @@ print(result.data)  # 原生类型数据或记录。
 rows = result.to_dicts()  # JSON 兼容的业务数据行。
 print(rows[:1])
 print(result.warnings)  # 检查部分数据和可恢复问题。
+
+# 使用完整标识；此通用接口中的裸 000001 表示深交所股票。
+sse_index = fx.market.quote_snapshot(instrument="cn_a:sse:index:000001")
+szse_index = fx.market.quote_snapshot(instrument="cn_a:szse:index:399001")
+print(sse_index.to_dicts()[:1])
+print(szse_index.to_dicts()[:1])
 ```
 
 **返回值与推荐用法**
@@ -1641,7 +1663,7 @@ print(result.warnings)  # 检查部分数据和可恢复问题。
 
 | 参数 | 类型 | 必填 / 模式 | 默认值 | 含义 |
 | --- | --- | --- | --- | --- |
-| instrument | str | 必填 | — | 六位证券代码；FinchX 根据接口语义解析市场。 |
+| instrument | str | 必填 | — | 六位股票代码，或指数完整标识，例如 `cn_a:sse:index:000001`、`cn_a:szse:index:399001`。此通用接口中裸代码 `000001` 表示深交所股票。支持的指数为 `cn_a:sse:index:000001`、`cn_a:sse:index:000002`、`cn_a:sse:index:000688`、`cn_a:szse:index:399001`、`cn_a:szse:index:399006`、`cn_a:szse:index:399102` 和 `cn_a:szse:index:399107`。 |
 
 **输出字段**
 
@@ -1650,12 +1672,12 @@ print(result.warnings)  # 检查部分数据和可恢复问题。
 | 字段 | 类型 | 含义 |
 | --- | --- | --- |
 | instrumentId | str | 证券代码。 |
-| price | Decimal | 最新价格，单位为每股 CNY。 |
-| previousClose | Decimal \| None | — |
-| open | Decimal \| None | 交易时段开盘价，单位为每股 CNY。 |
-| high | Decimal \| None | 交易时段最高价，单位为每股 CNY。 |
-| low | Decimal \| None | 交易时段最低价，单位为每股 CNY。 |
-| priceChange | Decimal \| None | — |
+| price | Decimal | 最新价格；股票为每股 CNY，指数为点数。 |
+| previousClose | Decimal \| None | 前收盘价；股票为每股 CNY，指数为点数。 |
+| open | Decimal \| None | 时段开盘价；股票为每股 CNY，指数为点数。 |
+| high | Decimal \| None | 时段最高价；股票为每股 CNY，指数为点数。 |
+| low | Decimal \| None | 时段最低价；股票为每股 CNY，指数为点数。 |
+| priceChange | Decimal \| None | 最新价与前收盘价之差；股票单位为 CNY，指数单位为点。 |
 | changeRate | Decimal \| None | 相对前收盘价的变动比例小数；3% 表示为 0.03。 |
 | volume | int \| None | 本交易时段累计成交股数。 |
 | amount | Decimal \| None | 本交易时段累计成交金额，单位为 CNY。 |
@@ -3298,7 +3320,293 @@ print(result.warnings)  # 检查部分数据和可恢复问题。
 | themeId | int \| None | — |
 | themeName | str \| None | — |
 
-## 4.8 监管类：偏离值
+## 4.8 监管监测与偏离值
+
+### `fx.market.regulation_watchlist(...)`
+
+**提供什么数据**
+获取东方财富最新监管监控名单，保留所有来源行，包括无法核实证券类别的行。
+
+**数据源**
+`eastmoney.regulation`
+
+**证券类别覆盖**
+来源没有可核实的证券类别。FinchX 返回所有来源行，`instrumentId` 保持 null，且 `result.metadata.classification_complete` 为 false。包括 `MARKET` 在内的原始字段保留在 `providerValues` 中。
+
+**示例**
+
+<!-- api-example: market.regulation_watchlist -->
+```python
+from finchx import FinchX
+
+fx = FinchX()
+result = fx.market.regulation_watchlist()
+print(result.data)  # 原生类型数据或记录。
+rows = result.to_dicts()  # JSON 兼容的业务数据行。
+print(rows[:1])
+print(result.warnings)  # 检查部分数据和可恢复问题。
+```
+
+**返回值与推荐用法**
+返回 `FetchResult`。`.data` 是标准化记录元组；每条记录的 `.data` 保存 Dataset 行载荷。 Dataset 行模式 `RegulationWatchlistData` 的业务字段包括 `dataset`, `code`, `name`, `instrumentId` 等。使用这些业务字段进行后续筛选、比较或绘图。 用 `.to_dicts()` 导出 JSON 兼容数据，并检查 `.warnings` 了解部分结果情况。 分页相关的 `result.metadata` 会提供 `upstream_page`、`upstream_pages`、`has_more`、`page_complete` 和 `collection_complete`。 `.dataset_id`、`.provider_id`、`.captured_at`、`.provenance`、`.attempts`、`.fallback_used` 和 `.cache_hit` 提供采集与审计信息。
+
+**参数**
+
+无。
+
+**输出字段**
+
+数据模型：`RegulationWatchlistData`
+
+| 字段 | 类型 | 含义 |
+| --- | --- | --- |
+| dataset | Literal['regulation_watchlist'] | — |
+| code | str | 来源原始证券代码。 |
+| name | str | 来源提供的证券名称。 |
+| instrumentId | str \| None | — |
+| exchange | Exchange \| None | 由 MARKET 解码交易所：1 为 SSE、0 为 SZSE、B 为 BSE；未知代码保留 null。 |
+| monitorStartDate | date \| None | 来源监控开始日期。 |
+| expectedEndDate | date \| None | 来源提供时的监控结束日期。 |
+| noticeUrl | str \| None | 来源提供时关联的公告 URL。 |
+| providerValues | dict[str, Any] | 东方财富原始行字段，包括未识别标记。 |
+
+### `fx.market.abnormal_records(...)`
+
+**提供什么数据**
+按 abnormal_events、severe_events 或 prediction_history 获取单个上游分页。
+
+**数据源**
+`eastmoney.regulation`
+
+**分页与筛选口径**
+每次调用必须选择一个 `dataset`：`abnormal_events`、`severe_events` 或 `prediction_history`。每次只取从 1 开始的一个上游页（`page_size` 最大 200），不会自动扫描完整历史。请根据 `result.metadata.has_more` 显式请求后续页。经验证的 `triggered` 与 `rise_only` 会下推；`include_current` 在本地处理，仅排除明确标为当前交易日的记录。`page_complete` 表示本次上游页完整；仅覆盖所选数据集的全部结果时 `collection_complete` 才为 true。
+严重事件默认取来源当前状态。来源 0/1 标记无法识别时保留 null，不会当作 false。
+
+**示例**
+
+<!-- api-example: market.abnormal_records -->
+```python
+from finchx import FinchX
+
+fx = FinchX()
+# 每次调用只取指定 dataset 的一页；需要后续数据时显式请求下一页。
+ordinary = fx.market.abnormal_records(dataset="abnormal_events", page=1, page_size=20)
+severe = fx.market.abnormal_records(dataset="severe_events", page=1, page_size=20, status="current")
+history = fx.market.abnormal_records(dataset="prediction_history", page=1, page_size=20, triggered="all", rise_only=False, include_current=None)
+for name, result in (("ordinary", ordinary), ("severe", severe), ("history", history)):
+    print(name, result.to_dicts()[:1], result.metadata.get("has_more"))
+    print(result.warnings)
+```
+
+**返回值与推荐用法**
+返回 `FetchResult`。`.data` 是标准化记录元组；每条记录的 `.data` 保存 Dataset 行载荷。 Dataset 行模式 `AbnormalRecordData` 的业务字段包括 `dataset`, `code`, `name`, `exchange` 等。使用这些业务字段进行后续筛选、比较或绘图。 用 `.to_dicts()` 导出 JSON 兼容数据，并检查 `.warnings` 了解部分结果情况。 分页相关的 `result.metadata` 会提供 `upstream_page`、`upstream_pages`、`has_more`、`page_complete` 和 `collection_complete`。 `.dataset_id`、`.provider_id`、`.captured_at`、`.provenance`、`.attempts`、`.fallback_used` 和 `.cache_hit` 提供采集与审计信息。
+
+**参数**
+
+| 参数 | 类型 | 必填 / 模式 | 默认值 | 含义 |
+| --- | --- | --- | --- | --- |
+| dataset | Literal['abnormal_events', 'severe_events', 'prediction_history'] | 必填 | — | 必填选择项：`abnormal_events`、`severe_events` 或 `prediction_history`。 |
+| page | int | 可选 | 1 | 从 1 开始的上游页码。每次只获取这一页；本地当前交易日筛选不会扫描其他页。 |
+| page_size | int | 可选 | 20 | 从上游请求的单页行数；最大 200。本地排除当前交易日记录后，返回行数可能减少。 |
+| status | Literal['current', 'history', 'all'] \| None | 可选 | None | 仅适用于严重事件：`current`、`history` 或 `all`；省略/None 时读取当前记录。 |
+| triggered | Literal['all', 'yes', 'no'] \| None | 可选 | None | 预测历史筛选：`yes`、`no` 或 `all`；未知标记既不匹配 yes 也不匹配 no。 |
+| rise_only | bool \| None | 可选 | None | 预测历史只看上涨记录；仅发送已验证的来源筛选标记。 |
+| include_current | bool \| None | 可选 | None | 设为 false 时在本地排除当前交易日记录；来源状态未知时仍保留为未知。 |
+
+**输出字段**
+
+数据模型：`AbnormalRecordData`
+
+以下行模式组成带标签的联合类型；`dataset` 标识具体行类型。
+
+嵌套业务模型： `AbnormalEventData`
+
+| 字段 | 类型 | 含义 |
+| --- | --- | --- |
+| code | str | 东方财富报告的六位证券代码。 |
+| name | str | 东方财富提供的证券名称。 |
+| instrumentId | str | 根据 SECUCODE 解码的证券标识。 |
+| exchange | Exchange | 根据 SECUCODE 后缀解码的交易所。 |
+| eventStartDate | date \| None | 来源提供时的事件开始日期。 |
+| eventEndDate | date \| None | 来源提供时的事件结束日期。 |
+| announcementId | str \| None | 来源提供时的 INFO_CODE。 |
+| announcementDate | date \| None | 东方财富提供的公告日期。 |
+| announcementUrl | str \| None | 存在 INFO_CODE 时据此构造东方财富公告 URL。 |
+| reasonText | str \| None | 来源提供的异动原因文本。 |
+| reasonTypeText | str \| None | 来源提供的异动原因类型文本。 |
+| disclosureExchange | str \| None | 来源原始披露市场文本；不转换为 FinchX Exchange。 |
+| providerEventType | str | 来源原始 UNUSUAL_TYPE 标记：001 普通事件、002 严重事件。 |
+| providerValues | dict[str, Any] | 保留东方财富原始值供审计。 |
+| dataset | Literal['abnormal_events'] | — |
+| eventType | Literal['ordinary'] | UNUSUAL_TYPE=001 对应的规范化事件类别。 |
+
+嵌套业务模型： `PredictionHistoryData`
+
+| 字段 | 类型 | 含义 |
+| --- | --- | --- |
+| dataset | Literal['prediction_history'] | — |
+| code | str | 东方财富报告的六位证券代码。 |
+| name | str | 东方财富提供的证券名称。 |
+| instrumentId | str | 根据 SECUCODE 解码的证券标识。 |
+| exchange | Exchange | 根据 SECUCODE 后缀解码的交易所。 |
+| tradeDate | date | 预测历史交易日期。 |
+| changeRatio | Decimal \| None | 来源 CHANGE_RATE 百分点除以 100；3% 表示为 0.03。 |
+| deviationWindowDays | int \| None | 来源 MAX_DAYS 值原样保留，不推断其计算口径。 |
+| deviation | Decimal \| None | 来源 DEVUATION_VALUE 百分点除以 100。 |
+| triggerChangeRatio | Decimal \| None | 来源 CHANGE_RATE_TARGET 百分点除以 100。 |
+| isTriggered | bool \| None | IS_HAPPEN=1 映射为 true、0 为 false；未知值保留 null。 |
+| providerRuleText | str \| None | 来源原始 UNUSUAL_TYPE 文本；不强行转换为事件码枚举。 |
+| providerCurrentSessionFlag | bool \| None | IS_SYSDATE=1 映射为 true、0 为 false；未知值保留 null。 |
+| providerPositiveFlag | bool \| None | IS_POSITIVE=1 映射为 true、0 为 false；未知值保留 null。 |
+| providerMarketCode | str \| None | 来源原始 MARKET_CODE；其语义由来源定义。 |
+| providerValues | dict[str, Any] | 保留东方财富原始值供审计，包括 RANK_TYPE。 |
+
+嵌套业务模型： `SevereEventData`
+
+| 字段 | 类型 | 含义 |
+| --- | --- | --- |
+| code | str | 东方财富报告的六位证券代码。 |
+| name | str | 东方财富提供的证券名称。 |
+| instrumentId | str | 根据 SECUCODE 解码的证券标识。 |
+| exchange | Exchange | 根据 SECUCODE 后缀解码的交易所。 |
+| eventStartDate | date \| None | 来源提供时的事件开始日期。 |
+| eventEndDate | date \| None | 来源提供时的事件结束日期。 |
+| announcementId | str \| None | 来源提供时的 INFO_CODE。 |
+| announcementDate | date \| None | 东方财富提供的公告日期。 |
+| announcementUrl | str \| None | 存在 INFO_CODE 时据此构造东方财富公告 URL。 |
+| reasonText | str \| None | 来源提供的异动原因文本。 |
+| reasonTypeText | str \| None | 来源提供的异动原因类型文本。 |
+| disclosureExchange | str \| None | 来源原始披露市场文本；不转换为 FinchX Exchange。 |
+| providerEventType | str | 来源原始 UNUSUAL_TYPE 标记：001 普通事件、002 严重事件。 |
+| providerValues | dict[str, Any] | 保留东方财富原始值供审计。 |
+| dataset | Literal['severe_events'] | — |
+| eventType | Literal['severe'] | UNUSUAL_TYPE=002 对应的规范化事件类别。 |
+| expectedMonitorStartDate | date \| None | 来源预测监控开始日期。 |
+| expectedMonitorEndDate | date \| None | 来源预测监控结束日期。 |
+| providerMonitorStatus | Literal['current', 'history', 'unknown'] | IS_HIS=1 映射为 current、0 映射为 history；其他值保留为 unknown。 |
+| providerMonitorStatusRaw | str \| None | 来源原始 IS_HIS 标记。 |
+
+### `fx.market.severe_predictions(...)`
+
+**提供什么数据**
+获取有页数上限的严重异常预测池，保留未知预测状态和来源原值。
+
+**数据源**
+`eastmoney.regulation`
+
+**榜单与来源字段口径**
+客户端每页请求 200 行，最多读取 10 页。来源报告还有后续页或分页期间数据变化时，`collection_complete` 为 false。`provider_count_raw` 与 `provider_open_raw` 保留来源字段，不会被解释为结果总数或布尔状态。百分数统一规范为比例小数（`95.69` 转为 `0.9569`），`providerValues` 保留来源原始值。
+结果会同时返回当前交易日与下一交易日记录。来源状态未知时，`horizon` 保留为 `unknown`，原始标记保留在 `providerValues` 中。
+
+**示例**
+
+<!-- api-example: market.severe_predictions -->
+```python
+from finchx import FinchX
+
+fx = FinchX()
+result = fx.market.severe_predictions(
+    rise_only=False,  # 只请求来源标记为上涨的记录。
+    include_bse=True,  # 请求来源返回北交所记录。
+)
+print(result.data)  # 原生类型数据或记录。
+rows = result.to_dicts()  # JSON 兼容的业务数据行。
+print(rows[:1])
+print(result.warnings)  # 检查部分数据和可恢复问题。
+```
+
+**返回值与推荐用法**
+返回 `FetchResult`。`.data` 是标准化记录元组；每条记录的 `.data` 保存 Dataset 行载荷。 Dataset 行模式 `SeverePredictionData` 的业务字段包括 `dataset`, `code`, `name`, `instrumentId` 等。使用这些业务字段进行后续筛选、比较或绘图。 用 `.to_dicts()` 导出 JSON 兼容数据，并检查 `.warnings` 了解部分结果情况。 分页相关的 `result.metadata` 会提供 `upstream_page`、`upstream_pages`、`has_more`、`page_complete` 和 `collection_complete`。 `.dataset_id`、`.provider_id`、`.captured_at`、`.provenance`、`.attempts`、`.fallback_used` 和 `.cache_hit` 提供采集与审计信息。
+
+**参数**
+
+| 参数 | 类型 | 必填 / 模式 | 默认值 | 含义 |
+| --- | --- | --- | --- | --- |
+| rise_only | bool | 可选 | False | 为 true 时，只请求来源标记为上涨的记录。 |
+| include_bse | bool | 可选 | True | 请求来源返回北交所记录。 |
+
+**输出字段**
+
+数据模型：`SeverePredictionData`
+
+| 字段 | 类型 | 含义 |
+| --- | --- | --- |
+| dataset | Literal['severe_predictions'] | — |
+| code | str | 预测池提供的六位证券代码。 |
+| name | str | 预测池提供的证券名称。 |
+| instrumentId | str \| None | 能识别来源板块码时解码证券标识，否则为 null。 |
+| exchange | Exchange \| None | 由 s 解码交易所：4 为 SZSE、5 为 SSE、6 为 BSE；未知板块码保留 null。 |
+| providerMarketCode | int \| str \| None | 来源原始 m 值；不会仅凭此值推断交易所。 |
+| providerBoardCode | int \| str \| None | 来源原始 s 板块码。 |
+| providerRuleCode | int \| str \| None | 来源原始 e 规则码；即使 FinchX 无法解释也会保留。 |
+| ruleSemanticId | str \| None | 根据可识别的板块码和规则码生成稳定的 FinchX 语义标识；未知规则为 null。 |
+| ruleLabel | str \| None | 已识别规则的可读标签；来源原值另行保留。 |
+| deviation | Decimal \| None | 来源 x 百分点除以 100；95.69 转换为 0.9569。 |
+| deviationWindowDays | int \| None | 来源 d 值原样保留。 |
+| triggerChangeRatio | Decimal \| None | 来源 t 触发涨跌幅百分点除以 100。 |
+| changeRatio | Decimal \| None | 来源 a 百分点除以 100。 |
+| horizon | Literal['current_session', 'next_session', 'unknown'] | 根据 o 推导：0/1 表示当前交易日状态，2 表示下一交易日，其他值为 unknown。 |
+| isTriggered | bool \| None | o=0 映射为 false、1 为 true；2 或未知值映射为 null。 |
+| providerSignalState | int \| str \| None | 来源原始 o 信号状态值。 |
+| providerValues | dict[str, Any] | 来源原始行，包括来源百分比数值。 |
+
+### `fx.market.abnormal_counts(...)`
+
+**提供什么数据**
+获取有页数上限的异常次数榜；保留来源 count 与 open 等未解释元数据。
+
+**数据源**
+`eastmoney.regulation`
+
+**榜单与来源字段口径**
+客户端每页请求 200 行，最多读取 10 页。来源报告还有后续页或分页期间数据变化时，`collection_complete` 为 false。`provider_count_raw` 与 `provider_open_raw` 保留来源字段，不会被解释为结果总数或布尔状态。百分数统一规范为比例小数（`95.69` 转为 `0.9569`），`providerValues` 保留来源原始值。
+`/count.t` 是单行异动次数，不是榜单总数。来源 `d` 的含义不作推断，并保留在 `providerValues` 中。
+
+**示例**
+
+<!-- api-example: market.abnormal_counts -->
+```python
+from finchx import FinchX
+
+fx = FinchX()
+result = fx.market.abnormal_counts(
+    sort_by='count',  # 来源排序字段：`count`、`price` 或 `max_deviation`。
+    order='desc',  # 来源排序方向：`asc` 或 `desc`。
+)
+print(result.data)  # 原生类型数据或记录。
+rows = result.to_dicts()  # JSON 兼容的业务数据行。
+print(rows[:1])
+print(result.warnings)  # 检查部分数据和可恢复问题。
+```
+
+**返回值与推荐用法**
+返回 `FetchResult`。`.data` 是标准化记录元组；每条记录的 `.data` 保存 Dataset 行载荷。 Dataset 行模式 `AbnormalCountData` 的业务字段包括 `dataset`, `code`, `name`, `instrumentId` 等。使用这些业务字段进行后续筛选、比较或绘图。 用 `.to_dicts()` 导出 JSON 兼容数据，并检查 `.warnings` 了解部分结果情况。 分页相关的 `result.metadata` 会提供 `upstream_page`、`upstream_pages`、`has_more`、`page_complete` 和 `collection_complete`。 `.dataset_id`、`.provider_id`、`.captured_at`、`.provenance`、`.attempts`、`.fallback_used` 和 `.cache_hit` 提供采集与审计信息。
+
+**参数**
+
+| 参数 | 类型 | 必填 / 模式 | 默认值 | 含义 |
+| --- | --- | --- | --- | --- |
+| sort_by | Literal['count', 'price', 'max_deviation'] | 可选 | 'count' | 来源排序字段：`count`、`price` 或 `max_deviation`。 |
+| order | Literal['asc', 'desc'] | 可选 | 'desc' | 来源排序方向：`asc` 或 `desc`。 |
+
+**输出字段**
+
+数据模型：`AbnormalCountData`
+
+| 字段 | 类型 | 含义 |
+| --- | --- | --- |
+| dataset | Literal['abnormal_counts'] | — |
+| code | str | 次数榜提供的六位证券代码。 |
+| name | str | 次数榜提供的证券名称。 |
+| instrumentId | str \| None | 能识别来源板块码时解码证券标识，否则为 null。 |
+| exchange | Exchange \| None | 由 s 解码交易所：4 为 SZSE、5 为 SSE、6 为 BSE；未知板块码保留 null。 |
+| providerMarketCode | int \| str \| None | 来源原始 m 值；不会仅凭此值推断交易所。 |
+| providerBoardCode | int \| str \| None | 来源原始 s 板块码。 |
+| price | Decimal \| None | 来源价格，单位为每股 CNY。 |
+| changeRatio | Decimal \| None | 来源 a 百分点除以 100。 |
+| abnormalCount | int \| None | /count.t 的记录次数；这是单行次数，不是榜单总数。 |
+| maxDeviation10d | Decimal \| None | 来源 x 百分点除以 100。 |
+| providerValues | dict[str, Any] | 保留来源原始行，包括语义未确认的 d 字段。 |
 
 ### `fx.market.deviation(...)`
 
@@ -3327,7 +3635,7 @@ benchmark_return = 当前指数点位 / 窗口基准指数点位 - 1
 deviation = stock_return - benchmark_return
 ```
 
-基准值为所选窗口起点前一交易日的收盘价或指数点位。比例以小数表示（`0.03` 即 3%）。默认的 `max_deviation_scan` 会选择股票与基准收益差最大的合资格起点；`strict_exchange_window` 使用按交易所窗口形状确定的起点。不支持的代码或不足的对齐历史数据会报错，不会返回零值。
+基准值为所选窗口起点前一交易日的收盘价或指数点位。比例以小数表示（`0.03` 即 3%）。默认值为 `DeviationWindowConvention.MAX_DEVIATION_SCAN`，省略参数即可使用；`STRICT_EXCHANGE_WINDOW` 按交易所窗口形状确定起点。不支持的代码或不足的对齐历史数据会报错，不会返回零值。
 结果中的 `calculationMode` 为 `official_close`，`priceBasis` 为 `qfq_stock__raw_index`，`ruleVersion` 标识采用的冻结规则集。
 
 | 窗口 | 上阈值 | 下阈值 |
@@ -3340,13 +3648,15 @@ deviation = stock_return - benchmark_return
 <!-- api-example: market.deviation -->
 ```python
 from finchx import FinchX
+from finchx.computed import DeviationWindowConvention
 
 fx = FinchX()
+
 result = fx.market.deviation(
     instrument="600519",  # 六位 A 股代码；接口会解析其市场。
     windows=(10, 30),  # 比较 10 和 30 个交易时段。
     as_of="2026-09-23",  # 纳入计算的最后一个已完成交易日。
-    window_convention="max_deviation_scan",  # 使用文档说明的偏离窗口算法。
+    window_convention=DeviationWindowConvention.MAX_DEVIATION_SCAN,  # 选择偏离窗口解释方式；省略时使用默认的 MAX_DEVIATION_SCAN。
 )
 print(result.data)  # 原生类型数据或记录。
 rows = result.to_dicts()  # JSON 兼容的业务数据行。
@@ -3364,7 +3674,7 @@ print(result.warnings)  # 检查部分数据和可恢复问题。
 | instrument | str | 必填 | — | 六位证券代码；FinchX 根据接口语义解析市场。 |
 | windows | Sequence[int] | 可选 | (10, 30) | 以交易时段计的偏离窗口。 |
 | as_of | date \| str \| None | 可选 | None | 可选的已完成交易时段日期；支持 YYYY-MM-DD、YYYYMMDD 或 YYYY/MM/DD 字符串。 |
-| window_convention | DeviationWindowConvention | 可选 | DeviationWindowConvention.MAX_DEVIATION_SCAN | 偏离窗口解释方式。 |
+| window_convention | DeviationWindowConvention \| Literal['max_deviation_scan', 'strict_exchange_window'] | 可选 | DeviationWindowConvention.MAX_DEVIATION_SCAN | 选择偏离窗口解释方式；省略时使用默认的 MAX_DEVIATION_SCAN。 |
 
 **输出字段**
 
@@ -3593,9 +3903,7 @@ print(result.warnings)  # 检查部分数据和可恢复问题。
 
 数据模型：`HotContentData`
 
-| 字段 | 类型 | 含义 |
-| --- | --- | --- |
-| root | HotTopicData \| HotCommentData \| HotArticleData | — |
+以下行模式组成带标签的联合类型；`dataset` 标识具体行类型。
 
 嵌套业务模型： `HotArticleData`
 

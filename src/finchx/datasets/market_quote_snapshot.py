@@ -32,8 +32,12 @@ _SUPPORTED_EQUITY_PREFIXES = {
 }
 _SUPPORTED_INDEX_IDENTITIES = {
     (Exchange.SSE, "000001"),
+    (Exchange.SSE, "000002"),
+    (Exchange.SSE, "000688"),
     (Exchange.SZSE, "399001"),
     (Exchange.SZSE, "399006"),
+    (Exchange.SZSE, "399102"),
+    (Exchange.SZSE, "399107"),
 }
 
 
@@ -77,15 +81,32 @@ class MarketQuoteSnapshotRequest(ContractModel):
 
 
 class MarketQuoteSnapshotData(ContractModel):
-    """A single current quote snapshot; monetary values use CNY and volume uses shares."""
+    """A current equity quote or index-point snapshot."""
 
     instrument_id: InstrumentId = Field(alias="instrumentId")
-    price: Price = Field(description="Latest price in CNY per share.")
-    previous_close: Price | None = Field(default=None, alias="previousClose")
-    open: Price | None = Field(default=None, description="Session open in CNY per share.")
-    high: Price | None = Field(default=None, description="Session high in CNY per share.")
-    low: Price | None = Field(default=None, description="Session low in CNY per share.")
-    price_change: Price | None = Field(default=None, alias="priceChange")
+    price: Price = Field(description="Latest equity price in CNY per share or index level in points.")
+    previous_close: Price | None = Field(
+        default=None,
+        alias="previousClose",
+        description="Previous equity close in CNY per share or index close in points.",
+    )
+    open: Price | None = Field(
+        default=None,
+        description="Session open in CNY per share for equities or points for indices.",
+    )
+    high: Price | None = Field(
+        default=None,
+        description="Session high in CNY per share for equities or points for indices.",
+    )
+    low: Price | None = Field(
+        default=None,
+        description="Session low in CNY per share for equities or points for indices.",
+    )
+    price_change: Price | None = Field(
+        default=None,
+        alias="priceChange",
+        description="Change from previous close in CNY for equities or points for indices.",
+    )
     change_rate: Percentage | None = Field(
         default=None,
         alias="changeRate",

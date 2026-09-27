@@ -148,6 +148,18 @@ def test_generated_documents_are_current_and_have_all_capabilities():
     assert chinese == render("zh")
     assert set(_examples(english)) == set(EXAMPLE_SPECS) == set(all_endpoint_keys())
     assert len(_examples(english)) == len(all_endpoint_keys())
+    severe_predictions_example = _examples(english)["market.severe_predictions"]
+    assert "horizon=" not in severe_predictions_example
+    assert "instrument=" not in severe_predictions_example
+    regulation_examples = _examples(english)
+    assert "result = fx.market.regulation_watchlist()" in regulation_examples["market.regulation_watchlist"]
+    assert "instrument=" not in regulation_examples["market.abnormal_counts"]
+    records_example = regulation_examples["market.abnormal_records"]
+    assert all(f'dataset="{dataset}"' in records_example for dataset in (
+        "abnormal_events", "severe_events", "prediction_history"
+    ))
+    assert all(name not in records_example for name in ("instrument=", "start_date=", "end_date=", "600519"))
+    assert "instrument=" not in regulation_examples["market.regulation_watchlist"]
     count_phrase_en = (
         f"This document covers {len(provider_endpoint_keys())} data interfaces and "
         f"{len(computed_endpoint_keys())} computed capability, for "
@@ -213,10 +225,34 @@ def test_ohlcv_reference_documents_describe_public_adjustment_and_output_labels(
         assert "hfq" in output
         assert "not_applicable" in output
         assert "KlineAdjustment" in output
+        assert "index points" in output or "指数单位为点数" in output
+        assert "CNY per share" in output or "每股 CNY" in output
 
         example = _examples(document)["market.ohlcv"]
         assert "from finchx.datasets import KlineAdjustment" not in example
         assert 'adjustment="qfq"' in example
+        assert '"cn_a:sse:index:000001"' in example
+        assert "adjustment=None" in example
+
+
+def test_generic_quote_and_ohlcv_docs_list_supported_indices_and_disambiguate_bare_code():
+    identities = (
+        "cn_a:sse:index:000001",
+        "cn_a:sse:index:000002",
+        "cn_a:sse:index:000688",
+        "cn_a:szse:index:399001",
+        "cn_a:szse:index:399006",
+        "cn_a:szse:index:399102",
+        "cn_a:szse:index:399107",
+    )
+    for language in ("en", "zh"):
+        document = render(language)
+        for key in ("market.quote_snapshot", "market.ohlcv"):
+            block = document.split(f"### `fx.{key}(...)`", 1)[1].split("### ", 1)[0]
+            for identity in identities:
+                assert identity in block
+            assert "000001" in block
+        assert "SZSE equity" in document or "深交所股票" in document
 
 
 def test_document_detail_operations_are_publicly_documented():
@@ -405,9 +441,37 @@ def test_provider_backed_examples_dry_run_through_client_validation(monkeypatch)
             assert [call[0] for call in calls] == ["articles.detail"]
         elif key == "articles.from_topic":
             assert [call[0] for call in calls] == ["articles.topic"]
+        elif key == "market.quote_snapshot":
+            assert [call[0] for call in calls] == ["market.quote_snapshot"] * 3
+            assert calls[0][3]["request"].instrument_id.kind.value == "equity"
+            sse_request = calls[1][3]["request"]
+            szse_request = calls[2][3]["request"]
+            assert sse_request.instrument_id.code == "000001"
+            assert sse_request.instrument_id.exchange.value == "sse"
+            assert sse_request.instrument_id.kind.value == "index"
+            assert szse_request.instrument_id.code == "399001"
+            assert szse_request.instrument_id.exchange.value == "szse"
+            assert szse_request.instrument_id.kind.value == "index"
+        elif key == "market.ohlcv":
+            assert [call[0] for call in calls] == ["market.klines", "market.klines"]
+            index_request = calls[1][3]["request"]
+            assert index_request.instrument_id.code == "000001"
+            assert index_request.instrument_id.exchange.value == "sse"
+            assert index_request.instrument_id.kind.value == "index"
+            assert "adjustment" not in index_request.model_fields_set
+        elif key == "market.abnormal_records":
+            assert [call[0] for call in calls] == ["market.abnormal_records"] * 3
+            assert [call[3]["request"].dataset for call in calls] == [
+                "abnormal_events", "severe_events", "prediction_history"
+            ]
+            assert all(
+                not hasattr(call[3]["request"], field)
+                for call in calls
+                for field in ("instrument_id", "start_date", "end_date")
+            )
         else:
             assert len(calls) == 1, f"example did not fetch exactly once: {key}"
-            assert calls[-1][0] == dataset_names[key]
+        assert calls[-1][0] == dataset_names[key]
 
 
 def test_deviation_example_is_explicitly_kept_out_of_provider_dry_run():
@@ -423,6 +487,15 @@ def test_deviation_example_is_explicitly_kept_out_of_provider_dry_run():
     )
     instrument_node = next(keyword.value for keyword in call.keywords if keyword.arg == "instrument")
     assert ast.literal_eval(instrument_node) == "600519"
+    assert any(
+        isinstance(node, ast.ImportFrom)
+        and node.module == "finchx.computed"
+        and any(alias.name == "DeviationWindowConvention" for alias in node.names)
+        for node in tree.body
+    )
+    convention_node = next(keyword.value for keyword in call.keywords if keyword.arg == "window_convention")
+    assert isinstance(convention_node, ast.Attribute)
+    assert convention_node.attr == "MAX_DEVIATION_SCAN"
     windows_node = next(keyword.value for keyword in call.keywords if keyword.arg == "windows")
     windows = ast.literal_eval(windows_node)
     assert windows == (10, 30)

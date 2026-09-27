@@ -20,7 +20,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Annotated, Any, Literal, Union, get_args, get_origin
 
-from pydantic import AnyUrl, BaseModel
+from pydantic import AnyUrl, BaseModel, RootModel
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
@@ -96,6 +96,10 @@ def public_annotation_text(annotation: Any) -> str:
     """Render user-facing types without exposing internal identity models."""
 
     text = annotation_text(annotation)
+    text = text.replace(
+        "DeviationWindowConventionInput",
+        "DeviationWindowConvention | Literal['max_deviation_scan', 'strict_exchange_window']",
+    )
     return re.sub(r"\b(?:InstrumentInput|InstrumentId)\b", "str", text)
 
 
@@ -180,6 +184,12 @@ DESCRIPTION_ZH: dict[str, str] = {
     "EastMoney-reported dynamic P/E; source calculation details are unspecified.": "EastMoney 报告的动态 P/E；来源计算细节未提供。",
     "EastMoney-reported limit-down queued amount in CNY.": "EastMoney 报告的跌停排队金额，单位为 CNY。",
     "Exact decimal in the source price unit (CNY per share for equities; index points for indices).": "来源价格单位中的精确小数（股票为每股 CNY，指数为指数点数）。",
+    "Latest equity price in CNY per share or index level in points.": "最新价格；股票为每股 CNY，指数为点数。",
+    "Previous equity close in CNY per share or index close in points.": "前收盘价；股票为每股 CNY，指数为点数。",
+    "Session open in CNY per share for equities or points for indices.": "时段开盘价；股票为每股 CNY，指数为点数。",
+    "Session high in CNY per share for equities or points for indices.": "时段最高价；股票为每股 CNY，指数为点数。",
+    "Session low in CNY per share for equities or points for indices.": "时段最低价；股票为每股 CNY，指数为点数。",
+    "Change from previous close in CNY for equities or points for indices.": "最新价与前收盘价之差；股票单位为 CNY，指数单位为点。",
     "Exact share count per holder; Tencent rjcg display units are normalized to shares.": "每位持有人的精确股数；Tencent rjcg 展示单位已换算为股。",
     "Intraday price amplitude, stored as a ratio fraction.": "盘中价格振幅，以比例小数存储。",
     "Latest price in CNY per share.": "最新价格，单位为每股 CNY。",
@@ -261,6 +271,10 @@ SUMMARY_ZH: dict[str, str] = {
     "articles.from_topic": "从同花顺 T-code 主题混合 Feed 中筛出可由 articles.get 获取正文的普通新闻和长文。",
     "reference.trading_calendar": "获取日期范围内每个自然日的 A 股交易日标记。",
     "market.breadth": "获取当前市场涨跌家数分布。",
+    "market.regulation_watchlist": "获取东方财富最新监管监控名单，保留所有来源行，包括无法核实证券类别的行。",
+    "market.abnormal_records": "按 abnormal_events、severe_events 或 prediction_history 获取单个上游分页。",
+    "market.severe_predictions": "获取有页数上限的严重异常预测池，保留未知预测状态和来源原值。",
+    "market.abnormal_counts": "获取有页数上限的异常次数榜；保留来源 count 与 open 等未解释元数据。",
     "market.broken_limit_pool": "获取最新炸板池快照。",
     "market.consecutive_limit_up": "获取连板股快照。",
     "market.daily_replay": "获取指定日期的每日复盘数据。",
@@ -281,10 +295,10 @@ SUMMARY_ZH: dict[str, str] = {
     "market.stock_keyword": "获取数据源提供的股票关键词。",
     "market.limit_down_pool": "获取最新跌停池快照。",
     "market.limit_up_pool": "获取最新涨停池快照。",
-    "market.ohlcv": "获取个股日线 OHLCV 数据。",
+    "market.ohlcv": "获取股票或受支持指数的日线 OHLCV 数据。",
     "market.orderbook": "获取个股盘口数据。",
     "market.quote": "获取全市场行情快照。",
-    "market.quote_snapshot": "获取单个标的的行情快照。",
+    "market.quote_snapshot": "获取 SSE/SZSE 股票或受支持指数的行情快照。",
     "market.ranking": "按指定指标获取 A 股个股排行。",
     "market.sentiment": "获取市场情绪快照。",
     "market.strong_pool": "获取最新强势股池快照。",
@@ -381,7 +395,10 @@ CATEGORY_SPECS: tuple[CategorySpec, ...] = (
     CategorySpec("After-close review", "盘后复盘", (
         "market.daily_replay", "market.dragon_tiger_detail", "market.dragon_tiger_list",
     )),
-    CategorySpec("Regulatory deviation", "监管类：偏离值", _COMPUTED_CAPABILITY_KEYS),
+    CategorySpec("Regulatory monitoring and deviation", "监管监测与偏离值", (
+        "market.regulation_watchlist", "market.abnormal_records",
+        "market.severe_predictions", "market.abnormal_counts", "market.deviation",
+    )),
     CategorySpec("Other", "其他", (
         "reference.trading_calendar", "hotlist.convertible_bonds",
         "hotlist.etfs", "hotlist.content", "iwencai.select", "iwencai.search",
@@ -522,6 +539,85 @@ DESCRIPTION_ZH.update({
     "Publisher or media label supplied by the topic feed item.": "主题 Feed 条目提供的发布方或媒体名称。",
 })
 
+DESCRIPTION_ZH.update({
+    "Select abnormal_events, severe_events, or prediction_history on this shared Dataset.": "在此共享 Dataset 中选择 abnormal_events、severe_events 或 prediction_history。",
+    "One-based upstream page number; each request fetches this page only.": "从 1 开始的上游页码；每次只获取这一页。",
+    "Rows requested from the upstream page; maximum 200.": "从上游请求的单页行数；最大 200。",
+    "severe_events only; None defaults to current provider rows.": "仅适用于 severe_events；None 默认读取来源当前记录。",
+    "prediction_history local/server filter: all, yes, or no; unknown flags do not match yes/no.": "prediction_history 的本地/来源筛选：all、yes 或 no；未知标记既不匹配 yes 也不匹配 no。",
+    "prediction_history only; true is pushed to the validated positive-flag filter.": "仅适用于 prediction_history；true 会下推到已验证的正向标记筛选。",
+    "prediction_history only; false filters current-session rows locally, while unknown source flags remain unknown.": "仅适用于 prediction_history；false 会在本地排除当前交易日记录，来源未知标记仍为未知。",
+    "Include only rising rows when true.": "为 true 时只保留上涨记录。",
+    "Request BSE rows from the provider when true.": "为 true 时请求来源返回北交所记录。",
+    "Provider sort key: count, price, or maximum deviation.": "来源排序字段：count、price 或最大偏离值。",
+    "Provider sort direction.": "来源排序方向。",
+    "Original source security code.": "来源原始证券代码。",
+    "Security name supplied by the source.": "来源提供的证券名称。",
+    "Null because stock_monitor.json has no verified security-kind field.": "由于 stock_monitor.json 没有可核实的证券类别字段，因此为 null。",
+    "Exchange decoded from MARKET: 1 is SSE, 0 is SZSE, B is BSE; unknown codes remain null.": "由 MARKET 解码交易所：1 为 SSE、0 为 SZSE、B 为 BSE；未知代码保留 null。",
+    "unknown because the source does not identify equity, ETF, or other security kinds.": "由于来源没有标明股票、ETF 或其他证券类别，因此为 unknown。",
+    "Original MARKET code retained as source evidence.": "保留来源原始 MARKET 编码作为证据。",
+    "Source monitoring start date.": "来源监控开始日期。",
+    "Source monitoring end date when supplied.": "来源提供时的监控结束日期。",
+    "Source-linked notice URL when supplied.": "来源提供时关联的公告 URL。",
+    "Original EastMoney row values, including unrecognized markers.": "东方财富原始行字段，包括未识别标记。",
+    "Six-digit instrument code reported by EastMoney.": "东方财富报告的六位证券代码。",
+    "Security name supplied by EastMoney.": "东方财富提供的证券名称。",
+    "Instrument identity decoded from SECUCODE.": "根据 SECUCODE 解码的证券标识。",
+    "Exchange decoded from the SECUCODE suffix.": "根据 SECUCODE 后缀解码的交易所。",
+    "Source event start date when supplied.": "来源提供时的事件开始日期。",
+    "Source event end date when supplied.": "来源提供时的事件结束日期。",
+    "Source INFO_CODE when supplied.": "来源提供时的 INFO_CODE。",
+    "Announcement date supplied by EastMoney.": "东方财富提供的公告日期。",
+    "EastMoney notice URL formed from INFO_CODE when present.": "存在 INFO_CODE 时据此构造东方财富公告 URL。",
+    "Source abnormality reason text.": "来源提供的异动原因文本。",
+    "Source abnormality reason-type text.": "来源提供的异动原因类型文本。",
+    "Original disclosure-market text; not normalized to FinchX Exchange.": "来源原始披露市场文本；不转换为 FinchX Exchange。",
+    "Original UNUSUAL_TYPE marker: 001 ordinary or 002 severe.": "来源原始 UNUSUAL_TYPE 标记：001 普通事件、002 严重事件。",
+    "Original EastMoney values retained for audit.": "保留东方财富原始值供审计。",
+    "Normalized event class for UNUSUAL_TYPE=001.": "UNUSUAL_TYPE=001 对应的规范化事件类别。",
+    "Normalized event class for UNUSUAL_TYPE=002.": "UNUSUAL_TYPE=002 对应的规范化事件类别。",
+    "Provider prediction monitoring start date.": "来源预测监控开始日期。",
+    "Provider prediction monitoring end date.": "来源预测监控结束日期。",
+    "IS_HIS=1 maps to current, 0 to history; other values remain unknown.": "IS_HIS=1 映射为 current、0 映射为 history；其他值保留为 unknown。",
+    "Original IS_HIS marker.": "来源原始 IS_HIS 标记。",
+    "Prediction-history trade date.": "预测历史交易日期。",
+    "Source CHANGE_RATE percentage points divided by 100; 3% is 0.03.": "来源 CHANGE_RATE 百分点除以 100；3% 表示为 0.03。",
+    "Source MAX_DAYS value; preserved as supplied without asserting a calculation convention.": "来源 MAX_DAYS 值原样保留，不推断其计算口径。",
+    "Source DEVUATION_VALUE percentage points divided by 100.": "来源 DEVUATION_VALUE 百分点除以 100。",
+    "Source CHANGE_RATE_TARGET percentage points divided by 100.": "来源 CHANGE_RATE_TARGET 百分点除以 100。",
+    "IS_HAPPEN 1 maps to true, 0 to false; unknown values remain null.": "IS_HAPPEN=1 映射为 true、0 为 false；未知值保留 null。",
+    "Original UNUSUAL_TYPE text; it is not coerced to an event-code enum.": "来源原始 UNUSUAL_TYPE 文本；不强行转换为事件码枚举。",
+    "IS_SYSDATE 1 maps to true, 0 to false; unknown values remain null.": "IS_SYSDATE=1 映射为 true、0 为 false；未知值保留 null。",
+    "IS_POSITIVE 1 maps to true, 0 to false; unknown values remain null.": "IS_POSITIVE=1 映射为 true、0 为 false；未知值保留 null。",
+    "Original MARKET_CODE value; its semantics are provider-specific.": "来源原始 MARKET_CODE；其语义由来源定义。",
+    "Original EastMoney values retained for audit, including RANK_TYPE.": "保留东方财富原始值供审计，包括 RANK_TYPE。",
+    "Six-digit instrument code supplied by the prediction pool.": "预测池提供的六位证券代码。",
+    "Security name supplied by the prediction pool.": "预测池提供的证券名称。",
+    "Identity decoded from the provider board code when recognized; otherwise null.": "能识别来源板块码时解码证券标识，否则为 null。",
+    "Exchange decoded from s: 4 is SZSE, 5 is SSE, 6 is BSE; unknown board codes remain null.": "由 s 解码交易所：4 为 SZSE、5 为 SSE、6 为 BSE；未知板块码保留 null。",
+    "Original m value; it is not used alone to infer the exchange.": "来源原始 m 值；不会仅凭此值推断交易所。",
+    "Original s board code.": "来源原始 s 板块码。",
+    "Original e rule code; retained even when FinchX cannot interpret it.": "来源原始 e 规则码；即使 FinchX 无法解释也会保留。",
+    "Stable FinchX interpretation derived from recognized board and rule codes; null for unknown rules.": "根据可识别的板块码和规则码生成稳定的 FinchX 语义标识；未知规则为 null。",
+    "Readable label for the recognized rule; the provider values remain available separately.": "已识别规则的可读标签；来源原值另行保留。",
+    "Source x percentage points divided by 100; 95.69 becomes 0.9569.": "来源 x 百分点除以 100；95.69 转换为 0.9569。",
+    "Source d value retained as supplied.": "来源 d 值原样保留。",
+    "Source t trigger percentage points divided by 100.": "来源 t 触发涨跌幅百分点除以 100。",
+    "Source a percentage points divided by 100.": "来源 a 百分点除以 100。",
+    "Derived from o: 0/1 are current-session states, 2 is next-session, other values are unknown.": "根据 o 推导：0/1 表示当前交易日状态，2 表示下一交易日，其他值为 unknown。",
+    "o=0 maps to false, 1 to true, and 2 or unknown values to null.": "o=0 映射为 false、1 为 true；2 或未知值映射为 null。",
+    "Original o signal-state value.": "来源原始 o 信号状态值。",
+    "Original provider row, including source percentage values.": "来源原始行，包括来源百分比数值。",
+    "Six-digit instrument code supplied by the count pool.": "次数榜提供的六位证券代码。",
+    "Security name supplied by the count pool.": "次数榜提供的证券名称。",
+    "Source price in CNY per share.": "来源价格，单位为每股 CNY。",
+    "Source a percentage points divided by 100.": "来源 a 百分点除以 100。",
+    "Number from /count.t; it is a row-level count, not a pool total.": "/count.t 的记录次数；这是单行次数，不是榜单总数。",
+    "Source x percentage points divided by 100.": "来源 x 百分点除以 100。",
+    "Original provider row retained, including d whose semantics are not asserted.": "保留来源原始行，包括语义未确认的 d 字段。",
+})
+
 
 def common_field_description(name: str, *, language: str) -> str | None:
     descriptions = _COMMON_FIELD_DESCRIPTIONS.get(name)
@@ -558,6 +654,7 @@ def output_field_rows(
     model: type[BaseModel],
     *,
     language: str,
+    key: str | None = None,
     exclude_fields: set[str] | frozenset[str] = frozenset(),
 ) -> list[tuple[str, str, str]]:
     fallback = "—"
@@ -581,6 +678,40 @@ def output_field_rows(
                     if language == "en"
                     else "保留的来源原始值，仅用于审计及核对单位或内容。"
                 )
+        if key == "market.ohlcv" and model.__name__ == "MarketKlineData":
+            kline_descriptions = {
+                "instrumentId": (
+                    "Complete FinchX identity; index bars retain market, exchange, kind, and code.",
+                    "完整 FinchX 标识；指数 K 线会保留 market、exchange、kind 和 code。",
+                ),
+                "open": (
+                    "Open price: CNY per share for equities; index points for indices.",
+                    "开盘价：股票单位为每股 CNY；指数单位为点数。",
+                ),
+                "high": (
+                    "High price: CNY per share for equities; index points for indices.",
+                    "最高价：股票单位为每股 CNY；指数单位为点数。",
+                ),
+                "low": (
+                    "Low price: CNY per share for equities; index points for indices.",
+                    "最低价：股票单位为每股 CNY；指数单位为点数。",
+                ),
+                "close": (
+                    "Close price: CNY per share for equities; index points for indices.",
+                    "收盘价：股票单位为每股 CNY；指数单位为点数。",
+                ),
+                "volume": (
+                    "Provider volume normalized to whole shares (source lots multiplied by 100).",
+                    "来源成交量规范化为整股（来源手数乘以 100）。",
+                ),
+                "amount": (
+                    "Provider-reported traded amount in CNY when available.",
+                    "来源提供时的成交金额，单位为 CNY。",
+                ),
+            }
+            field_description = kline_descriptions.get(field.alias or name)
+            if field_description is not None:
+                description = field_description[0 if language == "en" else 1]
         rows.append((field.alias or name, public_annotation_text(field.annotation), description))
     return rows
 
@@ -665,7 +796,7 @@ def parameter_description(name: str, *, language: str, key: str | None = None) -
         "direction": "Sort direction: `asc` from lowest to highest or `desc` from highest to lowest.",
         "limit": "Required positive integer or None; None means no limit.",
         "windows": "Deviation windows, in trading sessions.",
-        "as_of": "Optional completed-session date; accepts YYYY-MM-DD, YYYYMMDD, or YYYY/MM/DD strings.", "window_convention": "Deviation window interpretation.",
+        "as_of": "Optional completed-session date; accepts YYYY-MM-DD, YYYYMMDD, or YYYY/MM/DD strings.", "window_convention": "Choose a deviation convention; omit it to use the default MAX_DEVIATION_SCAN.",
         "url": "Report detail page URL from an iWenCai report search hit; it must contain a supported duid.",
         "cookies": "Caller-provided logged-in iWenCai/THS Cookie header.",
         "uid": "Optional report UID from the search hit, used as a fallback.",
@@ -677,6 +808,14 @@ def parameter_description(name: str, *, language: str, key: str | None = None) -
         "date": "Optional article date used only to build the HTML fallback URL when the ordinary-news API body is unavailable.",
         "related_stocks": "Hotlist-side stock associations to merge with the article-side associations.",
         "sector_type": "Sector category: concept, industry, or index.",
+        "dataset": "Required selector: `abnormal_events`, `severe_events`, or `prediction_history`.",
+        "status": "For severe events: `current`, `history`, or `all`; omitted/None selects current rows.",
+        "triggered": "Prediction-history filter: `yes`, `no`, or `all`; unknown flags match neither yes nor no.",
+        "rise_only": "Prediction-history positive-only filter; only the verified provider flag is sent upstream.",
+        "include_current": "When false, remove current-session rows locally; unknown current flags remain unknown.",
+        "include_bse": "Request BSE rows from the provider.",
+        "sort_by": "Provider order key: `count`, `price`, or `max_deviation`.",
+        "order": "Provider sort direction: `asc` or `desc`.",
     }
     chinese = {
         "request": "完整的类型化 request 模型。", "instrument_id": "六位证券代码；FinchX 根据接口语义解析市场。",
@@ -696,7 +835,7 @@ def parameter_description(name: str, *, language: str, key: str | None = None) -
         "criterion": "可选 `amount`（成交额，单位 CNY）、`zdf`（涨跌幅，比例小数，例如 3% 为 0.03）或 `volume`（成交量，单位为股）。",
         "direction": "排序方向：`asc` 表示从低到高，`desc` 表示从高到低。",
         "limit": "必填；正整数或 None；None 表示不限制返回数量。", "windows": "以交易时段计的偏离窗口。",
-        "as_of": "可选的已完成交易时段日期；支持 YYYY-MM-DD、YYYYMMDD 或 YYYY/MM/DD 字符串。", "window_convention": "偏离窗口解释方式。",
+        "as_of": "可选的已完成交易时段日期；支持 YYYY-MM-DD、YYYYMMDD 或 YYYY/MM/DD 字符串。", "window_convention": "选择偏离窗口解释方式；省略时使用默认的 MAX_DEVIATION_SCAN。",
         "url": "问财研报搜索结果中的详情页 URL，必须包含受支持的 duid。",
         "cookies": "调用者提供的问财/同花顺登录态 Cookie header。",
         "uid": "可选的搜索结果研报 UID，用作备用值。",
@@ -708,8 +847,22 @@ def parameter_description(name: str, *, language: str, key: str | None = None) -
         "date": "可选文章日期；仅在普通新闻 API 正文不可用时，用于构造 HTML 回退页面 URL。",
         "related_stocks": "热榜文章关联股票，用于与正文侧关联股票合并。",
         "sector_type": "板块类别，可选 concept、industry 或 index。",
+        "dataset": "必填选择项：`abnormal_events`、`severe_events` 或 `prediction_history`。",
+        "status": "仅适用于严重事件：`current`、`history` 或 `all`；省略/None 时读取当前记录。",
+        "triggered": "预测历史筛选：`yes`、`no` 或 `all`；未知标记既不匹配 yes 也不匹配 no。",
+        "rise_only": "预测历史只看上涨记录；仅发送已验证的来源筛选标记。",
+        "include_current": "设为 false 时在本地排除当前交易日记录；来源状态未知时仍保留为未知。",
+        "include_bse": "请求来源返回北交所记录。",
+        "sort_by": "来源排序字段：`count`、`price` 或 `max_deviation`。",
+        "order": "来源排序方向：`asc` 或 `desc`。",
         "topic_url": "同花顺 T-code 主题分享 URL；仅允许两个已确认的社区主题路径。",
     }
+    if key == "market.severe_predictions" and name == "rise_only":
+        return (
+            "When true, request only rows the provider marks as rising."
+            if language == "en"
+            else "为 true 时，只请求来源标记为上涨的记录。"
+        )
     if name == "url" and key == "articles.get":
         return (
             "Public Tonghuashun news or community article URL; route and ID are parsed from its allowlisted host and path."
@@ -738,6 +891,30 @@ def parameter_description(name: str, *, language: str, key: str | None = None) -
             "可选 `concept`（概念板块）、`industry`（行业板块）或 `index`（指数）。",
         ),
     }
+    if key == "market.abnormal_records" and name == "page":
+        return (
+            "One-based upstream page number. A request fetches this page only; local current-session exclusion does not scan other pages."
+            if language == "en"
+            else "从 1 开始的上游页码。每次只获取这一页；本地当前交易日筛选不会扫描其他页。"
+        )
+    if key == "market.abnormal_records" and name == "page_size":
+        return (
+            "Rows requested from the upstream page; maximum 200. Local current-session exclusion may reduce the returned row count."
+            if language == "en"
+            else "从上游请求的单页行数；最大 200。本地排除当前交易日记录后，返回行数可能减少。"
+        )
+    if key == "market.quote_snapshot" and name == "instrument":
+        return (
+            "Six-digit equity code, or a full index identity such as `cn_a:sse:index:000001` or `cn_a:szse:index:399001`. In this generic endpoint a bare `000001` means a SZSE equity. Supported indices are `cn_a:sse:index:000001`, `cn_a:sse:index:000002`, `cn_a:sse:index:000688`, `cn_a:szse:index:399001`, `cn_a:szse:index:399006`, `cn_a:szse:index:399102`, and `cn_a:szse:index:399107`."
+            if language == "en"
+            else "六位股票代码，或指数完整标识，例如 `cn_a:sse:index:000001`、`cn_a:szse:index:399001`。此通用接口中裸代码 `000001` 表示深交所股票。支持的指数为 `cn_a:sse:index:000001`、`cn_a:sse:index:000002`、`cn_a:sse:index:000688`、`cn_a:szse:index:399001`、`cn_a:szse:index:399006`、`cn_a:szse:index:399102` 和 `cn_a:szse:index:399107`。"
+        )
+    if key == "market.ohlcv" and name == "instrument":
+        return (
+            "Six-digit equity code, or a full identity for one of the seven supported indices: `cn_a:sse:index:000001`, `cn_a:sse:index:000002`, `cn_a:sse:index:000688`, `cn_a:szse:index:399001`, `cn_a:szse:index:399006`, `cn_a:szse:index:399102`, or `cn_a:szse:index:399107`. In this generic endpoint a bare `000001` means a SZSE equity."
+            if language == "en"
+            else "六位股票代码，或以下七个受支持指数之一的完整标识：`cn_a:sse:index:000001`、`cn_a:sse:index:000002`、`cn_a:sse:index:000688`、`cn_a:szse:index:399001`、`cn_a:szse:index:399006`、`cn_a:szse:index:399102` 或 `cn_a:szse:index:399107`。此通用接口中裸代码 `000001` 表示深交所股票。"
+        )
     if key is not None and (key, name) in hotlist_descriptions:
         return hotlist_descriptions[(key, name)][0 if language == "en" else 1]
     if name == "limit" and key in {
@@ -786,6 +963,12 @@ def summary_for(key: str, method: Any, *, language: str) -> str:
         "articles.get": "Fetch one ordinary news or community article from its public Tonghuashun URL.",
         "articles.from_topic": "List supported news and long-article refs from a T-code topic's mixed feed; each returned URL is accepted by `articles.get`.",
         "market.ranking": "Rank A-share stocks by traded amount, price change, or volume.",
+        "market.regulation_watchlist": "Fetch EastMoney's latest regulation watchlist, including rows with unverified security kinds.",
+        "market.abnormal_records": "Fetch one upstream page from ordinary events, severe events, or prediction history.",
+        "market.severe_predictions": "Fetch the bounded severe-prediction pool and preserve unrecognized provider states.",
+        "market.abnormal_counts": "Fetch the bounded abnormal-count pool while keeping ambiguous provider counters as raw evidence.",
+        "market.ohlcv": "Fetch daily OHLCV history for an SSE/SZSE equity or supported index.",
+        "market.quote_snapshot": "Fetch a current quote snapshot for an SSE/SZSE equity or supported index.",
         "market.deviation": "Calculate close-based relative returns for one supported A-share stock against its board benchmark over 10- or 30-session windows.",
     }
     if key in summary_en:
@@ -835,20 +1018,25 @@ def _parameter_rows(key: str, method: Any, *, language: str) -> list[tuple[str, 
 
 
 def _output_sections(model: type[BaseModel], *, language: str, key: str) -> list[str]:
+    is_root = issubclass(model, RootModel)
     if language == "en":
         lines = ["**Output fields**", "", f"Data model: `{model.__name__}`", ""]
-        rows = output_field_rows(model, language=language)
+        rows = [] if is_root else output_field_rows(model, language=language, key=key)
         lines.append(table(("Field", "Type", "Meaning"), rows) if rows else "No business fields.")
+        if is_root:
+            lines[-1] = "A tagged union of the row models below; `dataset` identifies the row type."
         nested_heading = "Nested business model"
         nested_separator = ":"
     else:
         lines = ["**输出字段**", "", f"数据模型：`{model.__name__}`", ""]
-        rows = output_field_rows(model, language=language)
+        rows = [] if is_root else output_field_rows(model, language=language, key=key)
         lines.append(table(("字段", "类型", "含义"), rows) if rows else "无业务字段。")
+        if is_root:
+            lines[-1] = "以下行模式组成带标签的联合类型；`dataset` 标识具体行类型。"
         nested_heading = "嵌套业务模型"
         nested_separator = "："
     for nested in nested_models(model):
-        nested_rows = output_field_rows(nested, language=language)
+        nested_rows = output_field_rows(nested, language=language, key=key)
         lines += ["", f"{nested_heading}{nested_separator} `{nested.__name__}`", ""]
         lines.append(table(("Field", "Type", "Meaning"), nested_rows) if language == "en" else table(("字段", "类型", "含义"), nested_rows))
     return lines
@@ -860,6 +1048,8 @@ def _result_usage_note(key: str, model: type[BaseModel], *, language: str) -> st
         important = [name for name in ("requestedDate", "tradeDate", "themes") if name in aliases]
     else:
         important = aliases[:4]
+    if key == "market.abnormal_records":
+        important = ["dataset", "code", "name", "exchange"]
     fields = ", ".join(f"`{name}`" for name in important) if important else "business fields"
     if key in {"news.search", "disclosure.search", "market_news.search"}:
         shape_en = "`.data` is a tuple of typed document references."
@@ -898,7 +1088,8 @@ def _result_usage_note(key: str, model: type[BaseModel], *, language: str) -> st
             action = "Use the normalized fields and `extraFields` for screening or research follow-up."
         else:
             action = "Use the named business fields for follow-up filtering, comparisons, or charts."
-        return f"{shape_en} The Dataset row schema `{model.__name__}` has business fields such as {fields}. {action} Export JSON-compatible rows with `.to_dicts()` and inspect `.warnings` for partial results."
+        completeness = " `result.metadata` reports `upstream_page`, `upstream_pages`, `has_more`, `page_complete`, and `collection_complete` where pagination applies." if key in {"market.abnormal_records", "market.severe_predictions", "market.abnormal_counts", "market.regulation_watchlist"} else ""
+        return f"{shape_en} The Dataset row schema `{model.__name__}` has business fields such as {fields}. {action} Export JSON-compatible rows with `.to_dicts()` and inspect `.warnings` for partial results.{completeness}"
     if key == "reference.trading_calendar":
         action = "闭区间内每个自然日各返回一行，接口固定使用统一的 A 股交易日历。"
     elif key == "market.daily_replay":
@@ -923,7 +1114,8 @@ def _result_usage_note(key: str, model: type[BaseModel], *, language: str) -> st
         action = "使用规范化字段和 `extraFields` 进行筛选或继续研究。"
     else:
         action = "使用这些业务字段进行后续筛选、比较或绘图。"
-    return f"{shape_zh} Dataset 行模式 `{model.__name__}` 的业务字段包括 {fields} 等。{action} 用 `.to_dicts()` 导出 JSON 兼容数据，并检查 `.warnings` 了解部分结果情况。"
+    completeness_zh = " 分页相关的 `result.metadata` 会提供 `upstream_page`、`upstream_pages`、`has_more`、`page_complete` 和 `collection_complete`。" if key in {"market.abnormal_records", "market.severe_predictions", "market.abnormal_counts", "market.regulation_watchlist"} else ""
+    return f"{shape_zh} Dataset 行模式 `{model.__name__}` 的业务字段包括 {fields} 等。{action} 用 `.to_dicts()` 导出 JSON 兼容数据，并检查 `.warnings` 了解部分结果情况。{completeness_zh}"
 
 
 _EXAMPLE_VALUES: dict[str, str] = {
@@ -970,7 +1162,7 @@ _EXAMPLE_VALUES: dict[str, str] = {
     "published_at": '"2026-09-23"',
     "windows": "(10, 30)",
     "as_of": '"2026-09-23"',
-    "window_convention": '"max_deviation_scan"',
+    "window_convention": "DeviationWindowConvention.MAX_DEVIATION_SCAN",
     "sort": '"published_desc"',
     "topic_url": '"https://t.10jqka.com.cn/lgt/main/frontend-main-service/topic/index.html?code=T4dryo6"',
     "related_stocks": "None",
@@ -1002,7 +1194,7 @@ _EXAMPLE_COMMENTS = {
         "url": "Public article or report detail URL.", "uid": "Fallback report identifier.",
         "title": "Fallback report title.", "published_at": "Fallback publication date.",
         "windows": "Compare 10- and 30-session windows.", "as_of": "Last completed session to include.",
-        "window_convention": "Scan the documented deviation convention.",
+        "window_convention": "Choose a convention; omit this argument to use the default MAX_DEVIATION_SCAN.",
         "topic_url": "Supported Tonghuashun topic URL.", "related_stocks": "No additional stock associations.",
         "date": "Date used only by the article fallback URL.",
     },
@@ -1024,7 +1216,7 @@ _EXAMPLE_COMMENTS = {
         "channel": "搜索研报。", "api_key": "SkillHub API Key；从密钥存储读取。", "deduplicate": "去除重复命中。",
         "url": "公开文章或研报详情 URL。", "uid": "备用研报标识。", "title": "备用研报标题。",
         "published_at": "备用发布日期。", "windows": "比较 10 和 30 个交易时段。",
-        "as_of": "纳入计算的最后一个已完成交易日。", "window_convention": "使用文档说明的偏离窗口算法。",
+        "as_of": "纳入计算的最后一个已完成交易日。", "window_convention": "选择偏离窗口解释方式；省略时使用默认的 MAX_DEVIATION_SCAN。",
         "topic_url": "受支持的同花顺话题 URL。", "related_stocks": "不额外合并股票关联。",
         "date": "仅在构造文章回退 URL 时使用的日期。",
     },
@@ -1032,6 +1224,8 @@ _EXAMPLE_COMMENTS = {
 
 
 def _example_value(key: str, name: str, parameter: inspect.Parameter) -> str:
+    if key == "market.deviation" and name == "window_convention":
+        return "DeviationWindowConvention.MAX_DEVIATION_SCAN"
     if name in {"instrument", "instrument_id"} and key in {"market.index_intraday", "market.index_intraday_5d"}:
         return '"000001"'
     if name == "category" and key == "hotlist.etfs":
@@ -1050,17 +1244,47 @@ def _example_value(key: str, name: str, parameter: inspect.Parameter) -> str:
 def _example_code(key: str, method: Any, *, language: str) -> str:
     comments = _EXAMPLE_COMMENTS[language]
     parameters = inspect.signature(method).parameters
+    if key == "market.abnormal_records":
+        if language == "en":
+            return "\n".join([
+                "from finchx import FinchX",
+                "",
+                "fx = FinchX()",
+                "# Each call fetches one page from the selected dataset; request later pages explicitly.",
+                'ordinary = fx.market.abnormal_records(dataset="abnormal_events", page=1, page_size=20)',
+                'severe = fx.market.abnormal_records(dataset="severe_events", page=1, page_size=20, status="current")',
+                'history = fx.market.abnormal_records(dataset="prediction_history", page=1, page_size=20, triggered="all", rise_only=False, include_current=None)',
+                "for name, result in ((\"ordinary\", ordinary), (\"severe\", severe), (\"history\", history)):",
+                "    print(name, result.to_dicts()[:1], result.metadata.get(\"has_more\"))",
+                "    print(result.warnings)",
+            ])
+        return "\n".join([
+            "from finchx import FinchX",
+            "",
+            "fx = FinchX()",
+            "# 每次调用只取指定 dataset 的一页；需要后续数据时显式请求下一页。",
+            'ordinary = fx.market.abnormal_records(dataset="abnormal_events", page=1, page_size=20)',
+            'severe = fx.market.abnormal_records(dataset="severe_events", page=1, page_size=20, status="current")',
+            'history = fx.market.abnormal_records(dataset="prediction_history", page=1, page_size=20, triggered="all", rise_only=False, include_current=None)',
+            "for name, result in ((\"ordinary\", ordinary), (\"severe\", severe), (\"history\", history)):",
+            "    print(name, result.to_dicts()[:1], result.metadata.get(\"has_more\"))",
+            "    print(result.warnings)",
+        ])
     example_parameters = {
         name: parameter
         for name, parameter in parameters.items()
         if name not in {"provider", "use_cache"}
         and not (key == "market.quote" and name == "universe")
+        and not (key in {"market.severe_predictions", "market.abnormal_counts"} and name == "instrument")
     }
     values = {
         name: _example_value(key, name, parameter)
         for name, parameter in example_parameters.items()
     }
-    lines = ["from finchx import FinchX", "", "fx = FinchX()"]
+    lines = ["from finchx import FinchX"]
+    if key == "market.deviation":
+        lines.append("from finchx.computed import DeviationWindowConvention")
+    lines += ["", "fx = FinchX()"]
     if "session" in parameters:
         lines += ['jygs_session = "<SESSION cookie from your logged-in browser>"']
     if "cookies" in parameters:
@@ -1076,6 +1300,8 @@ def _example_code(key: str, method: Any, *, language: str) -> str:
         for name in example_parameters:
             if key == "articles.from_topic" and name == "sort":
                 comment = "Use the source recommendation order." if language == "en" else "按来源推荐顺序展示。"
+            elif key == "market.severe_predictions" and name == "rise_only":
+                comment = "Request only rows the provider marks as rising." if language == "en" else "只请求来源标记为上涨的记录。"
             else:
                 comment = comments.get(name, parameter_description(name, language=language, key=key))
             value = values[name]
@@ -1084,6 +1310,22 @@ def _example_code(key: str, method: Any, *, language: str) -> str:
     lines += ["", "print(result.data)  # Native typed data or records.", "rows = result.to_dicts()  # JSON-compatible business rows.", "print(rows[:1])", "print(result.warnings)  # Check for partial or recoverable issues."]
     if language == "zh":
         lines[-5:] = ["print(result.data)  # 原生类型数据或记录。", "rows = result.to_dicts()  # JSON 兼容的业务数据行。", "print(rows[:1])", "print(result.warnings)  # 检查部分数据和可恢复问题。"]
+    if key == "market.quote_snapshot":
+        lines += [
+            "",
+            "# Use complete identities; a bare 000001 means the SZSE equity on this generic endpoint." if language == "en" else "# 使用完整标识；此通用接口中的裸 000001 表示深交所股票。",
+            'sse_index = fx.market.quote_snapshot(instrument="cn_a:sse:index:000001")',
+            'szse_index = fx.market.quote_snapshot(instrument="cn_a:szse:index:399001")',
+            "print(sse_index.to_dicts()[:1])",
+            "print(szse_index.to_dicts()[:1])",
+        ]
+    elif key == "market.ohlcv":
+        lines += [
+            "",
+            "# Index bars use explicit identity and no price adjustment." if language == "en" else "# 指数 K 线使用完整标识，且不复权。",
+            'index_bars = fx.market.ohlcv("cn_a:sse:index:000001", "2026-09-01", "2026-09-23", adjustment=None)',
+            "print(index_bars.to_dicts()[:1])",
+        ]
     return "\n".join(lines)
 
 
@@ -1109,7 +1351,7 @@ def _deviation_method_notes(*, language: str) -> list[str]:
             "deviation = stock_return - benchmark_return",
             "```",
             "",
-            "The baseline is the close immediately before the selected window starts. Values are ratio fractions (`0.03` means 3%). `max_deviation_scan` selects the eligible start with the largest stock-minus-benchmark return; `strict_exchange_window` uses the exchange-shaped start. Unsupported codes or insufficient aligned history raise an error instead of returning zero.",
+            "The baseline is the close immediately before the selected window starts. Values are ratio fractions (`0.03` means 3%). The default is `DeviationWindowConvention.MAX_DEVIATION_SCAN` and can be omitted; `STRICT_EXCHANGE_WINDOW` uses the exchange-shaped start. Unsupported codes or insufficient aligned history raise an error instead of returning zero.",
             "The result reports `calculationMode = \"official_close\"`, `priceBasis = \"qfq_stock__raw_index\"`, and the frozen rule-set identifier in `ruleVersion`.",
             "",
             table(("Window", "Upper threshold", "Lower threshold"), [
@@ -1137,7 +1379,7 @@ def _deviation_method_notes(*, language: str) -> list[str]:
         "deviation = stock_return - benchmark_return",
         "```",
         "",
-        "基准值为所选窗口起点前一交易日的收盘价或指数点位。比例以小数表示（`0.03` 即 3%）。默认的 `max_deviation_scan` 会选择股票与基准收益差最大的合资格起点；`strict_exchange_window` 使用按交易所窗口形状确定的起点。不支持的代码或不足的对齐历史数据会报错，不会返回零值。",
+        "基准值为所选窗口起点前一交易日的收盘价或指数点位。比例以小数表示（`0.03` 即 3%）。默认值为 `DeviationWindowConvention.MAX_DEVIATION_SCAN`，省略参数即可使用；`STRICT_EXCHANGE_WINDOW` 按交易所窗口形状确定起点。不支持的代码或不足的对齐历史数据会报错，不会返回零值。",
         "结果中的 `calculationMode` 为 `official_close`，`priceBasis` 为 `qfq_stock__raw_index`，`ruleVersion` 标识采用的冻结规则集。",
         "",
         table(("窗口", "上阈值", "下阈值"), [
@@ -1163,13 +1405,58 @@ def _trading_calendar_method_notes(*, language: str) -> list[str]:
     ]
 
 
+def _regulation_method_notes(key: str, *, language: str) -> list[str]:
+    if key == "market.abnormal_records":
+        if language == "en":
+            return [
+                "**Page and filter semantics**",
+                "Each call requires one `dataset`: `abnormal_events`, `severe_events`, or `prediction_history`. It fetches exactly one 1-based upstream page (`page_size` maximum 200); it does not scan the full history automatically. Request later pages explicitly after checking `result.metadata.has_more`. `triggered` and `rise_only` are sent upstream through verified filters; `include_current` is applied locally and removes only rows explicitly marked as current. `page_complete` describes this fetched page; `collection_complete` is true only when the request covers the entire selected dataset result.",
+                "Severe events default to current provider status. Unknown 0/1 flags stay null rather than becoming false.",
+            ]
+        return [
+            "**分页与筛选口径**",
+            "每次调用必须选择一个 `dataset`：`abnormal_events`、`severe_events` 或 `prediction_history`。每次只取从 1 开始的一个上游页（`page_size` 最大 200），不会自动扫描完整历史。请根据 `result.metadata.has_more` 显式请求后续页。经验证的 `triggered` 与 `rise_only` 会下推；`include_current` 在本地处理，仅排除明确标为当前交易日的记录。`page_complete` 表示本次上游页完整；仅覆盖所选数据集的全部结果时 `collection_complete` 才为 true。",
+            "严重事件默认取来源当前状态。来源 0/1 标记无法识别时保留 null，不会当作 false。",
+        ]
+    if key in {"market.severe_predictions", "market.abnormal_counts"}:
+        if language == "en":
+            notes = [
+                "**Pool and source-field semantics**",
+                "The client requests pages of 200 and stops after at most 10 pages. `collection_complete` is false when source pages remain or pagination changes while fetching. `provider_count_raw` and `provider_open_raw` retain source fields without treating them as result totals or boolean state. Row percentages are normalized to ratio fractions (`95.69` becomes `0.9569`) while `providerValues` keeps source values.",
+            ]
+            if key == "market.severe_predictions":
+                notes.append("Current- and next-session rows are returned together. Unknown provider states remain `horizon=\"unknown\"` with the source marker preserved in `providerValues`.")
+                return notes
+            notes.append("`/count.t` is the row's event count, not the pool total. The source meaning of `d` is not asserted; it remains in `providerValues`.")
+            return notes
+        notes = [
+            "**榜单与来源字段口径**",
+            "客户端每页请求 200 行，最多读取 10 页。来源报告还有后续页或分页期间数据变化时，`collection_complete` 为 false。`provider_count_raw` 与 `provider_open_raw` 保留来源字段，不会被解释为结果总数或布尔状态。百分数统一规范为比例小数（`95.69` 转为 `0.9569`），`providerValues` 保留来源原始值。",
+        ]
+        if key == "market.severe_predictions":
+            notes.append("结果会同时返回当前交易日与下一交易日记录。来源状态未知时，`horizon` 保留为 `unknown`，原始标记保留在 `providerValues` 中。")
+            return notes
+        notes.append("`/count.t` 是单行异动次数，不是榜单总数。来源 `d` 的含义不作推断，并保留在 `providerValues` 中。")
+        return notes
+    if key == "market.regulation_watchlist":
+        return [
+            "**Security-kind coverage**" if language == "en" else "**证券类别覆盖**",
+            ('The endpoint does not expose verified security kinds. FinchX returns every source row, leaves `instrumentId` null, and sets `result.metadata.classification_complete` to false. Original fields, including `MARKET`, remain in `providerValues`.' if language == "en" else '来源没有可核实的证券类别。FinchX 返回所有来源行，`instrumentId` 保持 null，且 `result.metadata.classification_complete` 为 false。包括 `MARKET` 在内的原始字段保留在 `providerValues` 中。'),
+        ]
+    return []
+
+
 def _interface_block(key: str, method: Any, data_model: type[BaseModel], providers: tuple[str, ...], *, language: str, computed: bool = False) -> list[str]:
     example_code = _example_code(key, method, language=language)
     parameter_rows = _parameter_rows(key, method, language=language)
     if key == "market.deviation":
         method_notes = _deviation_method_notes(language=language)
+    elif key in {"market.ohlcv", "market.quote_snapshot"}:
+        method_notes = _index_quote_method_notes(key, language=language)
     elif key == "reference.trading_calendar":
         method_notes = _trading_calendar_method_notes(language=language)
+    elif key.startswith("market.regulation_") or key in {"market.abnormal_records", "market.severe_predictions", "market.abnormal_counts"}:
+        method_notes = _regulation_method_notes(key, language=language)
     else:
         method_notes = []
     if language == "en":
@@ -1193,6 +1480,36 @@ def endpoint_block(endpoint: Any, *, language: str) -> list[str]:
 
 def computed_block(*, language: str) -> list[str]:
     return _interface_block("market.deviation", _CLIENT.market.deviation, COMPUTED_DEVIATION_DATASET.data_type, (), language=language, computed=True)
+
+
+def _index_quote_method_notes(key: str, *, language: str) -> list[str]:
+    if language == "en":
+        notes = [
+            "**Supported index identities**",
+            "Use a full `market:exchange:index:code` identity, for example `cn_a:sse:index:000001` or `cn_a:szse:index:399001`. The current whitelist is SSE `000001`, `000002`, `000688` and SZSE `399001`, `399006`, `399102`, `399107`. On these generic methods, a bare `000001` resolves as the SZSE equity, not the SSE index.",
+        ]
+        if key == "market.ohlcv":
+            notes += [
+                "For an index, omit `adjustment` or pass `adjustment=None`; equities may use `qfq`, `hfq`, or no adjustment. OHLC fields are CNY per share for equities and index points for indices.",
+            ]
+        else:
+            notes += [
+                "Quote price fields use CNY per share for equities and index points for indices.",
+            ]
+        return notes
+    notes = [
+        "**受支持的指数标识**",
+        "请使用 `market:exchange:index:code` 完整标识，例如 `cn_a:sse:index:000001` 或 `cn_a:szse:index:399001`。当前白名单为 SSE `000001`、`000002`、`000688` 及 SZSE `399001`、`399006`、`399102`、`399107`。在这两个通用接口中，裸代码 `000001` 会解析为深交所股票，而不是上证指数。",
+    ]
+    if key == "market.ohlcv":
+        notes += [
+            "指数请求请省略 `adjustment` 或传入 `adjustment=None`；股票可使用 `qfq`、`hfq` 或不复权。OHLC 字段对股票表示每股 CNY，对指数表示指数点数。",
+        ]
+    else:
+        notes += [
+            "行情价格字段对股票表示每股 CNY，对指数表示指数点数。",
+        ]
+    return notes
 
 
 

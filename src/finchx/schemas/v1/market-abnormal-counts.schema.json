@@ -1,0 +1,222 @@
+{
+  "$defs": {
+    "Exchange": {
+      "enum": [
+        "sse",
+        "szse",
+        "bse"
+      ],
+      "title": "Exchange",
+      "type": "string"
+    },
+    "InstrumentId": {
+      "additionalProperties": false,
+      "description": "Identity for an instrument whose code, market, and kind are already known.",
+      "properties": {
+        "code": {
+          "minLength": 1,
+          "pattern": ".*\\S.*",
+          "title": "Code",
+          "type": "string"
+        },
+        "market": {
+          "$ref": "#/$defs/Market"
+        },
+        "kind": {
+          "$ref": "#/$defs/InstrumentKind"
+        },
+        "exchange": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Exchange"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "code",
+        "market",
+        "kind"
+      ],
+      "title": "InstrumentId",
+      "type": "object"
+    },
+    "InstrumentKind": {
+      "enum": [
+        "equity",
+        "index",
+        "etf"
+      ],
+      "title": "InstrumentKind",
+      "type": "string"
+    },
+    "Market": {
+      "enum": [
+        "cn_a"
+      ],
+      "title": "Market",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "dataset": {
+      "const": "abnormal_counts",
+      "title": "Dataset",
+      "type": "string"
+    },
+    "code": {
+      "description": "Six-digit instrument code supplied by the count pool.",
+      "title": "Code",
+      "type": "string"
+    },
+    "name": {
+      "description": "Security name supplied by the count pool.",
+      "title": "Name",
+      "type": "string"
+    },
+    "instrumentId": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/InstrumentId"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Identity decoded from the provider board code when recognized; otherwise null."
+    },
+    "exchange": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Exchange"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Exchange decoded from s: 4 is SZSE, 5 is SSE, 6 is BSE; unknown board codes remain null."
+    },
+    "providerMarketCode": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Original m value; it is not used alone to infer the exchange.",
+      "title": "Providermarketcode"
+    },
+    "providerBoardCode": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Original s board code.",
+      "title": "Providerboardcode"
+    },
+    "price": {
+      "anyOf": [
+        {
+          "description": "Price per share; currency is CNY.",
+          "examples": [
+            "12.34"
+          ],
+          "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Source price in CNY per share.",
+      "title": "Price"
+    },
+    "changeRatio": {
+      "anyOf": [
+        {
+          "description": "A ratio fraction, not percentage points: 4.24% is 0.0424.",
+          "examples": [
+            "0.0424"
+          ],
+          "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Source a percentage points divided by 100.",
+      "title": "Changeratio"
+    },
+    "abnormalCount": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Number from /count.t; it is a row-level count, not a pool total.",
+      "title": "Abnormalcount"
+    },
+    "maxDeviation10d": {
+      "anyOf": [
+        {
+          "description": "A ratio fraction, not percentage points: 4.24% is 0.0424.",
+          "examples": [
+            "0.0424"
+          ],
+          "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Source x percentage points divided by 100.",
+      "title": "Maxdeviation10D"
+    },
+    "providerValues": {
+      "additionalProperties": true,
+      "description": "Original provider row retained, including d whose semantics are not asserted.",
+      "title": "Providervalues",
+      "type": "object"
+    }
+  },
+  "required": [
+    "dataset",
+    "code",
+    "name",
+    "providerValues"
+  ],
+  "title": "FinchX Market Abnormal Counts Dataset Payload v1",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/market-abnormal-counts.schema.json"
+}

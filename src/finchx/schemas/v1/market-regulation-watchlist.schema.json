@@ -1,0 +1,164 @@
+{
+  "$defs": {
+    "Exchange": {
+      "enum": [
+        "sse",
+        "szse",
+        "bse"
+      ],
+      "title": "Exchange",
+      "type": "string"
+    },
+    "InstrumentId": {
+      "additionalProperties": false,
+      "description": "Identity for an instrument whose code, market, and kind are already known.",
+      "properties": {
+        "code": {
+          "minLength": 1,
+          "pattern": ".*\\S.*",
+          "title": "Code",
+          "type": "string"
+        },
+        "market": {
+          "$ref": "#/$defs/Market"
+        },
+        "kind": {
+          "$ref": "#/$defs/InstrumentKind"
+        },
+        "exchange": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Exchange"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "code",
+        "market",
+        "kind"
+      ],
+      "title": "InstrumentId",
+      "type": "object"
+    },
+    "InstrumentKind": {
+      "enum": [
+        "equity",
+        "index",
+        "etf"
+      ],
+      "title": "InstrumentKind",
+      "type": "string"
+    },
+    "Market": {
+      "enum": [
+        "cn_a"
+      ],
+      "title": "Market",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "dataset": {
+      "const": "regulation_watchlist",
+      "title": "Dataset",
+      "type": "string"
+    },
+    "code": {
+      "description": "Original source security code.",
+      "title": "Code",
+      "type": "string"
+    },
+    "name": {
+      "description": "Security name supplied by the source.",
+      "title": "Name",
+      "type": "string"
+    },
+    "instrumentId": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/InstrumentId"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Null because stock_monitor.json has no verified security-kind field."
+    },
+    "exchange": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Exchange"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Exchange decoded from MARKET: 1 is SSE, 0 is SZSE, B is BSE; unknown codes remain null."
+    },
+    "monitorStartDate": {
+      "anyOf": [
+        {
+          "format": "date",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Source monitoring start date.",
+      "title": "Monitorstartdate"
+    },
+    "expectedEndDate": {
+      "anyOf": [
+        {
+          "format": "date",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Source monitoring end date when supplied.",
+      "title": "Expectedenddate"
+    },
+    "noticeUrl": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Source-linked notice URL when supplied.",
+      "title": "Noticeurl"
+    },
+    "providerValues": {
+      "additionalProperties": true,
+      "description": "Original EastMoney row values, including unrecognized markers.",
+      "title": "Providervalues",
+      "type": "object"
+    }
+  },
+  "required": [
+    "dataset",
+    "code",
+    "name",
+    "providerValues"
+  ],
+  "title": "FinchX Market Regulation Watchlist Dataset Payload v1",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/market-regulation-watchlist.schema.json"
+}

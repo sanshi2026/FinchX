@@ -1,0 +1,304 @@
+{
+  "$defs": {
+    "Exchange": {
+      "enum": [
+        "sse",
+        "szse",
+        "bse"
+      ],
+      "title": "Exchange",
+      "type": "string"
+    },
+    "InstrumentId": {
+      "additionalProperties": false,
+      "description": "Identity for an instrument whose code, market, and kind are already known.",
+      "properties": {
+        "code": {
+          "minLength": 1,
+          "pattern": ".*\\S.*",
+          "title": "Code",
+          "type": "string"
+        },
+        "market": {
+          "$ref": "#/$defs/Market"
+        },
+        "kind": {
+          "$ref": "#/$defs/InstrumentKind"
+        },
+        "exchange": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Exchange"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "code",
+        "market",
+        "kind"
+      ],
+      "title": "InstrumentId",
+      "type": "object"
+    },
+    "InstrumentKind": {
+      "enum": [
+        "equity",
+        "index",
+        "etf"
+      ],
+      "title": "InstrumentKind",
+      "type": "string"
+    },
+    "Market": {
+      "enum": [
+        "cn_a"
+      ],
+      "title": "Market",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "dataset": {
+      "const": "severe_predictions",
+      "title": "Dataset",
+      "type": "string"
+    },
+    "code": {
+      "description": "Six-digit instrument code supplied by the prediction pool.",
+      "title": "Code",
+      "type": "string"
+    },
+    "name": {
+      "description": "Security name supplied by the prediction pool.",
+      "title": "Name",
+      "type": "string"
+    },
+    "instrumentId": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/InstrumentId"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Identity decoded from the provider board code when recognized; otherwise null."
+    },
+    "exchange": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Exchange"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Exchange decoded from s: 4 is SZSE, 5 is SSE, 6 is BSE; unknown board codes remain null."
+    },
+    "providerMarketCode": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Original m value; it is not used alone to infer the exchange.",
+      "title": "Providermarketcode"
+    },
+    "providerBoardCode": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Original s board code.",
+      "title": "Providerboardcode"
+    },
+    "providerRuleCode": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Original e rule code; retained even when FinchX cannot interpret it.",
+      "title": "Providerrulecode"
+    },
+    "ruleSemanticId": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Stable FinchX interpretation derived from recognized board and rule codes; null for unknown rules.",
+      "title": "Rulesemanticid"
+    },
+    "ruleLabel": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Readable label for the recognized rule; the provider values remain available separately.",
+      "title": "Rulelabel"
+    },
+    "deviation": {
+      "anyOf": [
+        {
+          "description": "A ratio fraction, not percentage points: 4.24% is 0.0424.",
+          "examples": [
+            "0.0424"
+          ],
+          "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Source x percentage points divided by 100; 95.69 becomes 0.9569.",
+      "title": "Deviation"
+    },
+    "deviationWindowDays": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Source d value retained as supplied.",
+      "title": "Deviationwindowdays"
+    },
+    "triggerChangeRatio": {
+      "anyOf": [
+        {
+          "description": "A ratio fraction, not percentage points: 4.24% is 0.0424.",
+          "examples": [
+            "0.0424"
+          ],
+          "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Source t trigger percentage points divided by 100.",
+      "title": "Triggerchangeratio"
+    },
+    "changeRatio": {
+      "anyOf": [
+        {
+          "description": "A ratio fraction, not percentage points: 4.24% is 0.0424.",
+          "examples": [
+            "0.0424"
+          ],
+          "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Source a percentage points divided by 100.",
+      "title": "Changeratio"
+    },
+    "horizon": {
+      "description": "Derived from o: 0/1 are current-session states, 2 is next-session, other values are unknown.",
+      "enum": [
+        "current_session",
+        "next_session",
+        "unknown"
+      ],
+      "title": "Horizon",
+      "type": "string"
+    },
+    "isTriggered": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "o=0 maps to false, 1 to true, and 2 or unknown values to null.",
+      "title": "Istriggered"
+    },
+    "providerSignalState": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Original o signal-state value.",
+      "title": "Providersignalstate"
+    },
+    "providerValues": {
+      "additionalProperties": true,
+      "description": "Original provider row, including source percentage values.",
+      "title": "Providervalues",
+      "type": "object"
+    }
+  },
+  "required": [
+    "dataset",
+    "code",
+    "name",
+    "horizon",
+    "providerValues"
+  ],
+  "title": "FinchX Market Severe Predictions Dataset Payload v1",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.finchx.invalid/v1/market-severe-predictions.schema.json"
+}

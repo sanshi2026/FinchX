@@ -31,7 +31,7 @@ def test_provider_inventory_is_explicitly_covered():
         if name.endswith("Provider")
     }
     registered_providers = {spec.provider for spec in PROVIDER_REGISTRY.list_providers()}
-    assert len(PROVIDER_SPECS) == 34
+    assert len(PROVIDER_SPECS) == 35
     assert registered_providers == public_providers - PROTOCOL_TYPES
     assert not registered_providers.intersection(PROTOCOL_TYPES)
 
@@ -41,7 +41,7 @@ def test_provider_inventory_is_explicitly_covered():
         if name.endswith("_DATASET")
     }
     registered_datasets = set(PROVIDER_REGISTRY.list_datasets())
-    assert len(public_datasets) == 56
+    assert len(public_datasets) == 60
     assert registered_datasets == public_datasets - {getattr(dataset_exports, "FORUM_REPLIES_DATASET")}
 
 

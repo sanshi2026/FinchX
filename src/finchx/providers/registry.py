@@ -49,6 +49,10 @@ from finchx.datasets import (
     MARKET_ORDERBOOK_DATASET,
     MARKET_QUOTE_DATASET,
     MARKET_QUOTE_SNAPSHOT_DATASET,
+    MARKET_ABNORMAL_COUNTS_DATASET,
+    MARKET_ABNORMAL_RECORDS_DATASET,
+    MARKET_REGULATION_WATCHLIST_DATASET,
+    MARKET_SEVERE_PREDICTIONS_DATASET,
     MARKET_RANKING_DATASET,
     MARKET_SENTIMENT_DATASET,
     MARKET_STRONG_POOL_DATASET,
@@ -84,6 +88,7 @@ from finchx.providers.eastmoney_market import (
     EastmoneyStrongPoolProvider,
     EastmoneyYesterdayLimitUpPoolProvider,
 )
+from finchx.providers.eastmoney_regulation import EastmoneyRegulationProvider
 from finchx.providers.jiuyangongshe_replay import JiyangongsheReplayProvider
 from finchx.providers.iwencai import IwencaiProvider
 from finchx.providers.tonghuashun_concept import TonghuashunConceptProvider
@@ -428,6 +433,15 @@ PROVIDER_SPECS = (
         "eastmoney.push2ex.broken_limit_pool",
         EastmoneyBrokenLimitPoolProvider,
         MARKET_BROKEN_LIMIT_POOL_DATASET,
+        semantics=_SINGLE_SOURCE,
+    ),
+    _spec(
+        "eastmoney.regulation",
+        EastmoneyRegulationProvider,
+        MARKET_REGULATION_WATCHLIST_DATASET,
+        MARKET_ABNORMAL_RECORDS_DATASET,
+        MARKET_SEVERE_PREDICTIONS_DATASET,
+        MARKET_ABNORMAL_COUNTS_DATASET,
         semantics=_SINGLE_SOURCE,
     ),
     _spec(

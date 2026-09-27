@@ -33,6 +33,10 @@ from finchx.datasets import (
     MarketQuoteSnapshotData,
     MarketRankingData,
     TradingCalendarData,
+    RegulationWatchlistData,
+    AbnormalRecordData,
+    SeverePredictionData,
+    AbnormalCountData,
 )
 from finchx.computed import DeviationData
 from finchx.contracts import (
@@ -167,6 +171,9 @@ def test_model_fields_required_fields_aliases_and_enums_match_schema():
         "market-index-intraday.schema.json": IndexIntradayData,
         "market-index-intraday-5d.schema.json": IndexIntradayData,
         "market-quote-snapshot.schema.json": MarketQuoteSnapshotData,
+        "market-regulation-watchlist.schema.json": RegulationWatchlistData,
+        "market-severe-predictions.schema.json": SeverePredictionData,
+        "market-abnormal-counts.schema.json": AbnormalCountData,
         "market-orderbook.schema.json": MarketOrderbookData,
         "market-quote.schema.json": MarketQuoteData,
         "market-ranking.schema.json": MarketRankingData,
@@ -197,6 +204,11 @@ def test_model_fields_required_fields_aliases_and_enums_match_schema():
             if field.is_required()
         }
         assert set(canonical.get("required", [])) == required_from_model
+
+    abnormal_records = schemas["market-abnormal-records.schema.json"]
+    generated_records = AbnormalRecordData.model_json_schema(by_alias=True)
+    assert abnormal_records["anyOf"] == generated_records["anyOf"]
+    assert abnormal_records["$defs"] == generated_records["$defs"]
 
     for schema_name, model_type in (
         ("market-equity-intraday.schema.json", EquityIntradayData),
@@ -519,7 +531,7 @@ def test_trading_calendar_payload_schema_is_minimal_and_rejects_provider_fields(
 
 
 def test_quote_snapshot_and_orderbook_schemas_validate_contract_models():
-    from finchx.datasets import MarketOrderbookData, MarketQuoteSnapshotData
+    from finchx.datasets import MarketOrderbookData, MarketQuoteSnapshotData, MarketQuoteSnapshotRequest
 
     schemas = load_schemas()
     registry = schema_registry(schemas)
@@ -556,6 +568,32 @@ def test_quote_snapshot_and_orderbook_schemas_validate_contract_models():
     snapshot_validator.validate(snapshot_wire)
     assert MarketQuoteSnapshotData.model_validate(snapshot_wire) == snapshot
     assert Decimal(snapshot_wire["changeRate"]) == Decimal("-0.0059")
+
+    for code, exchange in (
+        ("000002", "sse"),
+        ("000688", "sse"),
+        ("399107", "szse"),
+        ("399102", "szse"),
+    ):
+        benchmark_identity = {
+            "code": code,
+            "market": "cn_a",
+            "kind": "index",
+            "exchange": exchange,
+        }
+        request = MarketQuoteSnapshotRequest(instrumentId=benchmark_identity)
+        assert request.instrument_id.code == code
+        benchmark_snapshot = MarketQuoteSnapshotData(
+            instrumentId=benchmark_identity,
+            price="1234.56",
+            sourceTimestamp="2026-09-18T14:13:27+08:00",
+        )
+        snapshot_validator.validate(benchmark_snapshot.model_dump(mode="json", by_alias=True))
+
+    with pytest.raises(ValidationError):
+        MarketQuoteSnapshotRequest(instrumentId={
+            "code": "399107", "market": "cn_a", "kind": "index", "exchange": "sse",
+        })
 
     book = MarketOrderbookData(
         instrumentId=identity,

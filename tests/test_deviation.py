@@ -201,19 +201,32 @@ def _record(dataset, record_id, entity_id, data):
     )
 
 
-def test_client_computed_capability_uses_strict_qfq_stock_and_raw_index():
+@pytest.mark.parametrize(
+    "convention",
+    [DeviationWindowConvention.MAX_DEVIATION_SCAN, "max_deviation_scan"],
+)
+def test_client_computed_capability_uses_strict_qfq_stock_and_raw_index(convention):
     sessions = tuple(date(2026, 7, 1) + timedelta(days=index) for index in range(31))
     stock = equity("600519", Exchange.SSE)
     benchmark = resolve_deviation_benchmark(stock).instrument
     collector = FixtureCollector(sessions, stock, benchmark)
     client = FinchX(collector=collector)
 
-    result = client.market.deviation(stock, windows=(10, 30), as_of=sessions[-1])
+    result = client.market.deviation(
+        stock,
+        windows=(10, 30),
+        as_of=sessions[-1],
+        window_convention=convention,
+    )
 
     assert result.dataset is COMPUTED_DEVIATION_DATASET
     assert result.provider is None
     assert result.data.rule_version == DEVIATION_RULE_VERSION
     assert [item.window_days for item in result.data.windows] == [10, 30]
+    assert all(
+        item.window_convention is DeviationWindowConvention.MAX_DEVIATION_SCAN
+        for item in result.data.windows
+    )
     kline_requests = [request for dataset, request, _ in collector.calls if dataset is MARKET_KLINES_DATASET]
     assert len(kline_requests) == 2
     assert kline_requests[0].adjustment is KlineAdjustment.QFQ

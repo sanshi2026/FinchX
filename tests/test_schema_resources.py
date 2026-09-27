@@ -15,7 +15,7 @@ from finchx.schemas import (
 
 def test_v1_schemas_are_package_resources_with_stable_inventory():
     resources = list(iter_schema_resources())
-    assert len(resources) == 62
+    assert len(resources) == 66
     assert all(resource.name.endswith(".schema.json") for resource in resources)
     assert schema_root().joinpath("market-daily-replay.schema.json").is_file()
     assert schema_root().joinpath("market-deviation.schema.json").is_file()
@@ -26,6 +26,10 @@ def test_v1_schemas_are_package_resources_with_stable_inventory():
     assert schema_root().joinpath("hotlist-convertible-bonds.schema.json").is_file()
     assert schema_root().joinpath("hotlist-etfs.schema.json").is_file()
     assert schema_root().joinpath("hotlist-content.schema.json").is_file()
+    assert schema_root().joinpath("market-regulation-watchlist.schema.json").is_file()
+    assert schema_root().joinpath("market-abnormal-records.schema.json").is_file()
+    assert schema_root().joinpath("market-severe-predictions.schema.json").is_file()
+    assert schema_root().joinpath("market-abnormal-counts.schema.json").is_file()
     assert schema_root().joinpath("article-detail.schema.json").is_file()
     assert schema_root().joinpath("topic-article.schema.json").is_file()
     assert schema_root().joinpath("examples", "standard-record.json").is_file()

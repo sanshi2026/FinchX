@@ -128,6 +128,17 @@ from finchx.datasets.market_quote_snapshot import (
     MARKET_QUOTE_SNAPSHOT_DATASET,
     _normalize_quote_snapshot_row,
 )
+from finchx.datasets.market_regulation import (
+    MARKET_ABNORMAL_COUNTS_DATASET,
+    MARKET_ABNORMAL_RECORDS_DATASET,
+    MARKET_REGULATION_WATCHLIST_DATASET,
+    MARKET_SEVERE_PREDICTIONS_DATASET,
+    AbnormalRecordsRequest,
+    normalize_abnormal_counts,
+    normalize_severe_predictions,
+    normalize_watchlist,
+    local_filter_records,
+)
 from finchx.datasets.news import NEWS_DOCUMENT_DATASET
 from finchx.datasets.article_detail import (
     ARTICLE_DETAIL_DATASET,
@@ -336,11 +347,15 @@ class _RouteResult:
 
     data: Any
     warnings: tuple[str, ...] = ()
+    metadata: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "warnings", tuple(self.warnings))
         if any(not isinstance(warning, str) or not warning.strip() for warning in self.warnings):
             raise TypeError("route warnings must contain non-empty strings")
+        if not isinstance(self.metadata, Mapping):
+            raise TypeError("route metadata must be a mapping")
+        object.__setattr__(self, "metadata", _freeze_json_metadata(self.metadata, path="route metadata"))
 
 
 @dataclass(frozen=True)
@@ -356,6 +371,7 @@ class FetchResult(Generic[DataT]):
     attempts: tuple[FetchAttempt, ...] = ()
     fallback_used: bool = False
     cache_hit: bool = False
+    metadata: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if not isinstance(self.dataset, DatasetDefinition):
@@ -375,6 +391,9 @@ class FetchResult(Generic[DataT]):
         object.__setattr__(self, "attempts", tuple(self.attempts))
         if any(not isinstance(attempt, FetchAttempt) for attempt in self.attempts):
             raise TypeError("attempts must contain FetchAttempt values")
+        if not isinstance(self.metadata, Mapping):
+            raise TypeError("metadata must be a mapping")
+        object.__setattr__(self, "metadata", _freeze_json_metadata(self.metadata))
 
     @property
     def dataset_id(self) -> str:
@@ -481,6 +500,43 @@ _CACHE_CAPTURED_AT_METADATA = "__finchx_collector_captured_at__"
 _CACHE_PROVENANCE_METADATA = "__finchx_collector_provenance__"
 _CACHE_WARNINGS_METADATA = "__finchx_collector_warnings__"
 _CACHE_FALLBACK_METADATA = "__finchx_collector_fallback_used__"
+_CACHE_RESULT_METADATA = "__finchx_collector_result_metadata__"
+
+
+def _freeze_json_metadata(value: Any, *, path: str = "metadata") -> Any:
+    """Validate and recursively freeze JSON-compatible result metadata."""
+
+    if value is None or isinstance(value, (str, bool, int)):
+        return value
+    if isinstance(value, float):
+        if not math.isfinite(value):
+            raise ValueError(f"{path} numbers must be finite")
+        return value
+    if isinstance(value, Mapping):
+        normalized: dict[str, Any] = {}
+        for key, item in value.items():
+            if not isinstance(key, str) or not key:
+                raise TypeError(f"{path} mapping keys must be non-empty strings")
+            normalized[key] = _freeze_json_metadata(item, path=f"{path}.{key}")
+        return MappingProxyType(normalized)
+    if isinstance(value, (tuple, list)):
+        return tuple(
+            _freeze_json_metadata(item, path=f"{path}[{index}]")
+            for index, item in enumerate(value)
+        )
+    raise TypeError(
+        f"{path} must contain only JSON-compatible values; got {type(value).__name__}"
+    )
+
+
+def _thaw_json_metadata(value: Any) -> Any:
+    """Return mutable JSON-shaped data for the configured Storage backend."""
+
+    if isinstance(value, Mapping):
+        return {key: _thaw_json_metadata(item) for key, item in value.items()}
+    if isinstance(value, tuple):
+        return [_thaw_json_metadata(item) for item in value]
+    return value
 
 
 @dataclass(frozen=True)
@@ -633,6 +689,7 @@ class Collector:
                     instance = self._resolve_provider(spec.provider_id, spec.provider)
                     route = self._routes.get((definition.name, spec.provider_id))
                     route_warnings = ()
+                    route_metadata: Mapping[str, Any] = {}
                     if route is None:
                         data = self._invoke_generic(instance, definition, kwargs)
                     else:
@@ -640,6 +697,7 @@ class Collector:
                         if isinstance(routed, _RouteResult):
                             data = routed.data
                             route_warnings = routed.warnings
+                            route_metadata = routed.metadata
                         else:
                             data = routed
                             route_warnings = ()
@@ -793,6 +851,7 @@ class Collector:
                         provenance=self._provider_provenance(instance),
                         attempts=tuple(attempts),
                         fallback_used=provider_index > 0,
+                        metadata=route_metadata,
                     )
                     if cache_enabled:
                         self._cache_result(
@@ -1008,6 +1067,7 @@ class Collector:
             _CACHE_PROVENANCE_METADATA: result.provenance,
             _CACHE_WARNINGS_METADATA: result.warnings,
             _CACHE_FALLBACK_METADATA: result.fallback_used,
+            _CACHE_RESULT_METADATA: _thaw_json_metadata(result.metadata),
         }
         source = result.provenance[0] if result.provenance else None
         self._cache.put(
@@ -1060,6 +1120,9 @@ class Collector:
         fallback_used = metadata.get(_CACHE_FALLBACK_METADATA, False)
         if type(fallback_used) is not bool:
             raise CollectorError("cached Collector fallback metadata is invalid")
+        result_metadata = metadata.get(_CACHE_RESULT_METADATA, {})
+        if not isinstance(result_metadata, Mapping):
+            raise CollectorError("cached Collector result metadata is invalid")
 
         return FetchResult(
             data=stored.data,
@@ -1071,6 +1134,7 @@ class Collector:
             attempts=(),
             fallback_used=fallback_used,
             cache_hit=True,
+            metadata=result_metadata,
         )
 
     def _ordered_specs(
@@ -1266,6 +1330,15 @@ class Collector:
     ) -> RouteHandler | None:
         if definition.name == TRADING_CALENDAR_DATASET.name:
             return _calendar_route
+        regulation_methods = {
+            MARKET_REGULATION_WATCHLIST_DATASET.name: ("fetch_watchlist", normalize_watchlist),
+            MARKET_ABNORMAL_RECORDS_DATASET.name: ("fetch_abnormal_records", local_filter_records),
+            MARKET_SEVERE_PREDICTIONS_DATASET.name: ("fetch_severe_predictions", normalize_severe_predictions),
+            MARKET_ABNORMAL_COUNTS_DATASET.name: ("fetch_abnormal_counts", normalize_abnormal_counts),
+        }
+        regulation_route = regulation_methods.get(definition.name)
+        if regulation_route is not None and hasattr(provider_type, regulation_route[0]):
+            return _regulation_route(regulation_route[0], regulation_route[1], clock)
         if definition.name == MARKET_BREADTH_DATASET.name and hasattr(
             provider_type, "fetch_raw_breadth"
         ):
@@ -1565,6 +1638,57 @@ def _request_normalizer_route(
             raise AttributeError(f"Provider has no {method_name} method")
         raw = method(request)
         return normalizer(request, raw, source=provider.source)
+
+    return route
+
+
+def _regulation_route(
+    method_name: str,
+    normalizer: Callable[..., Any],
+    clock: Callable[[], datetime],
+) -> RouteHandler:
+    """Carry EastMoney pagination metadata through normalization and caching."""
+
+    def route(
+        provider: Any,
+        definition: DatasetDefinition[Any, Any],
+        kwargs: Mapping[str, Any],
+    ) -> Any:
+        passthrough = _generic_route_override(provider, kwargs)
+        if passthrough is not _NO_GENERIC_OVERRIDE:
+            return passthrough
+        request = _request_for(definition, kwargs)
+        method = getattr(provider, method_name, None)
+        if not callable(method):
+            raise AttributeError(f"Provider has no {method_name} method")
+        response = method(request)
+        captured_at = _route_capture_time(clock)
+        source_url = response.metadata.get("source_url")
+        if not isinstance(source_url, str) or not source_url:
+            raise SchemaDrift("EastMoney regulation response omitted source_url metadata")
+        try:
+            records = normalizer(
+                request,
+                response.rows,
+                captured_at=captured_at,
+                source=provider.source,
+                source_url=source_url,
+            )
+        except (TypeError, ValueError) as exc:
+            raise SchemaDrift(f"EastMoney {definition.name} rows could not be normalized: {exc}") from exc
+        metadata = dict(response.metadata)
+        metadata["returned_count"] = len(records)
+        if definition.name == MARKET_REGULATION_WATCHLIST_DATASET.name:
+            metadata["unclassified_count"] = len(response.rows)
+            metadata["classification_complete"] = False
+        if definition.name == MARKET_ABNORMAL_RECORDS_DATASET.name:
+            metadata["records_dataset"] = request.dataset
+            metadata["upstream_page"] = request.page
+            metadata["page_size"] = request.page_size
+            metadata["has_more"] = bool(metadata.get("has_more", False))
+            metadata["page_complete"] = bool(metadata.get("page_complete", False))
+            metadata["collection_complete"] = bool(metadata.get("collection_complete", False))
+        return _RouteResult(records, response.warnings, metadata)
 
     return route
 

@@ -1,5 +1,19 @@
 # FinchX Release Notes
 
+## 2.0.1 — 2026-09-27
+
+FinchX 2.0.1 expands verified index quote-snapshot coverage and adds EastMoney regulation datasets while retaining the package's established typed results and schema-versioning rules.
+
+Dataset schema identifiers are independent of the Python package version. Existing Dataset schemas remain at `1.0`; the package version does not change their identities.
+
+### Highlights
+
+- Extends `market.quote_snapshot` to the seven verified SSE and SZSE index identities and documents the already-supported index use of `market.ohlcv`; index OHLCV uses `adjustment=None`.
+- Adds EastMoney regulation watchlists, paged abnormal-event and prediction-history records, severe-prediction pools, and abnormal-count pools. Source values and unknown states remain available for audit.
+- Extends `FetchResult.metadata` with pagination and collection-completeness details while preserving existing data and `to_dicts()` behavior.
+- Makes `DeviationWindowConvention` and its two accepted string values explicit across the client, service, and pure calculator. The default calculation remains unchanged.
+- Updates the English and Simplified Chinese API references and adds reproducible upstream-verification notes for the EastMoney mappings.
+
 ## 2.0.0 — 2026-09-25
 
 FinchX 2.0.0 expands the typed client and revises several public API contracts. Review the migration notes before upgrading from 1.0.0.
