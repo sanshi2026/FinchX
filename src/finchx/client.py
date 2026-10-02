@@ -11,8 +11,6 @@ from finchx.collectors import CachePolicy, Collector, FetchResult, InvalidReques
 from finchx.computed import (
     DeviationData,
     DeviationService,
-    DeviationWindowConvention,
-    DeviationWindowConventionInput,
 )
 from finchx.contracts import StandardRecord
 from finchx.datasets import (
@@ -341,16 +339,14 @@ class MarketNamespace(_RequestNamespace):
         *,
         windows: Sequence[int] = (10, 30),
         as_of: date | str | None = None,
-        window_convention: DeviationWindowConventionInput = DeviationWindowConvention.MAX_DEVIATION_SCAN,
         provider: str | None = None,
         use_cache: bool | None = None,
     ) -> FetchResult[DeviationData]:
-        """Compute close-based 10-day/30-day deviation from existing data."""
+        """Compute pre-open, current, and next-session deviation observations."""
         return self._client._deviation_service.calculate(
             normalize_instrument(instrument),
             windows=windows,
             as_of=as_of,
-            window_convention=window_convention,
             provider=provider,
             use_cache=use_cache,
         )
@@ -734,8 +730,8 @@ class MarketNamespace(_RequestNamespace):
         *,
         provider: str | None = None,
         use_cache: bool | None = None,
-    ) -> FetchResult[tuple[StandardRecord, ...]]:
-        """Fetch the order book in a FetchResult."""
+    ) -> FetchResult[StandardRecord]:
+        """Fetch the Tencent five-level order book as one record."""
         return self._fetch_instrument_request(
             MARKET_ORDERBOOK_DATASET,
             instrument,

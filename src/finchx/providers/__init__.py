@@ -21,7 +21,7 @@ from finchx.providers.tencent_quote import TencentQuoteProvider
 from finchx.providers.tencent_fund_flow import TencentFundFlowProvider
 from finchx.providers.tencent_industry import TencentIndustryComparisonProvider
 from finchx.providers.tencent_intraday import TencentIntradayProvider
-from finchx.providers.tencent_klines import TencentKlinesProvider
+from finchx.providers.tencent_klines import TencentKlinesError, TencentKlinesProvider
 from finchx.providers.tencent_sector import TencentSectorProvider
 from finchx.providers.tencent_f10 import TencentF10Provider
 from finchx.providers.tencent_float_holder import TencentFloatHolderProvider
@@ -105,6 +105,7 @@ __all__ = [
     "TencentIndustryComparisonProvider",
     "TencentIntradayProvider",
     "TencentKlinesProvider",
+    "TencentKlinesError",
     "TencentSectorProvider",
     "TencentF10Provider",
     "TencentFloatHolderProvider",

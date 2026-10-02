@@ -1,4 +1,4 @@
-"""Generate the bilingual FinchX v1 API reference from public runtime metadata.
+"""Generate the bilingual FinchX API reference from public runtime metadata.
 
 Client signatures, Dataset definitions, Pydantic fields and the Provider
 Registry are read from the package.  Examples are the one intentionally
@@ -96,10 +96,6 @@ def public_annotation_text(annotation: Any) -> str:
     """Render user-facing types without exposing internal identity models."""
 
     text = annotation_text(annotation)
-    text = text.replace(
-        "DeviationWindowConventionInput",
-        "DeviationWindowConvention | Literal['max_deviation_scan', 'strict_exchange_window']",
-    )
     return re.sub(r"\b(?:InstrumentInput|InstrumentId)\b", "str", text)
 
 
@@ -296,7 +292,7 @@ SUMMARY_ZH: dict[str, str] = {
     "market.limit_down_pool": "获取最新跌停池快照。",
     "market.limit_up_pool": "获取最新涨停池快照。",
     "market.ohlcv": "获取股票或受支持指数的日线 OHLCV 数据。",
-    "market.orderbook": "获取个股盘口数据。",
+    "market.orderbook": "获取腾讯来源的五档盘口槽位，保留零值与缺失值的区别。",
     "market.quote": "获取全市场行情快照。",
     "market.quote_snapshot": "获取 SSE/SZSE 股票或受支持指数的行情快照。",
     "market.ranking": "按指定指标获取 A 股个股排行。",
@@ -320,7 +316,7 @@ SUMMARY_ZH: dict[str, str] = {
     "company.executive_snapshot": "获取高管快照。",
     "corporate_action.dividend": "获取分红除权记录。",
     "corporate_action.repurchase": "获取回购记录。",
-    "market.deviation": "计算经过审计的基于收盘价的偏离值。",
+    "market.deviation": "按盘前、当日和次日窗口边界计算板块基准偏离值。",
 }
 
 # The renderer below is intentionally organized around the reader-facing
@@ -458,8 +454,8 @@ _COMMON_FIELD_DESCRIPTIONS = {
     "trade_date": ("Trade date.", "交易日期。"),
     "date": ("Date.", "日期。"),
     "adjustment": (
-        "Output adjustment label: `none`, `qfq`, `hfq`, or `not_applicable`.",
-        "输出复权标记：`none`、`qfq`、`hfq` 或 `not_applicable`。",
+        "Actual bar adjustment supplied: `none`, `qfq`, `hfq`, or `not_applicable`. A `qfq` request may return `none` only with the documented Tencent `day` fallback metadata and warning.",
+        "来源实际提供的复权口径：`none`、`qfq`、`hfq` 或 `not_applicable`。`qfq` 请求只有在使用文档所述腾讯 `day` 回退时才可能返回 `none`，并附带 metadata 和 warning。",
     ),
     "rank": ("Position within this hotlist.", "该榜单中的名次。"),
     "symbol": ("Six-digit security code.", "六位证券代码。"),
@@ -658,6 +654,51 @@ def output_field_rows(
     exclude_fields: set[str] | frozenset[str] = frozenset(),
 ) -> list[tuple[str, str, str]]:
     fallback = "—"
+    deviation_descriptions = {
+        "DeviationData": {
+            "instrumentId": ("Full identity of the requested A-share equity.", "请求 A 股的完整证券标识。"),
+            "board": ("Resolved equity board used to select the benchmark index.", "用于选择基准指数的个股板块。"),
+            "asOf": ("Normalized observation trading date shared by all scenario rows.", "所有情景记录共用的归一化观察交易日。"),
+            "effectiveAsOf": ("Compatibility alias equal to asOf; it is not the end date shared by every row.", "兼容字段，与 asOf 相同；它不是所有记录共用的结束日。"),
+            "calculationMode": ("Compatibility summary label; scenario-specific price sources are described by each row.", "兼容性摘要标签；各记录的行情来源由其 scenario 决定。"),
+            "priceBasis": ("Reports the actual stock bar scale and raw index points. A stock quote fallback bridges history by previousClose only for QFQ bars; unadjusted day history and quotes stay on their source scale.", "报告实际股票日线口径和未复权指数点位。股票快照仅在 QFQ 日线下按 previousClose 桥接历史；未复权 day 历史与快照保留来源价格尺度。"),
+            "ruleVersion": ("Version identifier for the deviation calculation contract.", "偏离值计算契约的版本标识。"),
+            "coverageStatus": ("Aggregate historical coverage summary across requested scenario rows.", "所请求情景记录的历史覆盖汇总状态。"),
+            "inferredHaltDates": ("Union of stock-gap dates inferred by the requested rows; these are calculation assumptions, not source halt records.", "各记录推定的个股缺口日期并集；这是计算依据，不是来源停牌记录。"),
+            "windows": ("Flat scenario records ordered by requested window length and then pre_open, current, next_session.", "扁平情景记录；先按请求窗口长度排序，再依次为 pre_open、current、next_session。"),
+        },
+        "DeviationWindowData": {
+            "windowDays": ("Requested target length: 10 or 30 trading sessions; next_session keeps this length while rolling its candidate boundary.", "请求的目标窗口长度：10 或 30 个交易日；next_session 滚动候选边界但保留此长度。"),
+            "scenario": ("Row convention: pre_open ends on the prior session; current ends on asOf; next_session uses asOf prices with the next-session candidate boundary.", "记录口径：pre_open 截至前一交易日；current 截至 asOf；next_session 使用 asOf 价格并采用下一交易日候选边界。"),
+            "tradingSessions": ("Observed statistic sessions in the selected maximum-deviation interval, excluding its baseline price point.", "最大偏离选中区间内已观测的统计交易日数，不含基准价格点。"),
+            "availableTradingSessions": ("Observed statistic sessions available in this scenario, excluding the baseline and any unobserved future target.", "该情景可用的已观测统计交易日数，不含基准点及未观测的未来目标日。"),
+            "windowStatus": ("Whether available observations form a complete target window or a supported partial window.", "可用观测构成完整目标窗口还是受支持的部分窗口。"),
+            "coverageStatus": ("Historical coverage and inferred stock-gap summary for this row.", "本记录的历史覆盖和个股缺口推定摘要。"),
+            "startDate": ("First statistic session in the selected maximum-deviation interval; not the earliest candidate boundary or return baseline date.", "最大偏离选中区间的首个统计交易日；不是候选边界最早日，也不是收益基准日。"),
+            "baselineDate": ("Existing compatibility date equal to stockBaselineDate.", "现有兼容日期字段，与 stockBaselineDate 相同。"),
+            "stockBaselineDate": ("Date of the stock price used as the stock-return baseline.", "股票收益率基准价格所属日期。"),
+            "benchmarkBaselineDate": ("Date of the index point used as the benchmark-return baseline; it may differ after an inferred halt.", "指数收益率基准点所属日期；停牌缺口推定后可能与股票基准日期不同。"),
+            "endDate": ("Date of the terminal stock and benchmark prices actually used.", "实际采用的股票和指数终值所属日期。"),
+            "targetDate": ("Trading date defining this row's candidate-window boundary; next_session has no price data for its future target.", "决定本记录候选窗口边界的交易日；next_session 不读取未来目标日行情。"),
+            "inferredHaltDates": ("Missing stock-bar dates inferred between observed stock bars; index gaps are not treated as stock halts.", "前后个股 K 线之间推定缺失的日期；指数缺口不会被当作个股停牌。"),
+            "stockBaselinePrice": ("Stock-return baseline price in CNY per share on the reported priceBasis.", "股票收益率基准价，单位 CNY/股，采用返回的 priceBasis。"),
+            "windowStartPrice": ("Stock price at startDate in CNY per share; distinct from the preceding return-baseline price.", "startDate 当日股票价格，单位 CNY/股；与收益率基准价格不同。"),
+            "currentPrice": ("Terminal stock price in CNY per share, using the source and date selected for this scenario.", "本情景采用的股票终值，单位 CNY/股。"),
+            "benchmarkInstrument": ("Full identity of the board-specific benchmark index.", "板块对应基准指数的完整证券标识。"),
+            "benchmarkName": ("Human-readable name of the board-specific benchmark index.", "板块对应基准指数的名称。"),
+            "benchmarkStart": ("Benchmark baseline in index points, retaining its existing field name.", "指数收益率基准点位，保留现有字段名，单位为点。"),
+            "benchmarkCurrent": ("Terminal benchmark value in raw index points on endDate.", "endDate 当日指数终值，采用未复权点位。"),
+            "stockReturn": ("Stock return ratio from stockBaselinePrice to currentPrice; 0.03 means 3%.", "从 stockBaselinePrice 到 currentPrice 的股票收益率；0.03 表示 3%。"),
+            "benchmarkReturn": ("Benchmark return ratio from benchmarkStart to benchmarkCurrent; 0.03 means 3%.", "从 benchmarkStart 到 benchmarkCurrent 的指数收益率；0.03 表示 3%。"),
+            "deviation": ("Stock return minus benchmark return for the maximum-deviation candidate; negative values are preserved.", "最大偏离候选的股票收益率减指数收益率；保留负值。"),
+            "upperThreshold": ("Fixed upper deviation threshold: 1.00 for 10 sessions or 2.00 for 30 sessions.", "固定上方偏离阈值：10 日为 1.00，30 日为 2.00。"),
+            "remainingToUpper": ("Rounded upperTriggerPrice divided by currentPrice minus 1; negative values are preserved.", "进位后的 upperTriggerPrice / currentPrice - 1；保留负值。"),
+            "upperTriggerPrice": ("Minimum theoretical stock price across eligible candidates, rounded up to CNY 0.01 after selection; CNY per share.", "按未进位候选值选取合格候选对应的最小理论股价，再向上进位到 0.01 CNY。"),
+            "upperTriggerPrice_original": ("Unrounded theoretical price for the selected minimum-price candidate; CNY per share.", "选中的最小候选理论股价的未进位原始值，单位 CNY/股。"),
+            "stockSourceTimestamp": ("Source timestamp for a stock quote terminal; null when the terminal comes from a daily bar.", "股票快照终值的来源时间戳；终值来自日线时为 null。"),
+            "benchmarkSourceTimestamp": ("Source timestamp for a benchmark quote terminal; null when the terminal comes from a daily bar.", "基准指数快照终值的来源时间戳；终值来自日线时为 null。"),
+        },
+    }
     rows = []
     for name, field in model.model_fields.items():
         if name in exclude_fields or field.alias in exclude_fields:
@@ -665,6 +706,10 @@ def output_field_rows(
         description = field_description_text(field, language=language, fallback=fallback)
         if not field.description:
             description = common_field_description(field.alias or name, language=language) or fallback
+        if key == "market.deviation":
+            descriptions = deviation_descriptions.get(model.__name__, {}).get(field.alias or name)
+            if descriptions is not None:
+                description = descriptions[0 if language == "en" else 1]
         if model.__name__ == "FinancialStatementLineItem":
             if (field.alias or name) == "value":
                 description = (
@@ -678,6 +723,40 @@ def output_field_rows(
                     if language == "en"
                     else "保留的来源原始值，仅用于审计及核对单位或内容。"
                 )
+        if key == "market.orderbook":
+            orderbook_descriptions = {
+                ("MarketOrderbookData", "instrumentId"): (
+                    "Equity instrument for this source book.",
+                    "该来源盘口对应的股票证券标识。",
+                ),
+                ("MarketOrderbookData", "bids"): (
+                    "Five Tencent bid slots in source order; zero and null values are retained.",
+                    "腾讯来源顺序的五个买盘槽位；保留零值和 null。",
+                ),
+                ("MarketOrderbookData", "asks"): (
+                    "Five Tencent ask slots in source order; zero and null values are retained.",
+                    "腾讯来源顺序的五个卖盘槽位；保留零值和 null。",
+                ),
+                ("MarketOrderbookData", "sourceTimestamp"): (
+                    "Tencent quote timestamp with its Shanghai UTC+08:00 offset; distinct from capturedAt.",
+                    "腾讯来源行情时间，保留上海时区 UTC+08:00；与 capturedAt 分开。",
+                ),
+                ("OrderbookLevel", "level"): (
+                    "Tencent source slot number from 1 through 5; levels remain in source order.",
+                    "腾讯来源槽位编号，范围 1 至 5；按来源顺序保留。",
+                ),
+                ("OrderbookLevel", "price"): (
+                    "CNY per share as a decimal string or null; explicit zero is retained.",
+                    "单位为 CNY/股的 Decimal 字符串或 null；显式零值会保留。",
+                ),
+                ("OrderbookLevel", "size"): (
+                    "Whole shares or null; Tencent hands are multiplied by 100. Explicit zero is retained.",
+                    "整数股数或 null；腾讯来源手数乘以 100。显式零值会保留。",
+                ),
+            }
+            description = orderbook_descriptions.get(
+                (model.__name__, field.alias or name), (None, None)
+            )[0 if language == "en" else 1] or description
         if key == "market.ohlcv" and model.__name__ == "MarketKlineData":
             kline_descriptions = {
                 "instrumentId": (
@@ -796,7 +875,7 @@ def parameter_description(name: str, *, language: str, key: str | None = None) -
         "direction": "Sort direction: `asc` from lowest to highest or `desc` from highest to lowest.",
         "limit": "Required positive integer or None; None means no limit.",
         "windows": "Deviation windows, in trading sessions.",
-        "as_of": "Optional completed-session date; accepts YYYY-MM-DD, YYYYMMDD, or YYYY/MM/DD strings.", "window_convention": "Choose a deviation convention; omit it to use the default MAX_DEVIATION_SCAN.",
+        "as_of": "Observation trading date; accepts YYYY-MM-DD, YYYYMMDD, or YYYY/MM/DD strings.",
         "url": "Report detail page URL from an iWenCai report search hit; it must contain a supported duid.",
         "cookies": "Caller-provided logged-in iWenCai/THS Cookie header.",
         "uid": "Optional report UID from the search hit, used as a fallback.",
@@ -835,7 +914,7 @@ def parameter_description(name: str, *, language: str, key: str | None = None) -
         "criterion": "可选 `amount`（成交额，单位 CNY）、`zdf`（涨跌幅，比例小数，例如 3% 为 0.03）或 `volume`（成交量，单位为股）。",
         "direction": "排序方向：`asc` 表示从低到高，`desc` 表示从高到低。",
         "limit": "必填；正整数或 None；None 表示不限制返回数量。", "windows": "以交易时段计的偏离窗口。",
-        "as_of": "可选的已完成交易时段日期；支持 YYYY-MM-DD、YYYYMMDD 或 YYYY/MM/DD 字符串。", "window_convention": "选择偏离窗口解释方式；省略时使用默认的 MAX_DEVIATION_SCAN。",
+        "as_of": "观察基准交易日；支持 YYYY-MM-DD、YYYYMMDD 或 YYYY/MM/DD 字符串。",
         "url": "问财研报搜索结果中的详情页 URL，必须包含受支持的 duid。",
         "cookies": "调用者提供的问财/同花顺登录态 Cookie header。",
         "uid": "可选的搜索结果研报 UID，用作备用值。",
@@ -969,7 +1048,8 @@ def summary_for(key: str, method: Any, *, language: str) -> str:
         "market.abnormal_counts": "Fetch the bounded abnormal-count pool while keeping ambiguous provider counters as raw evidence.",
         "market.ohlcv": "Fetch daily OHLCV history for an SSE/SZSE equity or supported index.",
         "market.quote_snapshot": "Fetch a current quote snapshot for an SSE/SZSE equity or supported index.",
-        "market.deviation": "Calculate close-based relative returns for one supported A-share stock against its board benchmark over 10- or 30-session windows.",
+        "market.orderbook": "Fetch Tencent's five-level equity book while preserving source slot order and null values.",
+        "market.deviation": "Calculate pre-open, current-session, and next-session deviation rows against the board benchmark.",
     }
     if key in summary_en:
         return summary_en[key]
@@ -1060,16 +1140,38 @@ def _result_usage_note(key: str, model: type[BaseModel], *, language: str) -> st
     elif key == "articles.get":
         shape_en = "`.data` is one normalized record."
         shape_zh = "`.data` 是一条标准化记录。"
+    elif key == "market.orderbook":
+        shape_en = "`.data` is one normalized `StandardRecord`."
+        shape_zh = "`.data` 是一条标准化 `StandardRecord`。"
     else:
         shape_en = "`.data` is a tuple of normalized records; each record's `.data` contains the Dataset row payload."
         shape_zh = "`.data` 是标准化记录元组；每条记录的 `.data` 保存 Dataset 行载荷。"
     if language == "en":
+        if key == "market.orderbook":
+            return (
+                f"{shape_en} `{model.__name__}` exposes the Tencent book slots. Each of `bids` and `asks` has five source levels in source order; FinchX does not sort or remove zero-valued or null-valued slots. `price` is a decimal string or `null`; `size` is an integer share count or `null`, after converting Tencent hands to shares (`hands × 100`). Explicit zero remains zero. `sourceTimestamp` is Tencent's Shanghai-time quote timestamp and is separate from FinchX `capturedAt`. Tencent's empty sentinels become typed null values; null does not establish that a physical exchange level is absent. Status is `missing` only when every source price and size is null; any explicit zero counts as reported data. This next unreleased package intentionally changes the previous filtered and price-sorted output contract. No auction, limit-up, or order-amount interpretation is inferred. Export with `.to_dicts()`."
+            )
+        if key == "market.ranking":
+            return (
+                f"{shape_en} The Dataset row schema `{model.__name__}` has business fields such as {fields}. "
+                "Use the named business fields for follow-up filtering, comparisons, or charts. "
+                "Tencent rankings are fetched from live pages. If a stock repeats on a later page, FinchX keeps its first row and skips the repeat; the result then has partial coverage. "
+                "The requested `limit` is a source-row budget; skipped repeats do not trigger extra pages to refill unique rows. "
+                "Check `.warnings` and `.metadata` for `coverage_status`, `requested_count`, `source_row_count`, `unique_count`, `source_total`, and `duplicate_rows_skipped`. "
+                "`position` preserves the source row number, so gaps can appear. The pages do not form a consistent point-in-time snapshot, even when no repeats appear. "
+                "Export JSON-compatible rows with `.to_dicts()`."
+            )
         if key == "reference.trading_calendar":
             action = "Each natural date in the inclusive range appears once, and the interface always uses the unified A-share calendar."
         elif key == "market.daily_replay":
-            action = "Use `tradeDate` to identify the returned session, then inspect `themes` for the close review."
+            action = (
+                "Use `tradeDate` to identify the returned session, then inspect `themes` for the close review. "
+                "If you log in again, refresh `SESSION` because the previous cookie may no longer be accepted. "
+                "Errors identify the failed transport stage without including cookie values, URL query parameters, or raw browser messages. "
+                "An explicit HTTP 401/403 or source `errCode=1/110` response is reported as an authentication/access failure immediately, even if the other API response is missing."
+            )
         elif key == "market.deviation":
-            action = "Iterate `windows` to compare each requested trading window, and retain `effectiveAsOf` with the result."
+            action = "Iterate the three scenario rows per requested window in `windows`; use `asOf` as the observation date. `effectiveAsOf` is a compatibility alias."
         elif key.startswith("market.index_intraday"):
             action = "Use the time and price series to chart the index session."
         elif key.startswith("market.equity_intraday"):
@@ -1090,12 +1192,28 @@ def _result_usage_note(key: str, model: type[BaseModel], *, language: str) -> st
             action = "Use the named business fields for follow-up filtering, comparisons, or charts."
         completeness = " `result.metadata` reports `upstream_page`, `upstream_pages`, `has_more`, `page_complete`, and `collection_complete` where pagination applies." if key in {"market.abnormal_records", "market.severe_predictions", "market.abnormal_counts", "market.regulation_watchlist"} else ""
         return f"{shape_en} The Dataset row schema `{model.__name__}` has business fields such as {fields}. {action} Export JSON-compatible rows with `.to_dicts()` and inspect `.warnings` for partial results.{completeness}"
+    if key == "market.orderbook":
+        return (
+            f"{shape_zh} `{model.__name__}` 展示腾讯盘口槽位。`bids` 和 `asks` 各含来源顺序的五档；FinchX 不排序，也不删除零值或 null 槽位。`price` 是 Decimal 字符串或 `null`；`size` 是整数股数或 `null`，Tencent 来源手数会乘以 100 转为股数。显式零值仍为 0。`sourceTimestamp` 是 Tencent 上海时区的来源行情时间，与 FinchX 的 `capturedAt` 分开。Tencent 空字符串、`-` 和 `--` 会转为带类型的 null；null 不证明交易所物理档位不存在。只有全部来源价格和数量都为 null 时状态才是 `missing`；任何显式零值都算来源已提供数据。下一未发布版本会有意改变旧版滤除空档并按价格排序的输出契约。不推断竞价封板、涨停入表或委托额语义。用 `.to_dicts()` 导出。"
+        )
+    if key == "market.ranking":
+        return (
+            f"{shape_zh} Dataset 行模式 `{model.__name__}` 的业务字段包括 {fields} 等。"
+            "腾讯排名通过实时分页获取。如果某只股票在后续页再次出现，FinchX 保留首次记录并跳过重复行，此时结果会标记为部分覆盖。请求的 `limit` 按来源行数计；跳过重复行后不会再请求额外页面补足唯一记录。"
+            "请检查 `.warnings` 和 `.metadata` 中的 `coverage_status`、`requested_count`、`source_row_count`、`unique_count`、`source_total` 与 `duplicate_rows_skipped`。"
+            "`position` 保留来源行号，因此可能出现名次缺口。多页结果不代表同一时点快照，即使没有观察到重复也不能据此确认快照一致。"
+            "用 `.to_dicts()` 导出 JSON 兼容数据。"
+        )
     if key == "reference.trading_calendar":
         action = "闭区间内每个自然日各返回一行，接口固定使用统一的 A 股交易日历。"
     elif key == "market.daily_replay":
-        action = "用 `tradeDate` 确认返回的交易日，再检查 `themes` 完成盘后复盘。"
+        action = (
+            "用 `tradeDate` 确认返回的交易日，再检查 `themes` 完成盘后复盘。"
+            "重新登录后旧 `SESSION` 可能失效，请传入当前会话的 Cookie。错误会标明失败阶段，且不包含 Cookie、URL 查询参数或浏览器原始异常。"
+            "来源明确返回 HTTP 401/403 或 `errCode=1/110` 时会立即报告认证或访问失败，即使另一个 API 响应缺失。"
+        )
     elif key == "market.deviation":
-        action = "遍历 `windows` 比较各个交易窗口，并将 `effectiveAsOf` 与结果一起保留。"
+        action = "遍历 `windows` 中每个请求窗口对应的三种情景记录；使用 `asOf` 作为观察日。`effectiveAsOf` 是兼容别名。"
     elif key.startswith("market.index_intraday"):
         action = "用时间序列和价格字段绘制指数交易日走势。"
     elif key.startswith("market.equity_intraday"):
@@ -1162,7 +1280,6 @@ _EXAMPLE_VALUES: dict[str, str] = {
     "published_at": '"2026-09-23"',
     "windows": "(10, 30)",
     "as_of": '"2026-09-23"',
-    "window_convention": "DeviationWindowConvention.MAX_DEVIATION_SCAN",
     "sort": '"published_desc"',
     "topic_url": '"https://t.10jqka.com.cn/lgt/main/frontend-main-service/topic/index.html?code=T4dryo6"',
     "related_stocks": "None",
@@ -1193,8 +1310,7 @@ _EXAMPLE_COMMENTS = {
         "api_key": "SkillHub API key; load it from a secret store.", "deduplicate": "Remove duplicate search hits.",
         "url": "Public article or report detail URL.", "uid": "Fallback report identifier.",
         "title": "Fallback report title.", "published_at": "Fallback publication date.",
-        "windows": "Compare 10- and 30-session windows.", "as_of": "Last completed session to include.",
-        "window_convention": "Choose a convention; omit this argument to use the default MAX_DEVIATION_SCAN.",
+        "windows": "Return three scenario records for each requested 10- or 30-session window.", "as_of": "Observation trading date; historical queries use that session's close data.",
         "topic_url": "Supported Tonghuashun topic URL.", "related_stocks": "No additional stock associations.",
         "date": "Date used only by the article fallback URL.",
     },
@@ -1216,7 +1332,7 @@ _EXAMPLE_COMMENTS = {
         "channel": "搜索研报。", "api_key": "SkillHub API Key；从密钥存储读取。", "deduplicate": "去除重复命中。",
         "url": "公开文章或研报详情 URL。", "uid": "备用研报标识。", "title": "备用研报标题。",
         "published_at": "备用发布日期。", "windows": "比较 10 和 30 个交易时段。",
-        "as_of": "纳入计算的最后一个已完成交易日。", "window_convention": "选择偏离窗口解释方式；省略时使用默认的 MAX_DEVIATION_SCAN。",
+        "as_of": "观察基准交易日；历史查询使用该交易日的收盘数据。",
         "topic_url": "受支持的同花顺话题 URL。", "related_stocks": "不额外合并股票关联。",
         "date": "仅在构造文章回退 URL 时使用的日期。",
     },
@@ -1224,8 +1340,6 @@ _EXAMPLE_COMMENTS = {
 
 
 def _example_value(key: str, name: str, parameter: inspect.Parameter) -> str:
-    if key == "market.deviation" and name == "window_convention":
-        return "DeviationWindowConvention.MAX_DEVIATION_SCAN"
     if name in {"instrument", "instrument_id"} and key in {"market.index_intraday", "market.index_intraday_5d"}:
         return '"000001"'
     if name == "category" and key == "hotlist.etfs":
@@ -1281,10 +1395,7 @@ def _example_code(key: str, method: Any, *, language: str) -> str:
         name: _example_value(key, name, parameter)
         for name, parameter in example_parameters.items()
     }
-    lines = ["from finchx import FinchX"]
-    if key == "market.deviation":
-        lines.append("from finchx.computed import DeviationWindowConvention")
-    lines += ["", "fx = FinchX()"]
+    lines = ["from finchx import FinchX", "", "fx = FinchX()"]
     if "session" in parameters:
         lines += ['jygs_session = "<SESSION cookie from your logged-in browser>"']
     if "cookies" in parameters:
@@ -1333,7 +1444,7 @@ def _deviation_method_notes(*, language: str) -> list[str]:
     if language == "en":
         return [
             "**Scope and calculation**",
-            "This is a deterministic close-based computation, not an exchange announcement, an intraday estimate, a market-wide scan, or an application-specific trigger state.",
+            "FinchX reports market inputs and calculations only. It does not decide whether a formal abnormal-movement event occurred and does not return trigger, risk, trading, or alert judgments. The top-level `effectiveAsOf` and `calculationMode` are retained compatibility fields: `effectiveAsOf` aliases `asOf`, and `calculationMode` is `scenario_based`.",
             "Supported equities are SSE `60xxxx` and `68xxxx`, and SZSE `00xxxx` and `30xxxx`; BSE equities are not supported. Each board uses its corresponding benchmark:",
             "",
             table(("Equity code", "Board", "Benchmark index"), [
@@ -1343,25 +1454,34 @@ def _deviation_method_notes(*, language: str) -> list[str]:
                 ("SZSE `30xxxx`", "ChiNext", "ChiNext Composite Index (`399102`)"),
             ]),
             "",
-            "Stock returns use QFQ equity closes; benchmark returns use unadjusted index points. Trading sessions come from the A-share calendar. For each window, FinchX calculates:",
+            "Each requested window length returns three flat rows in `pre_open`, `current`, `next_session` order. With the default `(10, 30)`, `windows` contains six rows. `as_of` identifies the observation trading session; a non-trading date follows the existing prior-session normalization. `endDate` identifies the terminal prices actually used, `targetDate` defines that row's candidate boundary, and `startDate` is the start of the selected maximum-deviation interval.",
             "",
+            "For an observation session D10, `pre_open` always ends on prior session D9 and is unaffected by D10 prices. During D10, `current` and `next_session` use validated same-day stock and index quote snapshots. After the session, FinchX uses each available D10 daily bar for its own terminal value (stock QFQ bar, index raw bar); it requests a quote only for a side whose D10 bar is missing. A stock quote fallback bridges QFQ stock history through that quote's `previousClose`; an index quote remains in raw index points. A post-close quote may carry a same-day timestamp before 15:00, such as 14:59. Its source date, instrument, positive price, and non-future timestamp are checked, but it is not described as a confirmed daily close. Quote fallback warnings apply only to `current` and `next_session`. The two terminal sources are recorded as `result.metadata.stock_terminal_source` and `benchmark_terminal_source`; a bar has a null row source timestamp, while a quote retains its source timestamp. `next_session` ends on D10 too, targets D11, and shares the same stock/index terminal prices as `current`; only its candidate boundary rolls forward. It reads no D11 price and creates no D11 bar. Historical `as_of` queries use that session's daily bars and cannot reproduce an earlier intraday instant.",
+            "",
+            "The top-level `priceBasis` reports the actual stock Kline scale: `qfq_stock__raw_index` when Tencent returns QFQ bars, or `raw_stock__raw_index` when a QFQ request uses the documented unadjusted `day` fallback. For QFQ bars, a stock quote fallback bridges history by that quote's `previousClose`; for unadjusted bars, FinchX keeps history and quote values on their source scale without a QFQ bridge. The requested and actual adjustment, source series, and any fallback warning are available in `result.metadata` and `result.warnings`. Index bars and quotes remain raw index points. `price_inputs`, `stock_terminal_source`, and `benchmark_terminal_source` describe the D10 inputs for `current` and `next_session`; `terminal_source_scope` identifies those scenarios, while `pre_open` always uses D9 bars. Each terminal-source value is `same_day_daily_bar`, `same_day_quote`, or `historical_daily_bar`. `price_inputs` distinguishes historical bars, intraday quotes with daily history, after-close daily bars, one-sided quote fallback, and two-sided quote fallback. Quote source timestamps are retained per side; they are null when a daily bar supplies that side.",
+            "",
+            "For each eligible candidate baseline `b`, FinchX calculates with unrounded Decimal values:",
             "```text",
-            "stock_return = current_stock_close / baseline_stock_close - 1",
-            "benchmark_return = current_index_close / baseline_index_close - 1",
-            "deviation = stock_return - benchmark_return",
+            "stockReturn_b = currentPrice / stockBaselinePrice_b - 1",
+            "benchmarkReturn_b = benchmarkCurrent / benchmarkStart_b - 1",
+            "deviation_b = stockReturn_b - benchmarkReturn_b",
+            "deviation = max(deviation_b)",
             "```",
+            "The selected `startDate`, stock/index baselines, returns, and `deviation` all come from the maximum-deviation candidate. Equal deviations use the earliest eligible candidate. `next_session` moves that candidate boundary forward by one trading session and rescans; for a complete 10-session request it has at most 9 observed statistic sessions, excluding the baseline. The 10/30 `windowDays` and upper thresholds remain unchanged. The final observed D10 candidate may use the actual D9 baseline and D10 price; no D11 zero-return candidate is added. Negative maxima and negative distances are preserved.",
             "",
-            "The baseline is the close immediately before the selected window starts. Values are ratio fractions (`0.03` means 3%). The default is `DeviationWindowConvention.MAX_DEVIATION_SCAN` and can be omitted; `STRICT_EXCHANGE_WINDOW` uses the exchange-shaped start. Unsupported codes or insufficient aligned history raise an error instead of returning zero.",
-            "The result reports `calculationMode = \"official_close\"`, `priceBasis = \"qfq_stock__raw_index\"`, and the frozen rule-set identifier in `ruleVersion`.",
+            "The upper threshold is `1.00` for 10 sessions and `2.00` for 30. `upperTriggerPrice_b = stockBaselinePrice_b * (1 + upperThreshold + benchmarkReturn_b)` assumes `benchmarkCurrent` stays fixed. FinchX selects the minimum unrounded candidate price independently from the maximum-deviation candidate, then rounds the selected `upperTriggerPrice` up to CNY 0.01. The original unrounded value is returned as `upperTriggerPrice_original`, and the selected candidate basis is available in `result.metadata.windows[].upper_trigger_basis`. `remainingToUpper = upperTriggerPrice / currentPrice - 1`, using the rounded price. Negative values are preserved. The theoretical price is not a promise of execution or an event decision.",
             "",
-            table(("Window", "Upper threshold", "Lower threshold"), [
-                ("10 sessions", "`+1.00`", "`-0.50`"),
-                ("30 sessions", "`+2.00`", "`-0.70`"),
+            "A missing stock Kline date bracketed by stock bars remains an inferred gap for this calculation only; dates before the first available bar are short history, not inferred suspensions. After a gap, the stock and benchmark may use distinct baselines; missing index dates are never treated as stock halts. Partial windows and coverage are reported per row in `tradingSessions`, `availableTradingSessions`, `windowStatus`, `coverageStatus`, and `inferredHaltDates`; `availableTradingSessions` excludes the baseline and any unobserved future target. It counts observations, not the requested window length or the selected interval length. No raw OHLCV is changed.",
+            "Ratio fields use fractions (`0.03` means 3%); prices are CNY per share and index values are points. `priceBasis` is `qfq_stock__raw_index` or `raw_stock__raw_index`, based on the actual stock Klines used. `ruleVersion` identifies the algorithm contract.",
+            "",
+            table(("Window", "Upper threshold"), [
+                ("10 sessions", "`+1.00`"),
+                ("30 sessions", "`+2.00`"),
             ]),
         ]
     return [
         "**计算口径与适用范围**",
-        "这是基于收盘价的确定性计算，不是交易所公告、盘中估算、全市场扫描或特定应用的触发状态。",
+        "FinchX 仅提供行情依据和计算结果，不判断是否构成正式异动，不返回触线、风险、交易或提醒结论。顶层 `effectiveAsOf` 与 `calculationMode` 是保留的兼容字段：`effectiveAsOf` 与 `asOf` 相同，`calculationMode` 为 `scenario_based`。",
         "适用个股为 SSE `60xxxx`、`68xxxx` 和 SZSE `00xxxx`、`30xxxx`；暂不支持 BSE 个股。不同板块使用对应的基准指数：",
         "",
         table(("代码范围", "板块", "基准指数"), [
@@ -1371,20 +1491,29 @@ def _deviation_method_notes(*, language: str) -> list[str]:
             ("SZSE `30xxxx`", "创业板", "ChiNext Composite Index (`399102`)"),
         ]),
         "",
-        "股票收益使用前复权日 K 收盘价，基准收益使用未复权指数点位；交易时段取自 A 股交易日历。每个窗口按以下方式计算：",
+        "每个请求窗口长度返回三条扁平记录，顺序为 `pre_open`、`current`、`next_session`。默认 `(10, 30)` 时 `windows` 有六条。`as_of` 表示观察基准交易日；非交易日沿用现有规则归一到此前交易日。`endDate` 是实际采用终值价格所属日，`targetDate` 决定该条记录的候选窗口边界，`startDate` 是最大偏离结果选中区间的统计开始日。",
         "",
+        "观察日为 D10 时，`pre_open` 固定使用 D9 日线，不受 D10 价格影响。D10 盘中，`current` 和 `next_session` 使用通过校验的同日股票及指数快照。收盘后，每一侧优先采用可用的 D10 日线终值（股票前复权 K 线、指数未复权 K 线）；仅当某侧缺少 D10 日线时，才请求该侧同日快照作为终值。股票快照回退时，会用该快照的 `previousClose` 桥接 QFQ 股票历史；指数快照仍为未复权点位。盘后快照的来源时间可以早于 15:00，例如 14:59。程序校验证券标识、来源日期、正价格和时间戳不能晚于当前时间，但不会把快照称为已确认的日线收盘价。quote 回退警告只适用于 `current` 和 `next_session`。两侧终值来源分别记录在 `result.metadata.stock_terminal_source` 和 `benchmark_terminal_source`；来源为日线时行内来源时间戳为 null，来源为快照时保留来源时间戳。`next_session` 的终值同样截至 D10、目标日为 D11，与 `current` 共用同一份股票和指数终值，只把候选边界向后滚动一个交易日；不读取 D11 行情，也不构造 D11 K 线。历史 `as_of` 使用观察日的日线数据，日期参数无法复现过去某个盘中时刻。",
+        "",
+        "顶层 `priceBasis` 按实际股票 K 线口径返回：腾讯提供 QFQ 日线时为 `qfq_stock__raw_index`；QFQ 请求回退到文档所述未复权 `day` 数据时为 `raw_stock__raw_index`。使用 QFQ 日线时，股票快照回退会按其 `previousClose` 桥接历史；使用未复权日线时，历史和快照保留各自来源价格尺度，不做 QFQ 桥接。请求口径、实际口径、来源序列和回退 warning 可从 `result.metadata` 与 `result.warnings` 查询。指数日 K 线和快照均保持未复权点位。`price_inputs`、`stock_terminal_source` 和 `benchmark_terminal_source` 描述 `current` 与 `next_session` 的 D10 终值输入，`terminal_source_scope` 标明适用情景；`pre_open` 始终使用 D9 日线。终值来源值为 `same_day_daily_bar`、`same_day_quote` 或 `historical_daily_bar`。`price_inputs` 区分历史日线、盘中快照、盘后日线、单侧快照回退和双侧快照回退。快照来源时间按股票和指数分别保留；使用日线的一侧时间戳为 null。",
+        "",
+        "每个合格候选基准 `b` 使用未展示舍入的 Decimal 计算：",
         "```text",
-        "stock_return = 当前股票收盘价 / 窗口基准股票收盘价 - 1",
-        "benchmark_return = 当前指数点位 / 窗口基准指数点位 - 1",
-        "deviation = stock_return - benchmark_return",
+        "stockReturn_b = currentPrice / stockBaselinePrice_b - 1",
+        "benchmarkReturn_b = benchmarkCurrent / benchmarkStart_b - 1",
+        "deviation_b = stockReturn_b - benchmarkReturn_b",
+        "deviation = max(deviation_b)",
         "```",
+        "最大偏离候选决定该行的 `startDate`、股票/指数基准、收益和 `deviation`；若偏离值相同，选最早的合格候选。`next_session` 将候选边界向后移一个交易日并重新扫描；完整 10 日请求最多包含 9 个已发生统计交易日，不含基准点。`windowDays` 与上阈值仍为 10/30。最后一个 D10 候选可以使用实际 D9 基准和 D10 价格；不会加入虚构的 D11 零收益候选。负偏离和负距离均保留。",
         "",
-        "基准值为所选窗口起点前一交易日的收盘价或指数点位。比例以小数表示（`0.03` 即 3%）。默认值为 `DeviationWindowConvention.MAX_DEVIATION_SCAN`，省略参数即可使用；`STRICT_EXCHANGE_WINDOW` 按交易所窗口形状确定起点。不支持的代码或不足的对齐历史数据会报错，不会返回零值。",
-        "结果中的 `calculationMode` 为 `official_close`，`priceBasis` 为 `qfq_stock__raw_index`，`ruleVersion` 标识采用的冻结规则集。",
+        "10 日上阈值为 `1.00`，30 日为 `2.00`。固定 `benchmarkCurrent` 时，`upperTriggerPrice_b = stockBaselinePrice_b * (1 + upperThreshold + benchmarkReturn_b)`。FinchX 先按未进位候选值独立于最大偏离候选选取最小理论价格，再将最终 `upperTriggerPrice` 向上进位到 0.01 CNY。原始未进位值通过 `upperTriggerPrice_original` 返回，选点依据可从 `result.metadata.windows[].upper_trigger_basis` 追溯。`remainingToUpper = upperTriggerPrice / currentPrice - 1` 使用进位后的价格。保留负值。理论价格不表示可成交价格，也不构成异动结论。",
         "",
-        table(("窗口", "上阈值", "下阈值"), [
-            ("10 个交易日", "`+1.00`", "`-0.50`"),
-            ("30 个交易日", "`+2.00`", "`-0.70`"),
+        "被前后个股 K 线夹住的缺失日仍仅作为本计算的停牌推定；首条可用 K 线之前的缺失属于历史不足。缺口后股票与指数基线可以不同；指数缺失不会推定为个股停牌。每条记录用 `tradingSessions`、`availableTradingSessions`、`windowStatus`、`coverageStatus` 和 `inferredHaltDates` 报告覆盖情况。`availableTradingSessions` 统计场景候选窗口内已观测的统计交易日，不包括基准点或未发生的目标日；它不表示请求长度，也不等同于最终选中区间长度。原始 OHLCV 不会被修改。",
+        "比例字段使用小数（`0.03` 即 3%）；股票价格单位为每股 CNY，指数单位为点。`priceBasis` 根据实际股票 K 线口径为 `qfq_stock__raw_index` 或 `raw_stock__raw_index`，`ruleVersion` 标识计算契约版本。",
+        "",
+        table(("窗口", "上阈值"), [
+            ("10 个交易日", "`+1.00`"),
+            ("30 个交易日", "`+2.00`"),
         ]),
     ]
 
@@ -1461,12 +1590,12 @@ def _interface_block(key: str, method: Any, data_model: type[BaseModel], provide
         method_notes = []
     if language == "en":
         parameter_table = table(("Parameter", "Type", "Required / mode", "Default", "Meaning"), parameter_rows) if parameter_rows else "None."
-        data_source = "Computed locally from `market.ohlcv` and `reference.trading_calendar`; no direct Provider." if computed else ", ".join(f"`{provider}`" for provider in providers) or "—"
+        data_source = "Computed locally from `market.ohlcv`, `market.quote_snapshot`, and `reference.trading_calendar`; no direct Provider." if computed else ", ".join(f"`{provider}`" for provider in providers) or "—"
         result_note = f"Returns a `FetchResult`. {_result_usage_note(key, data_model, language=language)} `.dataset_id`, `.provider_id`, `.captured_at`, `.provenance`, `.attempts`, `.fallback_used`, and `.cache_hit` carry retrieval and audit details."
         lines = [f"### `fx.{key}(...)`", "", "**What it provides**", summary_for(key, method, language=language), "", "**Data source**", data_source, *( ["", *method_notes] if method_notes else []), "", "**Example**", "", f"<!-- api-example: {key} -->", "```python", example_code, "```", "", "**Returned value and recommended use**", result_note, "", "**Parameters**", "", parameter_table]
     else:
         parameter_table = table(("参数", "类型", "必填 / 模式", "默认值", "含义"), parameter_rows) if parameter_rows else "无。"
-        data_source = "由 `market.ohlcv` 和 `reference.trading_calendar` 在本地计算；无直接 Provider。" if computed else ", ".join(f"`{provider}`" for provider in providers) or "—"
+        data_source = "由 `market.ohlcv`、`market.quote_snapshot` 和 `reference.trading_calendar` 在本地计算；无直接 Provider。" if computed else ", ".join(f"`{provider}`" for provider in providers) or "—"
         result_note = f"返回 `FetchResult`。{_result_usage_note(key, data_model, language=language)} `.dataset_id`、`.provider_id`、`.captured_at`、`.provenance`、`.attempts`、`.fallback_used` 和 `.cache_hit` 提供采集与审计信息。"
         lines = [f"### `fx.{key}(...)`", "", "**提供什么数据**", summary_for(key, method, language=language), "", "**数据源**", data_source, *( ["", *method_notes] if method_notes else []), "", "**示例**", "", f"<!-- api-example: {key} -->", "```python", example_code, "```", "", "**返回值与推荐用法**", result_note, "", "**参数**", "", parameter_table]
     lines += ["", *_output_sections(data_model, language=language, key=key), ""]
@@ -1491,6 +1620,8 @@ def _index_quote_method_notes(key: str, *, language: str) -> list[str]:
         if key == "market.ohlcv":
             notes += [
                 "For an index, omit `adjustment` or pass `adjustment=None`; equities may use `qfq`, `hfq`, or no adjustment. OHLC fields are CNY per share for equities and index points for indices.",
+                "Automatic `market.ohlcv` routing uses Tencent and does not automatically fall back to Sohu. Sohu remains available when explicitly selected for its supported indices; equity requests are rejected before network access. Tencent retries transient transport and HTTP 408/425/429/5xx failures up to four attempts within a 45-second request budget; HTTP 429 uses longer bounded exponential waits. Permanent HTTP, request, and response-schema failures are not retried.",
+                "For an equity `qfq` request, Tencent's `qfqday` series is preferred. If that key is absent and the same response contains a valid `day` array, FinchX uses those unadjusted bars without another request. Each returned bar and its provenance keep `adjustment=\"none\"`; `FetchResult.metadata` records `requested_adjustment=\"qfq\"`, `actual_adjustment=\"none\"`, and `source_series=\"day\"`, and `FetchResult.warnings` explains that the values are not forward-adjusted. An empty or malformed `qfqday` does not trigger this fallback.",
             ]
         else:
             notes += [
@@ -1504,6 +1635,8 @@ def _index_quote_method_notes(key: str, *, language: str) -> list[str]:
     if key == "market.ohlcv":
         notes += [
             "指数请求请省略 `adjustment` 或传入 `adjustment=None`；股票可使用 `qfq`、`hfq` 或不复权。OHLC 字段对股票表示每股 CNY，对指数表示指数点数。",
+            "`market.ohlcv` 自动路由使用腾讯，不会自动回退到搜狐。搜狐仍可通过显式指定 Provider 用于其受支持的指数；股票请求会在联网前拒绝。腾讯对可重试传输故障及 HTTP 408/425/429/5xx 错误最多尝试四次，并受单次请求 45 秒总预算限制；HTTP 429 使用更长的有界指数退避。永久 HTTP、请求及响应格式错误不会重试。",
+            "股票请求 `qfq` 时优先使用腾讯的 `qfqday`。只有响应中没有该键、且同一响应的 `day` 是合法数组时，FinchX 才使用未复权日线，不会重复请求。返回行及 provenance 均保留 `adjustment=\"none\"`；`FetchResult.metadata` 记录 `requested_adjustment=\"qfq\"`、`actual_adjustment=\"none\"` 和 `source_series=\"day\"`，`FetchResult.warnings` 会说明这些价格不是前复权数据。若 `qfqday` 为空或格式错误，不会触发回退。",
         ]
     else:
         notes += [
@@ -2042,6 +2175,7 @@ def _shared_notes(*, language: str) -> list[str]:
             "- Plain codes are resolved using the endpoint context: stock endpoints treat `000001` as a SZSE equity, while index endpoints treat `000001` as the SSE index.", "- FinchX validates supported code prefixes and market rules internally; callers provide code strings.", "",
             "### Date inputs", "", "Public date parameters accept `datetime.date` values or unambiguous strings in `YYYY-MM-DD`, `YYYYMMDD`, and `YYYY/MM/DD` forms. Invalid calendar dates and ambiguous forms such as `09/01/2026` are rejected. Date-only fields do not accept `datetime` values; news, disclosure, all-market news, and forum time bounds also accept timezone-aware `datetime` values.", "",
             "### Warnings", "", "`result.warnings` contains recoverable quality or compatibility issues, such as a skipped News row with schema drift.", "",
+            "### Live paginated stock lists", "", "Tencent's full-market `market.quote`, its instrument listing used by exact `instrument` Dataset lookups, `market.ranking`, and the five EastMoney pool methods read live pages. If a stock repeats on a later page, FinchX keeps the first row and skips the repeated row; `.warnings` and `.metadata` then report partial coverage. Pagination uses source-row counts, so ranking `limit` is a source-row budget and skipped repeats never cause extra pages to refill unique rows. Multiple live pages do not form a consistent point-in-time snapshot, even when no repeat is observed; ranking `position` retains the original source row number and may have gaps.", "",
             "### Date-bounded searches", "", "For `news.search`, `disclosure.search`, `market_news.search`, and `forum.replies`, `since` and `until` are inclusive time filters. Start at `page=1`; the Client scans source pages within a safety bound, stops after reaching an older page for descending results or exhausting the source, and honors `max_results`. If the safety bound is reached before the date boundary or source end, `result.warnings` reports that results may be incomplete. Set a practical `max_results` cap and inspect warnings when completeness matters.", "",
             "### Document URLs", "", "For news references, `sourceUrl` identifies the source search/list page, while `documentUrl` points to the article body. Use `ref.document_url` when you need the article URL; code that treated `ref.source_url` as the article URL should migrate to `ref.document_url`. For disclosure references, `sourceUrl` is the source query page and `originalDocumentUrl` remains the notice or attachment URL. Disclosure `sourceRecordedAt` is retained under `provenance.adjustments` as EastMoney's internal record time; it is not the notice publication time. Use `publishedAt` for the displayed notice time.", "",
             "### FetchResult usage", "", "Every method returns `FetchResult`. Record-backed endpoints place tuples of normalized `StandardRecord` values in `.data`; a single document-detail call returns one `StandardRecord`, document searches return typed reference tuples, and computed deviation returns `DeviationData`. `Dataset.data_type` describes the row payload schema, while `FetchResult.data` carries the runtime record or reference shape. Export business dictionaries with `result.to_dicts()` and inspect `result.warnings` for partial results. Retrieval details remain available through `dataset_id`, `provider_id`, `captured_at`, `provenance`, `attempts`, `fallback_used`, and `cache_hit`.",
@@ -2051,6 +2185,7 @@ def _shared_notes(*, language: str) -> list[str]:
         "- 裸代码会按接口语义解析：股票接口把 `000001` 解释为深市股票，指数接口把 `000001` 解释为上证指数。", "- 支持的代码前缀和市场规则由 FinchX 在内部校验，调用方只需传入代码字符串。", "",
         "### 日期输入", "", "公开日期参数接受 `datetime.date`，或 `YYYY-MM-DD`、`YYYYMMDD`、`YYYY/MM/DD` 三种无歧义字符串。非法日期和 `09/01/2026` 这类歧义格式会被拒绝。仅日期字段不接受 `datetime`；新闻、公告、全市场新闻和论坛的时间范围也接受带时区 `datetime`。", "",
         "### Warnings", "", "`result.warnings` 用于记录可恢复的数据质量或兼容性问题，例如跳过存在 schema drift 的单条 News 记录。", "",
+        "### 实时分页股票列表", "", "Tencent 全市场 `market.quote`、用于 `instrument` Dataset 精确查询的证券列表、`market.ranking` 以及 EastMoney 五个股票池接口都会读取实时分页数据。如果股票在后续页重复，FinchX 保留首次记录并跳过重复行；此时 `.warnings` 和 `.metadata` 会标明部分覆盖。分页按来源行数推进，因此 ranking 的 `limit` 是来源行预算，跳过重复行不会触发额外请求来补足唯一记录。多页实时数据不构成同一时点快照，即使没有观察到重复也不能据此确认快照一致；ranking 的 `position` 保留来源行号，可能出现名次缺口。", "",
         "### 按日期范围搜索", "", "`news.search`、`disclosure.search`、`market_news.search` 和 `forum.replies` 的 `since` 与 `until` 是包含边界的时间筛选。请从 `page=1` 开始；Client 会在安全上限内跨页扫描，在降序结果到达早于起始日期的整页或数据源耗尽时停止，并遵守 `max_results`。如果触及安全上限时仍未到达日期边界或源末尾，`result.warnings` 会说明结果可能不完整。需要控制返回量时设置合适的 `max_results`，并在要求完整性时检查 warnings。", "",
         "### 文档 URL", "", "新闻引用中的 `sourceUrl` 指向数据源的搜索/列表页，`documentUrl` 指向文章正文。需要文章链接时使用 `ref.document_url`；如果旧代码把 `ref.source_url` 当正文链接，应迁移到 `ref.document_url`。公告引用的 `sourceUrl` 指向来源查询页，`originalDocumentUrl` 仍指向公告或附件原文。公告 `sourceRecordedAt` 保存在 `provenance.adjustments` 中，是东方财富内部记录时间，不是公告发布时间；展示公告时间请使用 `publishedAt`。", "",
         "### FetchResult 用法", "", "所有方法都返回 `FetchResult`。记录型接口的 `.data` 为标准化 `StandardRecord` 元组；单条文档详情返回一个 `StandardRecord`，文档搜索返回带类型的引用元组，计算型偏离值返回 `DeviationData`。`Dataset.data_type` 描述每行的业务载荷 schema，`FetchResult.data` 则承载实际运行时记录或引用结构。用 `result.to_dicts()` 导出业务字典，并检查 `result.warnings` 了解部分数据情况。采集信息可从 `dataset_id`、`provider_id`、`captured_at`、`provenance`、`attempts`、`fallback_used` 和 `cache_hit` 读取。",

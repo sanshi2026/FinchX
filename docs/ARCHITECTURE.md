@@ -31,7 +31,7 @@ network request, create a cache, or create a local database file.
 The Client exposes fourteen namespaces: `hotlist`, `reference`, `market`,
 `fundamental`, `financial`, `iwencai`, `news`, `disclosure`, `market_news`,
 `articles`, `forum`, `ownership`, `company`, and `corporate_action`. The current
-surface contains 54 Provider-backed Dataset
+surface contains 58 Provider-backed Dataset
 methods. `market.deviation` is a separate computed capability that combines
 calendar and Kline results locally.
 
@@ -47,7 +47,7 @@ unless FinchX defines a stable field for them.
 Each Provider-backed operation has a Dataset definition containing:
 
 - a stable Dataset name;
-- a Dataset schema version (currently `1.0` for each registered Dataset);
+- a Dataset schema version (currently `1.0`, except `market.deviation` at `2.0`);
 - a normalized input contract; and
 - a typed normalized payload model.
 

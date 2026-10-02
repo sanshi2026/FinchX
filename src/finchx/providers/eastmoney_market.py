@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from datetime import date, datetime, timezone
 from decimal import Decimal, InvalidOperation
 import json
@@ -30,6 +30,7 @@ from finchx.datasets.market_limit_up_pool import (
     MarketLimitUpPoolRequest,
     _ProviderLimitUpRow,
 )
+from finchx.datasets.provider_rows import _PaginationStats, _ProviderRowsResponse
 from finchx.datasets.market_strong_pool import (
     MarketStrongPoolRequest,
     StrongPoolSelectionReason,
@@ -190,6 +191,67 @@ class _EastmoneyProviderBase:
         if not all(isinstance(row, dict) for row in pool):
             self._fail(f"EastMoney page {page_index} contains a non-object pool row")
         return data, qdate, tc, pool
+
+    def _append_pool_page(
+        self,
+        source_rows: list[tuple[Mapping[str, Any], str, int]],
+        page_rows: list[Mapping[str, Any]],
+        *,
+        request_url: str,
+        page_index: int,
+        source_row_count: int,
+        source_total: int,
+        pool_name: str,
+    ) -> int:
+        if not page_rows:
+            self._fail(f"EastMoney {pool_name} pool page {page_index} is empty before tc was reached")
+        if (
+            len(page_rows) > self._page_size
+            or source_row_count + len(page_rows) > source_total
+        ):
+            self._fail(f"EastMoney {pool_name} pool page size exceeds requested tc")
+        source_rows.extend((raw, request_url, page_index) for raw in page_rows)
+        source_row_count += len(page_rows)
+        if source_row_count < source_total and len(page_rows) < self._page_size:
+            self._fail(f"EastMoney {pool_name} pool ended on a short page before tc")
+        return source_row_count
+
+    def _unique_pool_response(
+        self,
+        parsed_rows: list[tuple[Any, int]],
+        *,
+        source_total: int,
+        source_row_count: int,
+        pool_name: str,
+    ) -> tuple[Any, ...] | _ProviderRowsResponse[Any]:
+        stats = _PaginationStats(
+            source_total=source_total,
+            source_row_count=source_row_count,
+        )
+        seen: set[tuple[str, str]] = set()
+        page_seen: set[tuple[int, tuple[str, str]]] = set()
+        unique_rows: list[Any] = []
+        for row, page_index in parsed_rows:
+            instrument_id = row.instrument_id
+            identity = (instrument_id.exchange.value, instrument_id.code)
+            page_identity = (page_index, identity)
+            if page_identity in page_seen:
+                self._fail(
+                    f"EastMoney {pool_name} pool page {page_index} repeated instrument "
+                    f"{instrument_id.code}"
+                )
+            page_seen.add(page_identity)
+            if identity in seen:
+                stats.duplicate_rows_skipped += 1
+                continue
+            seen.add(identity)
+            unique_rows.append(row)
+        return stats.response(
+            unique_rows,
+            requested_count=source_total,
+            source_label=f"EastMoney {pool_name} pool",
+            result_kind=f"{pool_name} pool",
+        )
 
     def _ensure_latest_snapshot_request(self, request: object, label: str) -> None:
         legacy_date = getattr(request, "__dict__", {}).get("trade_date")
@@ -407,17 +469,17 @@ class EastmoneyLimitUpPoolProvider(_EastmoneyProviderBase):
 
     def fetch_raw_limit_up_pool(
         self, request: MarketLimitUpPoolRequest
-    ) -> tuple[_ProviderLimitUpRow, ...]:
+    ) -> Sequence[_ProviderLimitUpRow]:
         if not isinstance(request, MarketLimitUpPoolRequest):
             self._fail("request must be a MarketLimitUpPoolRequest")
         self._ensure_latest_snapshot_request(request, "limit-up pool")
         snapshot_date = self._latest_snapshot_date()
-        rows: list[tuple[Mapping[str, Any], str]] = []
+        source_rows: list[tuple[Mapping[str, Any], str, int]] = []
         expected_total: int | None = None
         observed_date: date | None = None
-        seen: set[tuple[str, str]] = set()
+        source_row_count = 0
         page_index = 0
-        while expected_total is None or len(rows) < expected_total:
+        while expected_total is None or source_row_count < expected_total:
             params = self._common_params()
             params.update({
                 "Pageindex": page_index,
@@ -439,33 +501,29 @@ class EastmoneyLimitUpPoolProvider(_EastmoneyProviderBase):
                 if page_rows:
                     self._fail("EastMoney limit-up pool returned rows with tc=0")
                 break
-            if not page_rows:
-                self._fail(f"EastMoney limit-up pool page {page_index} is empty before tc was reached")
-            if len(page_rows) > self._page_size or len(rows) + len(page_rows) > expected_total:
-                self._fail("EastMoney limit-up pool page size exceeds requested tc")
-            for raw in page_rows:
-                instrument = self._instrument(raw, context="limit-up pool row")
-                identity = (instrument.exchange.value, instrument.code)
-                if identity in seen:
-                    self._fail(f"EastMoney limit-up pool repeated instrument {instrument.code}")
-                seen.add(identity)
-                rows.append((raw, request_url))
-            if len(rows) < expected_total and len(page_rows) < self._page_size:
-                self._fail("EastMoney limit-up pool ended on a short page before tc")
+            source_row_count = self._append_pool_page(
+                source_rows,
+                page_rows,
+                request_url=request_url,
+                page_index=page_index,
+                source_row_count=source_row_count,
+                source_total=expected_total,
+                pool_name="limit-up",
+            )
             page_index += 1
-        if expected_total is None or len(rows) != expected_total:
+        if expected_total is None or source_row_count != expected_total:
             self._fail("EastMoney limit-up pool returned an incomplete count")
         if observed_date is None:
             self._fail("EastMoney limit-up pool did not return qdate")
         captured_at = self._captured_at()
         allowed = {"c", "m", "n", "p", "zdp", "amount", "ltsz", "tshare", "hs", "lbc", "fbt", "lbt", "fund", "zbc", "hybk", "zttj"}
-        parsed: list[_ProviderLimitUpRow] = []
-        for raw, request_url in rows:
+        parsed: list[tuple[_ProviderLimitUpRow, int]] = []
+        for raw, request_url, source_page in source_rows:
             self._source_row_shape(raw, allowed=allowed, required=allowed, context="limit-up row")
             instrument = self._instrument(raw, context="limit-up row")
             name = self._required_text(raw.get("n"), "limit-up row.n")
             days, count = self._zttj(raw.get("zttj"), "limit-up row.zttj")
-            parsed.append(_ProviderLimitUpRow(
+            parsed.append((_ProviderLimitUpRow(
                 instrument_id=instrument,
                 trade_date=observed_date,
                 name=name,
@@ -486,8 +544,13 @@ class EastmoneyLimitUpPoolProvider(_EastmoneyProviderBase):
                 source_record_id=f"{observed_date.isoformat()}:{instrument.exchange.value}:{instrument.code}",
                 source_url=request_url,
                 captured_at=captured_at,
-            ))
-        return tuple(parsed)
+            ), source_page))
+        return self._unique_pool_response(
+            parsed,
+            source_total=expected_total,
+            source_row_count=source_row_count,
+            pool_name="limit-up",
+        )
 
 
 class EastmoneyLimitDownPoolProvider(_EastmoneyProviderBase):
@@ -495,17 +558,17 @@ class EastmoneyLimitDownPoolProvider(_EastmoneyProviderBase):
 
     def fetch_raw_limit_down_pool(
         self, request: MarketLimitDownPoolRequest
-    ) -> tuple[_ProviderLimitDownRow, ...]:
+    ) -> Sequence[_ProviderLimitDownRow]:
         if not isinstance(request, MarketLimitDownPoolRequest):
             self._fail("request must be a MarketLimitDownPoolRequest")
         self._ensure_latest_snapshot_request(request, "limit-down pool")
         snapshot_date = self._latest_snapshot_date()
-        rows: list[tuple[Mapping[str, Any], str]] = []
+        source_rows: list[tuple[Mapping[str, Any], str, int]] = []
         expected_total: int | None = None
         observed_date: date | None = None
-        seen: set[tuple[str, str]] = set()
+        source_row_count = 0
         page_index = 0
-        while expected_total is None or len(rows) < expected_total:
+        while expected_total is None or source_row_count < expected_total:
             params = self._common_params()
             params.update({"Pageindex": page_index, "pagesize": self._page_size, "sort": "fund:asc", "date": snapshot_date})
             document, request_url = self._request_document(EASTMONEY_LIMIT_DOWN_POOL_ENDPOINT, params)
@@ -522,32 +585,28 @@ class EastmoneyLimitDownPoolProvider(_EastmoneyProviderBase):
                 if page_rows:
                     self._fail("EastMoney limit-down pool returned rows with tc=0")
                 break
-            if not page_rows:
-                self._fail(f"EastMoney limit-down pool page {page_index} is empty before tc was reached")
-            if len(page_rows) > self._page_size or len(rows) + len(page_rows) > expected_total:
-                self._fail("EastMoney limit-down pool page size exceeds requested tc")
-            for raw in page_rows:
-                instrument = self._instrument(raw, context="limit-down pool row")
-                identity = (instrument.exchange.value, instrument.code)
-                if identity in seen:
-                    self._fail(f"EastMoney limit-down pool repeated instrument {instrument.code}")
-                seen.add(identity)
-                rows.append((raw, request_url))
-            if len(rows) < expected_total and len(page_rows) < self._page_size:
-                self._fail("EastMoney limit-down pool ended on a short page before tc")
+            source_row_count = self._append_pool_page(
+                source_rows,
+                page_rows,
+                request_url=request_url,
+                page_index=page_index,
+                source_row_count=source_row_count,
+                source_total=expected_total,
+                pool_name="limit-down",
+            )
             page_index += 1
-        if expected_total is None or len(rows) != expected_total:
+        if expected_total is None or source_row_count != expected_total:
             self._fail("EastMoney limit-down pool returned an incomplete count")
         if observed_date is None:
             self._fail("EastMoney limit-down pool did not return qdate")
         captured_at = self._captured_at()
         allowed = {"c", "m", "n", "p", "zdp", "amount", "ltsz", "tshare", "pe", "hs", "fund", "lbt", "fba", "days", "oc", "hybk"}
         required = allowed - {"pe"}
-        parsed: list[_ProviderLimitDownRow] = []
-        for raw, request_url in rows:
+        parsed: list[tuple[_ProviderLimitDownRow, int]] = []
+        for raw, request_url, source_page in source_rows:
             self._source_row_shape(raw, allowed=allowed, required=required, context="limit-down row")
             instrument = self._instrument(raw, context="limit-down row")
-            parsed.append(_ProviderLimitDownRow(
+            parsed.append((_ProviderLimitDownRow(
                 instrument_id=instrument,
                 trade_date=observed_date,
                 name=self._required_text(raw.get("n"), "limit-down row.n"),
@@ -567,8 +626,13 @@ class EastmoneyLimitDownPoolProvider(_EastmoneyProviderBase):
                 source_record_id=f"{observed_date.isoformat()}:{instrument.exchange.value}:{instrument.code}",
                 source_url=request_url,
                 captured_at=captured_at,
-            ))
-        return tuple(parsed)
+            ), source_page))
+        return self._unique_pool_response(
+            parsed,
+            source_total=expected_total,
+            source_row_count=source_row_count,
+            pool_name="limit-down",
+        )
 
 
 class EastmoneyYesterdayLimitUpPoolProvider(_EastmoneyProviderBase):
@@ -576,17 +640,17 @@ class EastmoneyYesterdayLimitUpPoolProvider(_EastmoneyProviderBase):
 
     def fetch_raw_yesterday_limit_up_pool(
         self, request: MarketYesterdayLimitUpPoolRequest
-    ) -> tuple[_ProviderYesterdayLimitUpRow, ...]:
+    ) -> Sequence[_ProviderYesterdayLimitUpRow]:
         if not isinstance(request, MarketYesterdayLimitUpPoolRequest):
             self._fail("request must be a MarketYesterdayLimitUpPoolRequest")
         self._ensure_latest_snapshot_request(request, "yesterday limit-up pool")
         snapshot_date = self._latest_snapshot_date()
-        rows: list[tuple[Mapping[str, Any], str]] = []
+        source_rows: list[tuple[Mapping[str, Any], str, int]] = []
         expected_total: int | None = None
         observed_date: date | None = None
-        seen: set[tuple[str, str]] = set()
+        source_row_count = 0
         page_index = 0
-        while expected_total is None or len(rows) < expected_total:
+        while expected_total is None or source_row_count < expected_total:
             params = self._common_params()
             params.update({"Pageindex": page_index, "pagesize": self._page_size, "sort": "zs:desc", "date": snapshot_date})
             document, request_url = self._request_document(EASTMONEY_YESTERDAY_LIMIT_UP_POOL_ENDPOINT, params)
@@ -603,32 +667,28 @@ class EastmoneyYesterdayLimitUpPoolProvider(_EastmoneyProviderBase):
                 if page_rows:
                     self._fail("EastMoney yesterday limit-up pool returned rows with tc=0")
                 break
-            if not page_rows:
-                self._fail(f"EastMoney yesterday limit-up pool page {page_index} is empty before tc was reached")
-            if len(page_rows) > self._page_size or len(rows) + len(page_rows) > expected_total:
-                self._fail("EastMoney yesterday limit-up pool page size exceeds requested tc")
-            for raw in page_rows:
-                instrument = self._instrument(raw, context="yesterday limit-up row")
-                identity = (instrument.exchange.value, instrument.code)
-                if identity in seen:
-                    self._fail(f"EastMoney yesterday limit-up pool repeated instrument {instrument.code}")
-                seen.add(identity)
-                rows.append((raw, request_url))
-            if len(rows) < expected_total and len(page_rows) < self._page_size:
-                self._fail("EastMoney yesterday limit-up pool ended on a short page before tc")
+            source_row_count = self._append_pool_page(
+                source_rows,
+                page_rows,
+                request_url=request_url,
+                page_index=page_index,
+                source_row_count=source_row_count,
+                source_total=expected_total,
+                pool_name="yesterday limit-up",
+            )
             page_index += 1
-        if expected_total is None or len(rows) != expected_total:
+        if expected_total is None or source_row_count != expected_total:
             self._fail("EastMoney yesterday limit-up pool returned an incomplete count")
         if observed_date is None:
             self._fail("EastMoney yesterday limit-up pool did not return qdate")
         captured_at = self._captured_at()
         allowed = {"c", "m", "n", "p", "ztp", "zdp", "amount", "ltsz", "tshare", "hs", "zf", "zs", "yfbt", "ylbc", "hybk", "zttj"}
-        parsed: list[_ProviderYesterdayLimitUpRow] = []
-        for raw, request_url in rows:
+        parsed: list[tuple[_ProviderYesterdayLimitUpRow, int]] = []
+        for raw, request_url, source_page in source_rows:
             self._source_row_shape(raw, allowed=allowed, required=allowed, context="yesterday limit-up row")
             instrument = self._instrument(raw, context="yesterday limit-up row")
             stats_days, stats_count = self._zttj(raw.get("zttj"), "yesterday limit-up row.zttj")
-            parsed.append(_ProviderYesterdayLimitUpRow(
+            parsed.append((_ProviderYesterdayLimitUpRow(
                 instrument_id=instrument,
                 trade_date=observed_date,
                 name=self._required_text(raw.get("n"), "yesterday limit-up row.n"),
@@ -649,8 +709,13 @@ class EastmoneyYesterdayLimitUpPoolProvider(_EastmoneyProviderBase):
                 source_record_id=f"{observed_date.isoformat()}:{instrument.exchange.value}:{instrument.code}",
                 source_url=request_url,
                 captured_at=captured_at,
-            ))
-        return tuple(parsed)
+            ), source_page))
+        return self._unique_pool_response(
+            parsed,
+            source_total=expected_total,
+            source_row_count=source_row_count,
+            pool_name="yesterday limit-up",
+        )
 
 
 class EastmoneyStrongPoolProvider(_EastmoneyProviderBase):
@@ -658,17 +723,17 @@ class EastmoneyStrongPoolProvider(_EastmoneyProviderBase):
 
     def fetch_raw_strong_pool(
         self, request: MarketStrongPoolRequest
-    ) -> tuple[_ProviderStrongPoolRow, ...]:
+    ) -> Sequence[_ProviderStrongPoolRow]:
         if not isinstance(request, MarketStrongPoolRequest):
             self._fail("request must be a MarketStrongPoolRequest")
         self._ensure_latest_snapshot_request(request, "strong pool")
         snapshot_date = self._latest_snapshot_date()
-        rows: list[tuple[Mapping[str, Any], str]] = []
+        source_rows: list[tuple[Mapping[str, Any], str, int]] = []
         expected_total: int | None = None
         observed_date: date | None = None
-        seen: set[tuple[str, str]] = set()
+        source_row_count = 0
         page_index = 0
-        while expected_total is None or len(rows) < expected_total:
+        while expected_total is None or source_row_count < expected_total:
             params = self._common_params()
             params.update({"Pageindex": page_index, "pagesize": self._page_size, "sort": "zdp:desc", "date": snapshot_date})
             document, request_url = self._request_document(EASTMONEY_STRONG_POOL_ENDPOINT, params)
@@ -685,28 +750,24 @@ class EastmoneyStrongPoolProvider(_EastmoneyProviderBase):
                 if page_rows:
                     self._fail("EastMoney strong pool returned rows with tc=0")
                 break
-            if not page_rows:
-                self._fail(f"EastMoney strong pool page {page_index} is empty before tc was reached")
-            if len(page_rows) > self._page_size or len(rows) + len(page_rows) > expected_total:
-                self._fail("EastMoney strong pool page size exceeds requested tc")
-            for raw in page_rows:
-                instrument = self._instrument(raw, context="strong-pool row")
-                identity = (instrument.exchange.value, instrument.code)
-                if identity in seen:
-                    self._fail(f"EastMoney strong pool repeated instrument {instrument.code}")
-                seen.add(identity)
-                rows.append((raw, request_url))
-            if len(rows) < expected_total and len(page_rows) < self._page_size:
-                self._fail("EastMoney strong pool ended on a short page before tc")
+            source_row_count = self._append_pool_page(
+                source_rows,
+                page_rows,
+                request_url=request_url,
+                page_index=page_index,
+                source_row_count=source_row_count,
+                source_total=expected_total,
+                pool_name="strong",
+            )
             page_index += 1
-        if expected_total is None or len(rows) != expected_total:
+        if expected_total is None or source_row_count != expected_total:
             self._fail("EastMoney strong pool returned an incomplete count")
         if observed_date is None:
             self._fail("EastMoney strong pool did not return qdate")
         captured_at = self._captured_at()
         allowed = {"c", "m", "n", "p", "ztp", "ztf", "zdp", "amount", "ltsz", "tshare", "hs", "nh", "cc", "lb", "zs", "zttj", "hybk"}
-        parsed: list[_ProviderStrongPoolRow] = []
-        for raw, request_url in rows:
+        parsed: list[tuple[_ProviderStrongPoolRow, int]] = []
+        for raw, request_url, source_page in source_rows:
             self._source_row_shape(raw, allowed=allowed, required=allowed, context="strong-pool row")
             instrument = self._instrument(raw, context="strong-pool row")
             new_high = self._boolean_flag(raw.get("nh"), "strong-pool row.nh")
@@ -725,7 +786,7 @@ class EastmoneyStrongPoolProvider(_EastmoneyProviderBase):
             ztf = raw.get("ztf")
             if ztf is not None and not isinstance(ztf, (str, int)):
                 self._fail("strong-pool row.ztf has unexpected source type")
-            parsed.append(_ProviderStrongPoolRow(
+            parsed.append((_ProviderStrongPoolRow(
                 instrument_id=instrument,
                 trade_date=observed_date,
                 name=self._required_text(raw.get("n"), "strong-pool row.n"),
@@ -747,8 +808,13 @@ class EastmoneyStrongPoolProvider(_EastmoneyProviderBase):
                 source_record_id=f"{observed_date.isoformat()}:{instrument.exchange.value}:{instrument.code}",
                 source_url=request_url,
                 captured_at=captured_at,
-            ))
-        return tuple(parsed)
+            ), source_page))
+        return self._unique_pool_response(
+            parsed,
+            source_total=expected_total,
+            source_row_count=source_row_count,
+            pool_name="strong",
+        )
 
 
 class EastmoneyBrokenLimitPoolProvider(_EastmoneyProviderBase):
@@ -756,17 +822,17 @@ class EastmoneyBrokenLimitPoolProvider(_EastmoneyProviderBase):
 
     def fetch_raw_broken_limit_pool(
         self, request: MarketBrokenLimitPoolRequest
-    ) -> tuple[_ProviderBrokenLimitPoolRow, ...]:
+    ) -> Sequence[_ProviderBrokenLimitPoolRow]:
         if not isinstance(request, MarketBrokenLimitPoolRequest):
             self._fail("request must be a MarketBrokenLimitPoolRequest")
         self._ensure_latest_snapshot_request(request, "broken-limit pool")
         snapshot_date = self._latest_snapshot_date()
-        rows: list[tuple[Mapping[str, Any], str]] = []
+        source_rows: list[tuple[Mapping[str, Any], str, int]] = []
         expected_total: int | None = None
         observed_date: date | None = None
-        seen: set[tuple[str, str]] = set()
+        source_row_count = 0
         page_index = 0
-        while expected_total is None or len(rows) < expected_total:
+        while expected_total is None or source_row_count < expected_total:
             params = self._common_params()
             params.update({"Pageindex": page_index, "pagesize": self._page_size, "sort": "fbt:asc", "date": snapshot_date})
             document, request_url = self._request_document(EASTMONEY_BROKEN_LIMIT_POOL_ENDPOINT, params)
@@ -783,32 +849,28 @@ class EastmoneyBrokenLimitPoolProvider(_EastmoneyProviderBase):
                 if page_rows:
                     self._fail("EastMoney broken-limit pool returned rows with tc=0")
                 break
-            if not page_rows:
-                self._fail(f"EastMoney broken-limit pool page {page_index} is empty before tc was reached")
-            if len(page_rows) > self._page_size or len(rows) + len(page_rows) > expected_total:
-                self._fail("EastMoney broken-limit pool page size exceeds requested tc")
-            for raw in page_rows:
-                instrument = self._instrument(raw, context="broken-limit row")
-                identity = (instrument.exchange.value, instrument.code)
-                if identity in seen:
-                    self._fail(f"EastMoney broken-limit pool repeated instrument {instrument.code}")
-                seen.add(identity)
-                rows.append((raw, request_url))
-            if len(rows) < expected_total and len(page_rows) < self._page_size:
-                self._fail("EastMoney broken-limit pool ended on a short page before tc")
+            source_row_count = self._append_pool_page(
+                source_rows,
+                page_rows,
+                request_url=request_url,
+                page_index=page_index,
+                source_row_count=source_row_count,
+                source_total=expected_total,
+                pool_name="broken-limit",
+            )
             page_index += 1
-        if expected_total is None or len(rows) != expected_total:
+        if expected_total is None or source_row_count != expected_total:
             self._fail("EastMoney broken-limit pool returned an incomplete count")
         if observed_date is None:
             self._fail("EastMoney broken-limit pool did not return qdate")
         captured_at = self._captured_at()
         allowed = {"c", "m", "n", "p", "ztp", "zdp", "amount", "ltsz", "tshare", "hs", "fbt", "zbc", "zf", "zs", "zttj", "hybk"}
-        parsed: list[_ProviderBrokenLimitPoolRow] = []
-        for raw, request_url in rows:
+        parsed: list[tuple[_ProviderBrokenLimitPoolRow, int]] = []
+        for raw, request_url, source_page in source_rows:
             self._source_row_shape(raw, allowed=allowed, required=allowed, context="broken-limit row")
             instrument = self._instrument(raw, context="broken-limit row")
             days, count = self._zttj(raw.get("zttj"), "broken-limit row.zttj")
-            parsed.append(_ProviderBrokenLimitPoolRow(
+            parsed.append((_ProviderBrokenLimitPoolRow(
                 instrument_id=instrument,
                 trade_date=observed_date,
                 name=self._required_text(raw.get("n"), "broken-limit row.n"),
@@ -829,5 +891,10 @@ class EastmoneyBrokenLimitPoolProvider(_EastmoneyProviderBase):
                 source_record_id=f"{observed_date.isoformat()}:{instrument.exchange.value}:{instrument.code}",
                 source_url=request_url,
                 captured_at=captured_at,
-            ))
-        return tuple(parsed)
+            ), source_page))
+        return self._unique_pool_response(
+            parsed,
+            source_total=expected_total,
+            source_row_count=source_row_count,
+            pool_name="broken-limit",
+        )

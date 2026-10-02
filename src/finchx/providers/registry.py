@@ -135,6 +135,7 @@ class ProviderSpec:
     requires_auth: bool = False
     optional_dependencies: tuple[str, ...] = ()
     routing_semantics: Mapping[str, DatasetRoutingSemantics] = field(default_factory=dict)
+    auto_selectable: bool = True
 
     def __post_init__(self) -> None:
         if not isinstance(self.provider_id, str) or fullmatch(
@@ -145,6 +146,8 @@ class ProviderSpec:
             raise TypeError("provider must be a class")
         if type(self.requires_auth) is not bool:
             raise TypeError("requires_auth must be a bool")
+        if type(self.auto_selectable) is not bool:
+            raise TypeError("auto_selectable must be a bool")
 
         datasets = tuple(self.supported_datasets)
         if not datasets:
@@ -315,6 +318,7 @@ def _spec(
     requires_auth: bool = False,
     optional_dependencies: tuple[str, ...] = (),
     semantics: DatasetRoutingSemantics = DatasetRoutingSemantics.MULTI_PROVIDER,
+    auto_selectable: bool = True,
 ) -> ProviderSpec:
     return ProviderSpec(
         provider_id=provider_id,
@@ -323,6 +327,7 @@ def _spec(
         requires_auth=requires_auth,
         optional_dependencies=optional_dependencies,
         routing_semantics={dataset.name: semantics for dataset in datasets},
+        auto_selectable=auto_selectable,
     )
 
 
@@ -383,7 +388,12 @@ PROVIDER_SPECS = (
     ),
     _spec("tencent.finance.qq.quote", TencentQuoteProvider, MARKET_QUOTE_SNAPSHOT_DATASET, MARKET_ORDERBOOK_DATASET),
     _spec("tencent.finance.qq.klines", TencentKlinesProvider, MARKET_KLINES_DATASET),
-    _spec("sohu.finance.klines", SohuKlinesProvider, MARKET_KLINES_DATASET),
+    _spec(
+        "sohu.finance.klines",
+        SohuKlinesProvider,
+        MARKET_KLINES_DATASET,
+        auto_selectable=False,
+    ),
     _spec(
         "tencent.finance.qq.intraday",
         TencentIntradayProvider,

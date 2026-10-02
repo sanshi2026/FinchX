@@ -6,7 +6,6 @@ available arguments visible for copy-and-adapt use.
 """
 
 from finchx import FinchX
-from finchx.computed import DeviationWindowConvention
 
 
 def basic_usage(client: FinchX):
@@ -111,11 +110,17 @@ def representative_data_calls(client: FinchX):
     deviation = client.market.deviation(
         instrument="600519",  # Six-digit A-share code.
         windows=(10, 30),  # Calculate the 10- and 30-session windows.
-        as_of="2026-09-23",  # Last completed trading date to include.
-        window_convention=DeviationWindowConvention.MAX_DEVIATION_SCAN,  # Omit to use the default scan rule.
+        as_of="2026-09-23",  # Observation trading date; returns all three scenarios.
     )
     for result in (financials, keywords, concepts, deviation):
         print(result.data, result.to_dicts()[:1], result.warnings)
+    for window in deviation.data.windows:
+        print(
+            window.scenario,
+            window.upper_trigger_price,
+            window.upper_trigger_price_original,
+            window.remaining_to_upper,
+        )
     return financials, keywords, concepts, deviation
 
 

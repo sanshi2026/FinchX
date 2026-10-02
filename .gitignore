@@ -1,5 +1,8 @@
 # macOS
 .DS_Store
+/AGENTS.md
+/.codex/
+/.agents/
 
 # Python
 .venv/

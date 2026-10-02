@@ -34,7 +34,9 @@ from finchx.datasets.market_ranking import (
     TurnoverRankingMetric,
     VolumeRankingMetric,
     _ProviderRankingRow,
+    _ProviderRankingResponse,
 )
+from finchx.datasets.provider_rows import _PaginationStats, _ProviderRowsResponse
 from finchx.entities import (
     Exchange,
     InstrumentId,
@@ -161,6 +163,7 @@ class _TencentMarketRow:
     speed: Decimal | None
     captured_at: datetime
     row_context: str
+    ranking_position: int | None = None
 
 
 class _RowParseFailure(ValueError):
@@ -196,8 +199,14 @@ class TencentMarketProvider(
         request: InstrumentUniverseRequest,
     ) -> Sequence[_ProviderInstrumentRow]:
         self._require_a_share_universe(request.universe)
-        rows = self._acquire_rows(sort_type="turnover", direct="down", limit=None)
-        return tuple(
+        pagination = _PaginationStats()
+        rows = self._acquire_rows(
+            sort_type="turnover",
+            direct="down",
+            limit=None,
+            pagination_stats=pagination,
+        )
+        instruments = tuple(
             _ProviderInstrumentRow(
                 code=row.instrument_id.code,
                 market=row.instrument_id.market.value,
@@ -209,13 +218,25 @@ class TencentMarketProvider(
             )
             for row in rows
         )
+        return pagination.response(
+            instruments,
+            requested_count=None,
+            source_label="Tencent instrument listing",
+            result_kind="instrument listing",
+        )
 
     def fetch_quotes(
         self,
         request: MarketQuoteUniverseRequest,
     ) -> Sequence[_ProviderQuoteRow]:
         self._require_a_share_universe(request.universe)
-        rows = self._acquire_rows(sort_type="turnover", direct="down", limit=None)
+        pagination = _PaginationStats()
+        rows = self._acquire_rows(
+            sort_type="turnover",
+            direct="down",
+            limit=None,
+            pagination_stats=pagination,
+        )
         quotes: list[_ProviderQuoteRow] = []
         for row in rows:
             quote = self._quote_data(row)
@@ -226,7 +247,12 @@ class TencentMarketProvider(
                     captured_at=row.captured_at,
                 )
             )
-        return tuple(quotes)
+        return pagination.response(
+            tuple(quotes),
+            requested_count=None,
+            source_label="Tencent quote listing",
+            result_kind="quote listing",
+        )
 
     def fetch_ranking(
         self,
@@ -235,10 +261,12 @@ class TencentMarketProvider(
         self._require_a_share_universe(request.universe)
         sort_type = _SORT_TYPES[request.criterion]
         direct = "up" if request.direction is RankingDirection.ASCENDING else "down"
+        pagination = _PaginationStats()
         rows = self._acquire_rows(
             sort_type=sort_type,
             direct=direct,
             limit=request.limit,
+            pagination_stats=pagination,
         )
         rankings: list[_ProviderRankingRow] = []
         for row in rows:
@@ -277,9 +305,22 @@ class TencentMarketProvider(
                     metric=metric,
                     source_record_id=row.source_code,
                     captured_at=row.captured_at,
+                    position=row.ranking_position,
                 )
             )
-        return tuple(rankings)
+        response = pagination.response(
+            tuple(rankings),
+            requested_count=request.limit,
+            source_label="Tencent ranking",
+            result_kind="ranking",
+        )
+        if isinstance(response, _ProviderRowsResponse):
+            return _ProviderRankingResponse(
+                rows=response.rows,
+                warnings=response.warnings,
+                metadata=response.metadata,
+            )
+        return response
 
     def _quote_data(self, row: _TencentMarketRow) -> MarketQuoteData:
         if row.price is None:
@@ -337,14 +378,22 @@ class TencentMarketProvider(
         sort_type: str,
         direct: str,
         limit: int | None,
+        pagination_stats: _PaginationStats | None = None,
     ) -> tuple[_TencentMarketRow, ...]:
         rows: list[_TencentMarketRow] = []
         seen: set[str] = set()
         offset = 0
         expected_total: int | None = None
+        source_row_count = 0
 
-        while limit is None or len(rows) < limit:
-            remaining = None if limit is None else limit - len(rows)
+        while True:
+            if expected_total is None:
+                remaining = limit
+            else:
+                source_target = expected_total if limit is None else min(limit, expected_total)
+                if source_row_count >= source_target:
+                    break
+                remaining = source_target - source_row_count
             count = _PAGE_SIZE if remaining is None else min(_PAGE_SIZE, remaining)
             page, page_total = self._fetch_page(
                 sort_type=sort_type,
@@ -354,6 +403,8 @@ class TencentMarketProvider(
             )
             if expected_total is None:
                 expected_total = page_total
+                if pagination_stats is not None:
+                    pagination_stats.source_total = page_total
             elif page_total != expected_total:
                 self._fail(
                     f"pagination total drift at offset={offset}: "
@@ -383,24 +434,31 @@ class TencentMarketProvider(
                     f"pagination ended early at offset={offset} before total={page_total}"
                 )
 
+            page_seen: set[str] = set()
             for row in page:
                 identity_key = format_symbol(row.instrument_id)
-                if identity_key in seen:
+                if identity_key in page_seen:
                     self._fail(
-                        f"duplicate instrument id {identity_key} at {row.row_context}"
+                        f"duplicate instrument id within Tencent page: {identity_key} at {row.row_context}"
                     )
+                page_seen.add(identity_key)
+                if identity_key in seen:
+                    if pagination_stats is None:
+                        self._fail(
+                            f"duplicate instrument id {identity_key} at {row.row_context}"
+                        )
+                    pagination_stats.duplicate_rows_skipped += 1
+                    continue
                 seen.add(identity_key)
                 rows.append(row)
 
+            source_row_count += len(page)
+            if pagination_stats is not None:
+                pagination_stats.source_row_count = source_row_count
             offset += len(page)
-            wanted = page_total if limit is None else min(limit, page_total)
-            if len(rows) >= wanted:
-                if len(rows) != wanted:
-                    self._fail(
-                        f"pagination returned more rows than expected: "
-                        f"expected={wanted}, received={len(rows)}"
-                    )
-                return tuple(rows)
+            wanted_source_rows = page_total if limit is None else min(limit, page_total)
+            if source_row_count >= wanted_source_rows:
+                break
 
             if len(page) < count:
                 self._fail(
@@ -408,6 +466,12 @@ class TencentMarketProvider(
                     f"received={len(page)}, requested={count}, total={page_total}"
                 )
 
+        if pagination_stats is None and expected_total is not None:
+            wanted = expected_total if limit is None else min(limit, expected_total)
+            if len(rows) != wanted:
+                self._fail(
+                    f"pagination returned an incomplete count: expected={wanted}, received={len(rows)}"
+                )
         return tuple(rows)
 
     def _fetch_page(
@@ -493,6 +557,7 @@ class TencentMarketProvider(
                         raw_row,
                         captured_at=captured_at,
                         row_context=row_context,
+                        ranking_position=offset + index + 1,
                     )
                 )
             except _RowParseFailure as exc:
@@ -545,6 +610,7 @@ def _parse_market_row(
     *,
     captured_at: datetime,
     row_context: str,
+    ranking_position: int | None = None,
 ) -> _TencentMarketRow:
     if not isinstance(raw, dict):
         raise _RowParseFailure("field row must be an object")
@@ -645,6 +711,7 @@ def _parse_market_row(
         speed=speed,
         captured_at=captured_at,
         row_context=row_context,
+        ranking_position=ranking_position,
     )
 
 

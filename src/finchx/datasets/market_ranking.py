@@ -21,6 +21,7 @@ from finchx.contracts.models import ContractModel
 from finchx.datasets.definition import DatasetDefinition
 from finchx.datasets.instrument import InstrumentUniverse
 from finchx.datasets.market_quote import MarketQuoteData, _quote_quality
+from finchx.datasets.provider_rows import _ProviderRowsResponse
 from finchx.entities import InstrumentId, InstrumentKind, Market, format_symbol
 
 
@@ -92,10 +93,15 @@ class _ProviderRankingRow:
     metric: RankingMetric
     source_record_id: str | None = None
     captured_at: datetime | None = None
+    position: int | None = None
 
     @property
     def instrument_id(self) -> InstrumentId:
         return self.data.instrument_id
+
+
+class _ProviderRankingResponse(_ProviderRowsResponse[_ProviderRankingRow]):
+    """Ranking rows plus provider-reported partial-coverage details."""
 
 
 def _ranking_record_id(
@@ -149,7 +155,7 @@ def _normalize_ranking_rows(
         payload_values.update(
             universe=request.universe,
             direction=request.direction,
-            position=position,
+            position=row.position if row.position is not None else position,
             metric=row.metric,
         )
         payload = MarketRankingData.model_validate(payload_values)

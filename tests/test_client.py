@@ -549,6 +549,8 @@ def test_public_api_surface_has_stable_namespaces_and_fetchresult_contract():
             expected = tuple[NewsDocumentRef, ...]
         elif endpoint.dataset.name == "disclosure.document":
             expected = tuple[DisclosureDocumentRef, ...]
+        elif endpoint.dataset.name == "market.orderbook":
+            expected = StandardRecord
         elif endpoint.namespace == "articles" and endpoint.method == "get":
             expected = StandardRecord
         else:

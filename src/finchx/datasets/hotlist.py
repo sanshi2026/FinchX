@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Annotated, Literal, TypeAlias
 
-from pydantic import Field, RootModel, model_validator
+from pydantic import Field, RootModel, WithJsonSchema, model_validator
 
 from finchx.contracts import (
     DataStatus, Percentage, Provenance, ProvenanceClass, Quality, QualityIssue,
@@ -18,6 +18,10 @@ from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market, form
 
 
 HotlistLimit = Annotated[int, Field(strict=True, ge=1)]
+HotlistDecimal: TypeAlias = Annotated[
+    Decimal,
+    WithJsonSchema({"type": "string"}, mode="serialization"),
+]
 
 
 class HotStocksRequest(ContractModel):
@@ -59,7 +63,7 @@ class HotStockData(ContractModel):
     category: Literal["popular", "rising", "new", "technical", "value", "trend"]
     period: Literal["1h", "24h"]
     change_pct: Percentage | None = Field(default=None, alias="changePct")
-    heat: Decimal | None = None
+    heat: HotlistDecimal | None = None
     rank_change: int | None = Field(default=None, alias="rankChange")
     concept_tags: list[str] = Field(default_factory=list, alias="conceptTags")
     popularity_tag: str | None = Field(default=None, alias="popularityTag")
@@ -67,7 +71,7 @@ class HotStockData(ContractModel):
     analysis: str | None = None
     search_count: int | None = Field(default=None, alias="searchCount")
     updated_at: datetime | None = Field(default=None, alias="updatedAt")
-    pe: Decimal | None = None
+    pe: HotlistDecimal | None = None
 
 
 class HotSectorData(ContractModel):
@@ -76,7 +80,7 @@ class HotSectorData(ContractModel):
     name: str
     sector_type: Literal["concept", "industry", "index"] = Field(alias="sectorType")
     change_pct: Percentage | None = Field(default=None, alias="changePct")
-    heat: Decimal | None = None
+    heat: HotlistDecimal | None = None
     rank_change: int | None = Field(default=None, alias="rankChange")
     tag: str | None = None
     hot_tag: str | None = Field(default=None, alias="hotTag")
@@ -90,7 +94,7 @@ class HotConvertibleBondData(ContractModel):
     symbol: str = Field(min_length=6, max_length=6)
     name: str
     change_pct: Percentage | None = Field(default=None, alias="changePct")
-    heat: Decimal | None = None
+    heat: HotlistDecimal | None = None
 
 
 class HotEtfData(ContractModel):
@@ -99,7 +103,7 @@ class HotEtfData(ContractModel):
     instrument_id: InstrumentId = Field(alias="instrumentId")
     name: str
     change_pct: Percentage | None = Field(default=None, alias="changePct")
-    heat: Decimal
+    heat: HotlistDecimal
     tags: list[str] = Field(default_factory=list)
 
 
@@ -115,7 +119,7 @@ class HotTopicData(ContractModel):
     rank: int = Field(ge=1)
     title: str
     summary: str | None = None
-    heat: Decimal | None = None
+    heat: HotlistDecimal | None = None
     url: str | None = None
     related_stocks: list[HotRelatedStock] = Field(default_factory=list, alias="relatedStocks")
 
@@ -127,7 +131,7 @@ class HotCommentData(ContractModel):
     instrument_id: InstrumentId = Field(alias="instrumentId")
     name: str
     change_pct: Percentage | None = Field(default=None, alias="changePct")
-    heat: Decimal | None = None
+    heat: HotlistDecimal | None = None
     text: str | None = None
     likes: int | None = None
     content_id: str | None = Field(default=None, alias="contentId")
@@ -155,7 +159,7 @@ class HotArticleData(ContractModel):
     content_type: Literal["article"] = Field(alias="contentType")
     rank: int = Field(ge=1)
     title: str
-    heat: Decimal | None = None
+    heat: HotlistDecimal | None = None
     like_ratio: Percentage | None = Field(default=None, alias="likeRatio")
     comment_ratio: Percentage | None = Field(default=None, alias="commentRatio")
     content_id: str | None = Field(default=None, alias="contentId")

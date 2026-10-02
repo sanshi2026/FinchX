@@ -79,7 +79,7 @@ print(result.warnings)
 | `fx.market.fund_flow_intraday(...)` | Fetch intraday fund-flow data. | `tencent.finance.qq.fund_flow` |
 | `fx.market.fund_flow_snapshot(...)` | Fetch the fund-flow snapshot. | `tencent.finance.qq.fund_flow` |
 | `fx.market.ohlcv(...)` | Fetch daily OHLCV history for an SSE/SZSE equity or supported index. | `tencent.finance.qq.klines`, `sohu.finance.klines` |
-| `fx.market.orderbook(...)` | Fetch the order book. | `tencent.finance.qq.quote` |
+| `fx.market.orderbook(...)` | Fetch Tencent's five-level equity book while preserving source slot order and null values. | `tencent.finance.qq.quote` |
 | `fx.market.quote(...)` | Fetch a full-market A-share quote snapshot. | `tencent.finance.qq.market` |
 | `fx.market.ranking(...)` | Rank A-share stocks by traded amount, price change, or volume. | `tencent.finance.qq.market` |
 | `fx.market.quote_snapshot(...)` | Fetch a current quote snapshot for an SSE/SZSE equity or supported index. | `tencent.finance.qq.quote` |
@@ -131,7 +131,7 @@ print(result.warnings)
 | `fx.market.abnormal_records(...)` | Fetch one upstream page from ordinary events, severe events, or prediction history. | `eastmoney.regulation` |
 | `fx.market.severe_predictions(...)` | Fetch the bounded severe-prediction pool and preserve unrecognized provider states. | `eastmoney.regulation` |
 | `fx.market.abnormal_counts(...)` | Fetch the bounded abnormal-count pool while keeping ambiguous provider counters as raw evidence. | `eastmoney.regulation` |
-| `fx.market.deviation(...)` | Calculate close-based relative returns for one supported A-share stock against its board benchmark over 10- or 30-session windows. | — |
+| `fx.market.deviation(...)` | Calculate pre-open, current-session, and next-session deviation rows against the board benchmark. | — |
 
 ### Other
 
@@ -1386,6 +1386,8 @@ Fetch daily OHLCV history for an SSE/SZSE equity or supported index.
 **Supported index identities**
 Use a full `market:exchange:index:code` identity, for example `cn_a:sse:index:000001` or `cn_a:szse:index:399001`. The current whitelist is SSE `000001`, `000002`, `000688` and SZSE `399001`, `399006`, `399102`, `399107`. On these generic methods, a bare `000001` resolves as the SZSE equity, not the SSE index.
 For an index, omit `adjustment` or pass `adjustment=None`; equities may use `qfq`, `hfq`, or no adjustment. OHLC fields are CNY per share for equities and index points for indices.
+Automatic `market.ohlcv` routing uses Tencent and does not automatically fall back to Sohu. Sohu remains available when explicitly selected for its supported indices; equity requests are rejected before network access. Tencent retries transient transport and HTTP 408/425/429/5xx failures up to four attempts within a 45-second request budget; HTTP 429 uses longer bounded exponential waits. Permanent HTTP, request, and response-schema failures are not retried.
+For an equity `qfq` request, Tencent's `qfqday` series is preferred. If that key is absent and the same response contains a valid `day` array, FinchX uses those unadjusted bars without another request. Each returned bar and its provenance keep `adjustment="none"`; `FetchResult.metadata` records `requested_adjustment="qfq"`, `actual_adjustment="none"`, and `source_series="day"`, and `FetchResult.warnings` explains that the values are not forward-adjusted. An empty or malformed `qfqday` does not trigger this fallback.
 
 **Example**
 
@@ -1437,12 +1439,12 @@ Data model: `MarketKlineData`
 | close | Decimal | Close price: CNY per share for equities; index points for indices. |
 | volume | int | Provider volume normalized to whole shares (source lots multiplied by 100). |
 | amount | Decimal \| None | Provider-reported traded amount in CNY when available. |
-| adjustment | KlineAdjustment | Output adjustment label: `none`, `qfq`, `hfq`, or `not_applicable`. |
+| adjustment | KlineAdjustment | Actual bar adjustment supplied: `none`, `qfq`, `hfq`, or `not_applicable`. A `qfq` request may return `none` only with the documented Tencent `day` fallback metadata and warning. |
 
 ### `fx.market.orderbook(...)`
 
 **What it provides**
-Fetch the order book.
+Fetch Tencent's five-level equity book while preserving source slot order and null values.
 
 **Data source**
 `tencent.finance.qq.quote`
@@ -1465,7 +1467,7 @@ print(result.warnings)  # Check for partial or recoverable issues.
 ```
 
 **Returned value and recommended use**
-Returns a `FetchResult`. `.data` is a tuple of normalized records; each record's `.data` contains the Dataset row payload. The Dataset row schema `MarketOrderbookData` has business fields such as `instrumentId`, `bids`, `asks`. Use the named business fields for follow-up filtering, comparisons, or charts. Export JSON-compatible rows with `.to_dicts()` and inspect `.warnings` for partial results. `.dataset_id`, `.provider_id`, `.captured_at`, `.provenance`, `.attempts`, `.fallback_used`, and `.cache_hit` carry retrieval and audit details.
+Returns a `FetchResult`. `.data` is one normalized `StandardRecord`. `MarketOrderbookData` exposes the Tencent book slots. Each of `bids` and `asks` has five source levels in source order; FinchX does not sort or remove zero-valued or null-valued slots. `price` is a decimal string or `null`; `size` is an integer share count or `null`, after converting Tencent hands to shares (`hands × 100`). Explicit zero remains zero. `sourceTimestamp` is Tencent's Shanghai-time quote timestamp and is separate from FinchX `capturedAt`. Tencent's empty sentinels become typed null values; null does not establish that a physical exchange level is absent. Status is `missing` only when every source price and size is null; any explicit zero counts as reported data. This next unreleased package intentionally changes the previous filtered and price-sorted output contract. No auction, limit-up, or order-amount interpretation is inferred. Export with `.to_dicts()`. `.dataset_id`, `.provider_id`, `.captured_at`, `.provenance`, `.attempts`, `.fallback_used`, and `.cache_hit` carry retrieval and audit details.
 
 **Parameters**
 
@@ -1479,17 +1481,18 @@ Data model: `MarketOrderbookData`
 
 | Field | Type | Meaning |
 | --- | --- | --- |
-| instrumentId | str | Instrument code. |
-| bids | list[OrderbookLevel] | — |
-| asks | list[OrderbookLevel] | — |
+| instrumentId | str | Equity instrument for this source book. |
+| bids | list[OrderbookLevel] | Five Tencent bid slots in source order; zero and null values are retained. |
+| asks | list[OrderbookLevel] | Five Tencent ask slots in source order; zero and null values are retained. |
+| sourceTimestamp | datetime | Tencent quote timestamp with its Shanghai UTC+08:00 offset; distinct from capturedAt. |
 
 Nested business model: `OrderbookLevel`
 
 | Field | Type | Meaning |
 | --- | --- | --- |
-| level | int | — |
-| price | Decimal | Price per share; currency is CNY. |
-| size | int | A non-negative whole number of shares. |
+| level | int | Tencent source slot number from 1 through 5; levels remain in source order. |
+| price | Decimal \| None | CNY per share as a decimal string or null; explicit zero is retained. |
+| size | int \| None | Whole shares or null; Tencent hands are multiplied by 100. Explicit zero is retained. |
 
 ### `fx.market.quote(...)`
 
@@ -1582,7 +1585,7 @@ print(result.warnings)  # Check for partial or recoverable issues.
 ```
 
 **Returned value and recommended use**
-Returns a `FetchResult`. `.data` is a tuple of normalized records; each record's `.data` contains the Dataset row payload. The Dataset row schema `MarketRankingData` has business fields such as `instrumentId`, `name`, `price`, `priceChange`. Use the named business fields for follow-up filtering, comparisons, or charts. Export JSON-compatible rows with `.to_dicts()` and inspect `.warnings` for partial results. `.dataset_id`, `.provider_id`, `.captured_at`, `.provenance`, `.attempts`, `.fallback_used`, and `.cache_hit` carry retrieval and audit details.
+Returns a `FetchResult`. `.data` is a tuple of normalized records; each record's `.data` contains the Dataset row payload. The Dataset row schema `MarketRankingData` has business fields such as `instrumentId`, `name`, `price`, `priceChange`. Use the named business fields for follow-up filtering, comparisons, or charts. Tencent rankings are fetched from live pages. If a stock repeats on a later page, FinchX keeps its first row and skips the repeat; the result then has partial coverage. The requested `limit` is a source-row budget; skipped repeats do not trigger extra pages to refill unique rows. Check `.warnings` and `.metadata` for `coverage_status`, `requested_count`, `source_row_count`, `unique_count`, `source_total`, and `duplicate_rows_skipped`. `position` preserves the source row number, so gaps can appear. The pages do not form a consistent point-in-time snapshot, even when no repeats appear. Export JSON-compatible rows with `.to_dicts()`. `.dataset_id`, `.provider_id`, `.captured_at`, `.provenance`, `.attempts`, `.fallback_used`, and `.cache_hit` carry retrieval and audit details.
 
 **Parameters**
 
@@ -3198,7 +3201,7 @@ print(result.warnings)  # Check for partial or recoverable issues.
 ```
 
 **Returned value and recommended use**
-Returns a `FetchResult`. `.data` is a tuple of normalized records; each record's `.data` contains the Dataset row payload. The Dataset row schema `MarketDailyReplayData` has business fields such as `requestedDate`, `tradeDate`, `themes`. Use `tradeDate` to identify the returned session, then inspect `themes` for the close review. Export JSON-compatible rows with `.to_dicts()` and inspect `.warnings` for partial results. `.dataset_id`, `.provider_id`, `.captured_at`, `.provenance`, `.attempts`, `.fallback_used`, and `.cache_hit` carry retrieval and audit details.
+Returns a `FetchResult`. `.data` is a tuple of normalized records; each record's `.data` contains the Dataset row payload. The Dataset row schema `MarketDailyReplayData` has business fields such as `requestedDate`, `tradeDate`, `themes`. Use `tradeDate` to identify the returned session, then inspect `themes` for the close review. If you log in again, refresh `SESSION` because the previous cookie may no longer be accepted. Errors identify the failed transport stage without including cookie values, URL query parameters, or raw browser messages. An explicit HTTP 401/403 or source `errCode=1/110` response is reported as an authentication/access failure immediately, even if the other API response is missing. Export JSON-compatible rows with `.to_dicts()` and inspect `.warnings` for partial results. `.dataset_id`, `.provider_id`, `.captured_at`, `.provenance`, `.attempts`, `.fallback_used`, and `.cache_hit` carry retrieval and audit details.
 
 **Parameters**
 
@@ -3661,13 +3664,13 @@ Data model: `AbnormalCountData`
 ### `fx.market.deviation(...)`
 
 **What it provides**
-Calculate close-based relative returns for one supported A-share stock against its board benchmark over 10- or 30-session windows.
+Calculate pre-open, current-session, and next-session deviation rows against the board benchmark.
 
 **Data source**
-Computed locally from `market.ohlcv` and `reference.trading_calendar`; no direct Provider.
+Computed locally from `market.ohlcv`, `market.quote_snapshot`, and `reference.trading_calendar`; no direct Provider.
 
 **Scope and calculation**
-This is a deterministic close-based computation, not an exchange announcement, an intraday estimate, a market-wide scan, or an application-specific trigger state.
+FinchX reports market inputs and calculations only. It does not decide whether a formal abnormal-movement event occurred and does not return trigger, risk, trading, or alert judgments. The top-level `effectiveAsOf` and `calculationMode` are retained compatibility fields: `effectiveAsOf` aliases `asOf`, and `calculationMode` is `scenario_based`.
 Supported equities are SSE `60xxxx` and `68xxxx`, and SZSE `00xxxx` and `30xxxx`; BSE equities are not supported. Each board uses its corresponding benchmark:
 
 | Equity code | Board | Benchmark index |
@@ -3677,36 +3680,42 @@ Supported equities are SSE `60xxxx` and `68xxxx`, and SZSE `00xxxx` and `30xxxx`
 | SZSE `00xxxx` | SZSE main board | SZSE A Share Index (`399107`) |
 | SZSE `30xxxx` | ChiNext | ChiNext Composite Index (`399102`) |
 
-Stock returns use QFQ equity closes; benchmark returns use unadjusted index points. Trading sessions come from the A-share calendar. For each window, FinchX calculates:
+Each requested window length returns three flat rows in `pre_open`, `current`, `next_session` order. With the default `(10, 30)`, `windows` contains six rows. `as_of` identifies the observation trading session; a non-trading date follows the existing prior-session normalization. `endDate` identifies the terminal prices actually used, `targetDate` defines that row's candidate boundary, and `startDate` is the start of the selected maximum-deviation interval.
 
+For an observation session D10, `pre_open` always ends on prior session D9 and is unaffected by D10 prices. During D10, `current` and `next_session` use validated same-day stock and index quote snapshots. After the session, FinchX uses each available D10 daily bar for its own terminal value (stock QFQ bar, index raw bar); it requests a quote only for a side whose D10 bar is missing. A stock quote fallback bridges QFQ stock history through that quote's `previousClose`; an index quote remains in raw index points. A post-close quote may carry a same-day timestamp before 15:00, such as 14:59. Its source date, instrument, positive price, and non-future timestamp are checked, but it is not described as a confirmed daily close. Quote fallback warnings apply only to `current` and `next_session`. The two terminal sources are recorded as `result.metadata.stock_terminal_source` and `benchmark_terminal_source`; a bar has a null row source timestamp, while a quote retains its source timestamp. `next_session` ends on D10 too, targets D11, and shares the same stock/index terminal prices as `current`; only its candidate boundary rolls forward. It reads no D11 price and creates no D11 bar. Historical `as_of` queries use that session's daily bars and cannot reproduce an earlier intraday instant.
+
+The top-level `priceBasis` reports the actual stock Kline scale: `qfq_stock__raw_index` when Tencent returns QFQ bars, or `raw_stock__raw_index` when a QFQ request uses the documented unadjusted `day` fallback. For QFQ bars, a stock quote fallback bridges history by that quote's `previousClose`; for unadjusted bars, FinchX keeps history and quote values on their source scale without a QFQ bridge. The requested and actual adjustment, source series, and any fallback warning are available in `result.metadata` and `result.warnings`. Index bars and quotes remain raw index points. `price_inputs`, `stock_terminal_source`, and `benchmark_terminal_source` describe the D10 inputs for `current` and `next_session`; `terminal_source_scope` identifies those scenarios, while `pre_open` always uses D9 bars. Each terminal-source value is `same_day_daily_bar`, `same_day_quote`, or `historical_daily_bar`. `price_inputs` distinguishes historical bars, intraday quotes with daily history, after-close daily bars, one-sided quote fallback, and two-sided quote fallback. Quote source timestamps are retained per side; they are null when a daily bar supplies that side.
+
+For each eligible candidate baseline `b`, FinchX calculates with unrounded Decimal values:
 ```text
-stock_return = current_stock_close / baseline_stock_close - 1
-benchmark_return = current_index_close / baseline_index_close - 1
-deviation = stock_return - benchmark_return
+stockReturn_b = currentPrice / stockBaselinePrice_b - 1
+benchmarkReturn_b = benchmarkCurrent / benchmarkStart_b - 1
+deviation_b = stockReturn_b - benchmarkReturn_b
+deviation = max(deviation_b)
 ```
+The selected `startDate`, stock/index baselines, returns, and `deviation` all come from the maximum-deviation candidate. Equal deviations use the earliest eligible candidate. `next_session` moves that candidate boundary forward by one trading session and rescans; for a complete 10-session request it has at most 9 observed statistic sessions, excluding the baseline. The 10/30 `windowDays` and upper thresholds remain unchanged. The final observed D10 candidate may use the actual D9 baseline and D10 price; no D11 zero-return candidate is added. Negative maxima and negative distances are preserved.
 
-The baseline is the close immediately before the selected window starts. Values are ratio fractions (`0.03` means 3%). The default is `DeviationWindowConvention.MAX_DEVIATION_SCAN` and can be omitted; `STRICT_EXCHANGE_WINDOW` uses the exchange-shaped start. Unsupported codes or insufficient aligned history raise an error instead of returning zero.
-The result reports `calculationMode = "official_close"`, `priceBasis = "qfq_stock__raw_index"`, and the frozen rule-set identifier in `ruleVersion`.
+The upper threshold is `1.00` for 10 sessions and `2.00` for 30. `upperTriggerPrice_b = stockBaselinePrice_b * (1 + upperThreshold + benchmarkReturn_b)` assumes `benchmarkCurrent` stays fixed. FinchX selects the minimum unrounded candidate price independently from the maximum-deviation candidate, then rounds the selected `upperTriggerPrice` up to CNY 0.01. The original unrounded value is returned as `upperTriggerPrice_original`, and the selected candidate basis is available in `result.metadata.windows[].upper_trigger_basis`. `remainingToUpper = upperTriggerPrice / currentPrice - 1`, using the rounded price. Negative values are preserved. The theoretical price is not a promise of execution or an event decision.
 
-| Window | Upper threshold | Lower threshold |
-| --- | --- | --- |
-| 10 sessions | `+1.00` | `-0.50` |
-| 30 sessions | `+2.00` | `-0.70` |
+A missing stock Kline date bracketed by stock bars remains an inferred gap for this calculation only; dates before the first available bar are short history, not inferred suspensions. After a gap, the stock and benchmark may use distinct baselines; missing index dates are never treated as stock halts. Partial windows and coverage are reported per row in `tradingSessions`, `availableTradingSessions`, `windowStatus`, `coverageStatus`, and `inferredHaltDates`; `availableTradingSessions` excludes the baseline and any unobserved future target. It counts observations, not the requested window length or the selected interval length. No raw OHLCV is changed.
+Ratio fields use fractions (`0.03` means 3%); prices are CNY per share and index values are points. `priceBasis` is `qfq_stock__raw_index` or `raw_stock__raw_index`, based on the actual stock Klines used. `ruleVersion` identifies the algorithm contract.
+
+| Window | Upper threshold |
+| --- | --- |
+| 10 sessions | `+1.00` |
+| 30 sessions | `+2.00` |
 
 **Example**
 
 <!-- api-example: market.deviation -->
 ```python
 from finchx import FinchX
-from finchx.computed import DeviationWindowConvention
 
 fx = FinchX()
-
 result = fx.market.deviation(
     instrument="600519",  # Six-digit A-share code; the endpoint resolves its market.
-    windows=(10, 30),  # Compare 10- and 30-session windows.
-    as_of="2026-09-23",  # Last completed session to include.
-    window_convention=DeviationWindowConvention.MAX_DEVIATION_SCAN,  # Choose a convention; omit this argument to use the default MAX_DEVIATION_SCAN.
+    windows=(10, 30),  # Return three scenario records for each requested 10- or 30-session window.
+    as_of="2026-09-23",  # Observation trading date; historical queries use that session's close data.
 )
 
 print(result.data)  # Native typed data or records.
@@ -3716,7 +3725,7 @@ print(result.warnings)  # Check for partial or recoverable issues.
 ```
 
 **Returned value and recommended use**
-Returns a `FetchResult`. `.data` is one `DeviationData` model. The Dataset row schema `DeviationData` has business fields such as `instrumentId`, `board`, `effectiveAsOf`, `calculationMode`. Iterate `windows` to compare each requested trading window, and retain `effectiveAsOf` with the result. Export JSON-compatible rows with `.to_dicts()` and inspect `.warnings` for partial results. `.dataset_id`, `.provider_id`, `.captured_at`, `.provenance`, `.attempts`, `.fallback_used`, and `.cache_hit` carry retrieval and audit details.
+Returns a `FetchResult`. `.data` is one `DeviationData` model. The Dataset row schema `DeviationData` has business fields such as `instrumentId`, `board`, `asOf`, `effectiveAsOf`. Iterate the three scenario rows per requested window in `windows`; use `asOf` as the observation date. `effectiveAsOf` is a compatibility alias. Export JSON-compatible rows with `.to_dicts()` and inspect `.warnings` for partial results. `.dataset_id`, `.provider_id`, `.captured_at`, `.provenance`, `.attempts`, `.fallback_used`, and `.cache_hit` carry retrieval and audit details.
 
 **Parameters**
 
@@ -3724,8 +3733,7 @@ Returns a `FetchResult`. `.data` is one `DeviationData` model. The Dataset row s
 | --- | --- | --- | --- | --- |
 | instrument | str | Required | — | Six-digit instrument code; FinchX resolves its market context. |
 | windows | Sequence[int] | Optional | (10, 30) | Deviation windows, in trading sessions. |
-| as_of | date \| str \| None | Optional | None | Optional completed-session date; accepts YYYY-MM-DD, YYYYMMDD, or YYYY/MM/DD strings. |
-| window_convention | DeviationWindowConvention \| Literal['max_deviation_scan', 'strict_exchange_window'] | Optional | DeviationWindowConvention.MAX_DEVIATION_SCAN | Choose a deviation convention; omit it to use the default MAX_DEVIATION_SCAN. |
+| as_of | date \| str \| None | Optional | None | Observation trading date; accepts YYYY-MM-DD, YYYYMMDD, or YYYY/MM/DD strings. |
 
 **Output fields**
 
@@ -3733,42 +3741,50 @@ Data model: `DeviationData`
 
 | Field | Type | Meaning |
 | --- | --- | --- |
-| instrumentId | str | Instrument code. |
-| board | str | — |
-| effectiveAsOf | date | — |
-| calculationMode | Literal['official_close'] | — |
-| priceBasis | Literal['qfq_stock__raw_index'] | — |
-| ruleVersion | str | — |
-| windows | tuple[DeviationWindowData, Ellipsis] | — |
+| instrumentId | str | Full identity of the requested A-share equity. |
+| board | str | Resolved equity board used to select the benchmark index. |
+| asOf | date | Normalized observation trading date shared by all scenario rows. |
+| effectiveAsOf | date | Compatibility alias equal to asOf; it is not the end date shared by every row. |
+| calculationMode | Literal['scenario_based'] | Compatibility summary label; scenario-specific price sources are described by each row. |
+| priceBasis | Literal['qfq_stock__raw_index', 'raw_stock__raw_index'] | Reports the actual stock bar scale and raw index points. A stock quote fallback bridges history by previousClose only for QFQ bars; unadjusted day history and quotes stay on their source scale. |
+| ruleVersion | str | Version identifier for the deviation calculation contract. |
+| coverageStatus | Literal['complete', 'short_history', 'halt_inferred_from_missing_kline', 'short_history_and_halt_inferred_from_missing_kline'] | Aggregate historical coverage summary across requested scenario rows. |
+| inferredHaltDates | tuple[date, Ellipsis] | Union of stock-gap dates inferred by the requested rows; these are calculation assumptions, not source halt records. |
+| windows | tuple[DeviationWindowData, Ellipsis] | Flat scenario records ordered by requested window length and then pre_open, current, next_session. |
 
 Nested business model: `DeviationWindowData`
 
 | Field | Type | Meaning |
 | --- | --- | --- |
-| windowDays | Literal[10, 30] | — |
-| windowConvention | DeviationWindowConvention | — |
-| tradingSessions | int | — |
-| startDate | date | — |
-| baselineDate | date | — |
-| endDate | date | — |
-| startPrice | Decimal | — |
-| windowStartPrice | Decimal | — |
-| currentPrice | Decimal | — |
-| benchmarkInstrument | str | — |
-| benchmarkName | str | — |
-| benchmarkStart | Decimal | — |
-| benchmarkCurrent | Decimal | — |
-| stockReturn | Decimal | — |
-| benchmarkReturn | Decimal | — |
-| deviation | Decimal | — |
-| upperThreshold | Decimal | — |
-| lowerThreshold | Decimal | — |
-| remainingToUpper | Decimal | — |
-| remainingToLower | Decimal | — |
-| upperTriggerPrice | Decimal | — |
-| lowerTriggerPrice | Decimal | — |
-| remainingPricePctToUpper | Decimal | — |
-| remainingPricePctToLower | Decimal | — |
+| windowDays | Literal[10, 30] | Requested target length: 10 or 30 trading sessions; next_session keeps this length while rolling its candidate boundary. |
+| scenario | Literal['pre_open', 'current', 'next_session'] | Row convention: pre_open ends on the prior session; current ends on asOf; next_session uses asOf prices with the next-session candidate boundary. |
+| tradingSessions | int | Observed statistic sessions in the selected maximum-deviation interval, excluding its baseline price point. |
+| availableTradingSessions | int | Observed statistic sessions available in this scenario, excluding the baseline and any unobserved future target. |
+| windowStatus | Literal['complete', 'partial_short_history', 'partial_after_inferred_halt', 'partial_short_history_and_inferred_halt'] | Whether available observations form a complete target window or a supported partial window. |
+| coverageStatus | Literal['complete', 'short_history', 'halt_inferred_from_missing_kline', 'short_history_and_halt_inferred_from_missing_kline'] | Historical coverage and inferred stock-gap summary for this row. |
+| startDate | date | First statistic session in the selected maximum-deviation interval; not the earliest candidate boundary or return baseline date. |
+| baselineDate | date | Existing compatibility date equal to stockBaselineDate. |
+| stockBaselineDate | date | Date of the stock price used as the stock-return baseline. |
+| benchmarkBaselineDate | date | Date of the index point used as the benchmark-return baseline; it may differ after an inferred halt. |
+| endDate | date | Date of the terminal stock and benchmark prices actually used. |
+| targetDate | date | Trading date defining this row's candidate-window boundary; next_session has no price data for its future target. |
+| inferredHaltDates | tuple[date, Ellipsis] | Missing stock-bar dates inferred between observed stock bars; index gaps are not treated as stock halts. |
+| stockBaselinePrice | Decimal | Stock-return baseline price in CNY per share on the reported priceBasis. |
+| windowStartPrice | Decimal | Stock price at startDate in CNY per share; distinct from the preceding return-baseline price. |
+| currentPrice | Decimal | Terminal stock price in CNY per share, using the source and date selected for this scenario. |
+| benchmarkInstrument | str | Full identity of the board-specific benchmark index. |
+| benchmarkName | str | Human-readable name of the board-specific benchmark index. |
+| benchmarkStart | Decimal | Benchmark baseline in index points, retaining its existing field name. |
+| benchmarkCurrent | Decimal | Terminal benchmark value in raw index points on endDate. |
+| stockReturn | Decimal | Stock return ratio from stockBaselinePrice to currentPrice; 0.03 means 3%. |
+| benchmarkReturn | Decimal | Benchmark return ratio from benchmarkStart to benchmarkCurrent; 0.03 means 3%. |
+| deviation | Decimal | Stock return minus benchmark return for the maximum-deviation candidate; negative values are preserved. |
+| upperThreshold | Decimal | Fixed upper deviation threshold: 1.00 for 10 sessions or 2.00 for 30 sessions. |
+| remainingToUpper | Decimal | Rounded upperTriggerPrice divided by currentPrice minus 1; negative values are preserved. |
+| upperTriggerPrice | Decimal | Minimum theoretical stock price across eligible candidates, rounded up to CNY 0.01 after selection; CNY per share. |
+| upperTriggerPrice_original | Decimal | Unrounded theoretical price for the selected minimum-price candidate; CNY per share. |
+| stockSourceTimestamp | datetime \| None | Source timestamp for a stock quote terminal; null when the terminal comes from a daily bar. |
+| benchmarkSourceTimestamp | datetime \| None | Source timestamp for a benchmark quote terminal; null when the terminal comes from a daily bar. |
 
 ## 4.9 Other
 
@@ -4221,6 +4237,10 @@ Public date parameters accept `datetime.date` values or unambiguous strings in `
 ### Warnings
 
 `result.warnings` contains recoverable quality or compatibility issues, such as a skipped News row with schema drift.
+
+### Live paginated stock lists
+
+Tencent's full-market `market.quote`, its instrument listing used by exact `instrument` Dataset lookups, `market.ranking`, and the five EastMoney pool methods read live pages. If a stock repeats on a later page, FinchX keeps the first row and skips the repeated row; `.warnings` and `.metadata` then report partial coverage. Pagination uses source-row counts, so ranking `limit` is a source-row budget and skipped repeats never cause extra pages to refill unique rows. Multiple live pages do not form a consistent point-in-time snapshot, even when no repeat is observed; ranking `position` retains the original source row number and may have gaps.
 
 ### Date-bounded searches
 

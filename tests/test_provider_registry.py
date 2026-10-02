@@ -73,6 +73,13 @@ def test_provider_to_dataset_and_dataset_to_provider_queries():
     }
     assert {"tencent.finance.qq.klines", "sohu.finance.klines"} <= kline_provider_ids
     assert PROVIDER_REGISTRY.get_provider("tencent.finance.qq.klines").provider is TencentKlinesProvider
+    assert PROVIDER_REGISTRY.get_provider("tencent.finance.qq.klines").auto_selectable is True
+    assert PROVIDER_REGISTRY.get_provider("sohu.finance.klines").auto_selectable is False
+    assert ProviderSpec(
+        provider_id="fixture.custom",
+        provider=type("CustomProvider", (), {}),
+        supported_datasets=(MARKET_KLINES_DATASET,),
+    ).auto_selectable is True
 
 
 def test_unknown_provider_and_dataset_fail_clearly():

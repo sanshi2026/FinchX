@@ -59,6 +59,65 @@ class _ChromiumRuntimeError(RuntimeError):
     """Private transport signal whose message is safe to expose to callers."""
 
 
+class _TransportFailure(RuntimeError):
+    """Private transport signal containing only a safe stage and error type."""
+
+    def __init__(self, reason: str) -> None:
+        self.reason = reason
+        super().__init__(reason)
+
+
+def _safe_transport_failure(stage: str, exc: BaseException) -> _TransportFailure:
+    """Describe where transport stopped without exposing provider/browser messages."""
+    error_type = type(exc).__name__
+    if stage == "Playwright Sync API startup":
+        message = str(exc).casefold()
+        if "sync api" in message and ("asyncio loop" in message or "asyncio event loop" in message):
+            return _TransportFailure(
+                "async event loop conflict (Playwright Sync API cannot run inside an active asyncio loop)"
+            )
+    return _TransportFailure(f"{stage} failure ({error_type})")
+
+
+def _is_missing_chromium_executable(exc: BaseException) -> bool:
+    """Recognize Playwright's standard missing-browser error without returning it."""
+    message = str(exc).casefold()
+    message = message.lstrip()
+    return message.startswith((
+        "executable doesn't exist at ",
+        "executable does not exist at ",
+        "browsertype.launch: executable doesn't exist at ",
+        "browsertype.launch: executable does not exist at ",
+    ))
+
+
+def _captured_auth_failure(responses: Mapping[str, tuple[int, dict[str, Any], date]]) -> str | None:
+    """Return a safe reason only when a captured API response explicitly rejects access."""
+    endpoints = (
+        (JIYANGONGSHE_COUNT_ENDPOINT, "count-pc"),
+        (JIYANGONGSHE_FIELD_ENDPOINT, "action/field"),
+    )
+    for endpoint, label in endpoints:
+        captured = responses.get(endpoint)
+        if captured is None:
+            continue
+        status, document, _request_date = captured
+        if status in {401, 403}:
+            return (
+                f"{label} authentication/access rejected (HTTP {status}); "
+                "refresh the SESSION cookie if the account was logged in again"
+            )
+        code = str(document.get("errCode"))
+        if code == "1":
+            return (
+                f"{label} login invalid (errCode=1); "
+                "refresh the SESSION cookie if the account was logged in again"
+            )
+        if code == "110":
+            return f"{label} token/signature invalid (errCode=110)"
+    return None
+
+
 @dataclass(frozen=True)
 class _CapturedJiyangongshe:
     count_document: dict[str, Any]
@@ -92,89 +151,120 @@ class _PlaywrightJiyangongsheTransport:
         request_dates: dict[str, date] = {}
         deadline = monotonic_time.monotonic() + timeout_seconds
 
-        with sync_playwright() as playwright:
-            browser: Any | None = None
-            chromium_failed = False
-            try:
-                browser = playwright.chromium.launch(headless=True)
-                context = browser.new_context()
-            except Exception:
-                chromium_failed = True
-                if browser is not None:
-                    try:
-                        browser.close()
-                    except Exception:
-                        pass
-            if chromium_failed:
-                raise _ChromiumRuntimeError(_CHROMIUM_INSTALL_HINT)
-            try:
-                context.add_cookies([
-                    {"name": "SESSION", "value": self._session, "domain": "www.jiuyangongshe.com", "path": "/"},
-                    {"name": "SESSION", "value": self._session, "domain": "web-api.jiuyangongshe.com", "path": "/"},
-                ])
-                page = context.new_page()
-
-                def capture(response: Any) -> None:
-                    endpoint = response.url.split("?", 1)[0]
-                    if endpoint not in {JIYANGONGSHE_COUNT_ENDPOINT, JIYANGONGSHE_FIELD_ENDPOINT}:
-                        return
-                    post_data = response.request.post_data
-                    if post_data:
-                        try:
-                            post_payload = json.loads(post_data)
-                            request_dates[endpoint] = date.fromisoformat(str(post_payload["date"]))
-                        except (KeyError, TypeError, ValueError, json.JSONDecodeError):
-                            pass
-                    try:
-                        payload = response.json()
-                    except Exception:
-                        payload = {"_malformed": True}
-                    if isinstance(payload, dict):
-                        responses[endpoint] = (response.status, payload, request_dates.get(endpoint, requested_date))
-
-                page.on("response", capture)
+        stage = "Playwright Sync API startup"
+        try:
+            with sync_playwright() as playwright:
+                stage = "browser launch"
                 try:
-                    page.goto(
-                        self._page_url_template.format(date=requested_date.isoformat()),
-                        wait_until="domcontentloaded",
-                        timeout=max(1, int(timeout_seconds * 1000)),
-                    )
-                except PlaywrightTimeoutError as exc:
-                    raise RuntimeError("page navigation timeout") from exc
+                    browser = playwright.chromium.launch(headless=True)
+                except Exception as exc:
+                    if _is_missing_chromium_executable(exc):
+                        raise _ChromiumRuntimeError(_CHROMIUM_INSTALL_HINT) from None
+                    raise _safe_transport_failure(stage, exc) from None
 
-                initial_deadline = min(
-                    deadline, monotonic_time.monotonic() + min(timeout_seconds, 3.0)
-                )
-                self._wait_for_responses(page, responses, initial_deadline)
-                if JIYANGONGSHE_FIELD_ENDPOINT not in responses:
-                    remaining_ms = max(200, int((deadline - monotonic_time.monotonic()) * 1000))
+                try:
+                    stage = "browser context creation"
+                    context = browser.new_context()
                     try:
-                        page.get_by_text("全部异动解析", exact=True).first.click(timeout=remaining_ms)
-                    except Exception:
-                        pass
-                    self._wait_for_responses(page, responses, deadline)
-                if JIYANGONGSHE_COUNT_ENDPOINT not in responses:
-                    raise RuntimeError("count-pc response timeout")
-                if JIYANGONGSHE_FIELD_ENDPOINT not in responses:
-                    raise RuntimeError("action/field response timeout")
-                count_status, count_document, count_request_date = responses[JIYANGONGSHE_COUNT_ENDPOINT]
-                field_status, field_document, field_request_date = responses[JIYANGONGSHE_FIELD_ENDPOINT]
-                # Keep HTTP status in the response document for the provider's source-aware error mapping.
-                count_document = {"_http_status": count_status, **count_document}
-                field_document = {"_http_status": field_status, **field_document}
-                return _CapturedJiyangongshe(
-                    count_document=count_document,
-                    field_document=field_document,
-                    count_request_date=count_request_date,
-                    field_request_date=field_request_date,
-                )
-            finally:
-                context.close()
-                browser.close()
+                        stage = "SESSION cookie installation"
+                        context.add_cookies([
+                            {"name": "SESSION", "value": self._session, "domain": "www.jiuyangongshe.com", "path": "/"},
+                            {"name": "SESSION", "value": self._session, "domain": "web-api.jiuyangongshe.com", "path": "/"},
+                        ])
+                        stage = "page creation"
+                        page = context.new_page()
+
+                        def capture(response: Any) -> None:
+                            endpoint = response.url.split("?", 1)[0]
+                            if endpoint not in {JIYANGONGSHE_COUNT_ENDPOINT, JIYANGONGSHE_FIELD_ENDPOINT}:
+                                return
+                            post_data = response.request.post_data
+                            if post_data:
+                                try:
+                                    post_payload = json.loads(post_data)
+                                    request_dates[endpoint] = date.fromisoformat(str(post_payload["date"]))
+                                except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+                                    pass
+                            try:
+                                payload = response.json()
+                            except Exception:
+                                payload = {"_malformed": True}
+                            if isinstance(payload, dict):
+                                responses[endpoint] = (
+                                    response.status,
+                                    payload,
+                                    request_dates.get(endpoint, requested_date),
+                                )
+
+                        page.on("response", capture)
+                        stage = "page navigation"
+                        try:
+                            page.goto(
+                                self._page_url_template.format(date=requested_date.isoformat()),
+                                wait_until="domcontentloaded",
+                                timeout=max(1, int(timeout_seconds * 1000)),
+                            )
+                        except PlaywrightTimeoutError:
+                            raise _TransportFailure("page navigation timeout") from None
+
+                        stage = "API response wait"
+                        initial_deadline = min(
+                            deadline, monotonic_time.monotonic() + min(timeout_seconds, 3.0)
+                        )
+                        self._wait_for_responses(page, responses, initial_deadline)
+                        auth_failure = _captured_auth_failure(responses)
+                        if auth_failure is not None:
+                            raise _TransportFailure(auth_failure)
+                        if JIYANGONGSHE_FIELD_ENDPOINT not in responses:
+                            remaining_ms = max(200, int((deadline - monotonic_time.monotonic()) * 1000))
+                            stage = "opening action/field section"
+                            try:
+                                page.get_by_text("全部异动解析", exact=True).first.click(timeout=remaining_ms)
+                            except Exception:
+                                # The endpoint wait below reports the observable failure safely.
+                                pass
+                            stage = "API response wait"
+                            self._wait_for_responses(page, responses, deadline)
+                        auth_failure = _captured_auth_failure(responses)
+                        if auth_failure is not None:
+                            raise _TransportFailure(auth_failure)
+                        if JIYANGONGSHE_COUNT_ENDPOINT not in responses:
+                            raise _TransportFailure(
+                                "count-pc response timeout; SESSION may be expired or not accepted, "
+                                "or the request/network/site API flow may not have completed"
+                            )
+                        if JIYANGONGSHE_FIELD_ENDPOINT not in responses:
+                            raise _TransportFailure(
+                                "action/field response timeout; the expected API request was not observed. "
+                                "SESSION may be expired or not accepted, or the site API flow may have changed"
+                            )
+                        count_status, count_document, count_request_date = responses[JIYANGONGSHE_COUNT_ENDPOINT]
+                        field_status, field_document, field_request_date = responses[JIYANGONGSHE_FIELD_ENDPOINT]
+                        # Keep HTTP status in the response document for the provider's source-aware error mapping.
+                        count_document = {"_http_status": count_status, **count_document}
+                        field_document = {"_http_status": field_status, **field_document}
+                        result = _CapturedJiyangongshe(
+                            count_document=count_document,
+                            field_document=field_document,
+                            count_request_date=count_request_date,
+                            field_request_date=field_request_date,
+                        )
+                        stage = "Playwright shutdown"
+                        return result
+                    finally:
+                        context.close()
+                finally:
+                    browser.close()
+        except (_ChromiumRuntimeError, _TransportFailure):
+            raise
+        except Exception as exc:
+            raise _safe_transport_failure(stage, exc) from None
 
     @staticmethod
     def _wait_for_responses(page: Any, responses: dict[str, Any], deadline: float) -> None:
         while monotonic_time.monotonic() < deadline:
+            if _captured_auth_failure(responses) is not None:
+                return
             if JIYANGONGSHE_COUNT_ENDPOINT in responses and JIYANGONGSHE_FIELD_ENDPOINT in responses:
                 return
             page.wait_for_timeout(min(100, max(1, int((deadline - monotonic_time.monotonic()) * 1000))))
@@ -232,8 +322,10 @@ class JiyangongsheReplayProvider:
             ) from exc
         except _ChromiumRuntimeError as exc:
             transport_failure_reason = str(exc)
+        except _TransportFailure as exc:
+            transport_failure_reason = exc.reason
         except Exception as exc:
-            transport_failure_reason = f"transport failure ({type(exc).__name__})"
+            transport_failure_reason = f"transport failure before a known stage ({type(exc).__name__})"
         if transport_failure_reason is not None:
             self._fail_without_context(transport_failure_reason)
 
@@ -272,6 +364,11 @@ class JiyangongsheReplayProvider:
         http_status = document.pop("_http_status", 200)
         if not isinstance(http_status, int) or isinstance(http_status, bool):
             self._fail(f"{context} HTTP status is invalid")
+        if http_status in {401, 403}:
+            self._fail(
+                f"{context} authentication/access rejected (HTTP {http_status}); "
+                "refresh the SESSION cookie if the account was logged in again"
+            )
         if http_status < 200 or http_status >= 300:
             self._fail(f"{context} HTTP failure ({http_status})")
         if document.get("_malformed"):
@@ -279,7 +376,10 @@ class JiyangongsheReplayProvider:
         self._require_keys(document, _REQUIRED_ROOT_FIELDS, context, allowed=_ROOT_FIELDS)
         code = str(document["errCode"])
         if code == "1":
-            self._fail(f"{context} login invalid (errCode=1)")
+            self._fail(
+                f"{context} login invalid (errCode=1); "
+                "refresh the SESSION cookie if the account was logged in again"
+            )
         if code == "110":
             self._fail(f"{context} token/signature invalid (errCode=110)")
         if code != "0":

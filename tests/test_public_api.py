@@ -6,7 +6,9 @@ from datetime import datetime, timezone
 import inspect
 from pathlib import Path
 import sys
-from typing import Literal, get_args, get_origin, get_type_hints
+from typing import get_args, get_origin, get_type_hints
+
+import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -15,11 +17,7 @@ import finchx
 from finchx import FinchX
 from finchx.client import CLIENT_ENDPOINTS
 from finchx.collectors import FetchResult
-from finchx.computed import (
-    DeviationService,
-    DeviationWindowConvention,
-    calculate_deviation,
-)
+from finchx.computed import DeviationScenario
 from finchx.providers import __all__ as PROVIDER_EXPORTS
 from finchx.providers.registry import PROVIDER_REGISTRY
 from tools.generate_api_reference import all_endpoint_keys, computed_endpoint_keys
@@ -78,6 +76,7 @@ PUBLIC_PROVIDER_EXPORTS = {
     "TencentIndustryComparisonProvider",
     "TencentIntradayProvider",
     "TencentKlinesProvider",
+    "TencentKlinesError",
     "TencentMarketProvider",
     "TencentQuoteProvider",
     "TencentSectorProvider",
@@ -298,7 +297,7 @@ def test_registry_inventory_and_client_routes_match_the_public_contract():
     )
 
     assert set(PROVIDER_EXPORTS) == PUBLIC_PROVIDER_EXPORTS
-    assert len(PROVIDER_EXPORTS) == 43
+    assert len(PROVIDER_EXPORTS) == 44
     assert len(PROVIDER_REGISTRY.list_providers()) == 35
     assert len(registered_datasets) == len(client_datasets) + 1
     assert client_datasets == registered_datasets - {"instrument"}
@@ -319,7 +318,6 @@ def test_computed_deviation_surface_is_outside_provider_inventory():
         "instrument",
         "windows",
         "as_of",
-        "window_convention",
         "provider",
         "use_cache",
     )
@@ -329,13 +327,12 @@ def test_computed_deviation_surface_is_outside_provider_inventory():
         for parameter in parameters[1:]
     )
     assert get_origin(get_type_hints(method)["return"]) is FetchResult
-    convention_hint = get_type_hints(method)["window_convention"]
-    assert DeviationWindowConvention in get_args(convention_hint)
-    literals = [part for part in get_args(convention_hint) if get_origin(part) is Literal]
-    assert len(literals) == 1
-    assert get_args(literals[0]) == ("max_deviation_scan", "strict_exchange_window")
-    assert get_type_hints(DeviationService.calculate)["window_convention"] == convention_hint
-    assert get_type_hints(calculate_deviation)["window_convention"] == convention_hint
+    assert get_args(DeviationScenario) == ("pre_open", "current", "next_session")
+    with pytest.raises(TypeError, match="window_convention"):
+        method(instrument="600519", window_convention="max_deviation_scan")
+    import finchx.computed as computed
+    assert "DeviationWindowConvention" not in computed.__all__
+    assert not hasattr(computed, "DeviationWindowConvention")
     assert all(
         endpoint.method != "deviation"
         for endpoint in CLIENT_ENDPOINTS

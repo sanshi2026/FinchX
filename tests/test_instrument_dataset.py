@@ -612,6 +612,7 @@ def test_public_exports_exclude_internal_provider_handoff_and_normalizer():
         "TencentIndustryComparisonProvider",
         "TencentIntradayProvider",
         "TencentKlinesProvider",
+        "TencentKlinesError",
         "TencentSectorProvider",
         "TencentF10Provider",
         "TencentFloatHolderProvider",

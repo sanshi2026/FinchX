@@ -114,13 +114,25 @@ class SohuKlinesProvider(KlinesProvider):
     def source(self) -> Source:
         return self._source
 
+    @staticmethod
+    def supports_request(request: KlinesRequest) -> bool:
+        """Return whether this endpoint can serve the exact requested identity."""
+
+        if not isinstance(request, KlinesRequest):
+            return False
+        identity = request.instrument_id
+        return (
+            identity.kind is InstrumentKind.INDEX
+            and (identity.exchange, identity.code) in _SUPPORTED_IDENTITIES
+        )
+
     def fetch_klines(self, request: KlinesRequest) -> tuple[_ProviderKlineRow, ...]:
         if not isinstance(request, KlinesRequest):
             self._fail("request must be a KlinesRequest")
         identity = request.instrument_id
         if identity.kind is not InstrumentKind.INDEX:
             self._fail("Sohu mkline supports index identities only")
-        if (identity.exchange, identity.code) not in _SUPPORTED_IDENTITIES:
+        if not self.supports_request(request):
             self._fail("Sohu mkline supports only the verified SSE/SZSE index identities")
 
         request_at = self._clock()

@@ -206,6 +206,57 @@ def test_normalizer_rejects_wrong_identity_range_or_adjustment(wrong_bar):
         )
 
 
+def test_normalizer_accepts_only_proven_tencent_qfq_to_day_fallback_and_keeps_actual_adjustment():
+    fallback = _ProviderKlineRow(
+        data=bar(adjustment=KlineAdjustment.NONE),
+        requested_adjustment=KlineAdjustment.QFQ,
+        source_series="day",
+        adjustment_fallback=True,
+    )
+    records = _normalize_klines_rows(
+        request(),
+        (fallback,),
+        source=SOURCE,
+        captured_at=CAPTURED_AT,
+    )
+
+    assert records[0].data["adjustment"] == "none"
+    assert records[0].provenance.adjustments[0].name == "none"
+    assert records[0].record_id.endswith("@none")
+
+    unsupported_evidence = _ProviderKlineRow(
+        data=bar(adjustment=KlineAdjustment.NONE),
+        requested_adjustment=KlineAdjustment.QFQ,
+        source_series="qfqday",
+        adjustment_fallback=True,
+    )
+    with pytest.raises(ValueError, match="different adjustment mode"):
+        _normalize_klines_rows(
+            request(),
+            (unsupported_evidence,),
+            source=SOURCE,
+            captured_at=CAPTURED_AT,
+        )
+
+
+def test_qfq_fallback_evidence_from_another_provider_does_not_relax_validation():
+    fallback = _ProviderKlineRow(
+        data=bar(adjustment=KlineAdjustment.NONE),
+        requested_adjustment=KlineAdjustment.QFQ,
+        source_series="day",
+        adjustment_fallback=True,
+    )
+    other_source = Source(providerId="other.provider")
+
+    with pytest.raises(ValueError, match="different adjustment mode"):
+        _normalize_klines_rows(
+            request(),
+            (fallback,),
+            source=other_source,
+            captured_at=CAPTURED_AT,
+        )
+
+
 def test_normalizer_rejects_duplicate_dates_and_naive_capture_times():
     same_day = bar()
     with pytest.raises(ValueError, match="duplicate"):

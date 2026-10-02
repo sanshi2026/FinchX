@@ -205,6 +205,13 @@ def test_model_fields_required_fields_aliases_and_enums_match_schema():
         }
         assert set(canonical.get("required", [])) == required_from_model
 
+    deviation_properties = schemas["market-deviation.schema.json"]["$defs"]["DeviationWindowData"]["properties"]
+    generated_deviation_schema = DeviationData.model_json_schema(by_alias=True)
+    generated_deviation_window_properties = generated_deviation_schema["$defs"]["DeviationWindowData"]["properties"]
+    assert schemas["market-deviation.schema.json"]["properties"]["priceBasis"] == generated_deviation_schema["properties"]["priceBasis"]
+    for field_name in ("remainingToUpper", "upperTriggerPrice", "upperTriggerPrice_original"):
+        assert deviation_properties[field_name]["description"] == generated_deviation_window_properties[field_name]["description"]
+
     abnormal_records = schemas["market-abnormal-records.schema.json"]
     generated_records = AbnormalRecordData.model_json_schema(by_alias=True)
     assert abnormal_records["anyOf"] == generated_records["anyOf"]
@@ -597,16 +604,42 @@ def test_quote_snapshot_and_orderbook_schemas_validate_contract_models():
 
     book = MarketOrderbookData(
         instrumentId=identity,
-        bids=[{"level": 1, "price": "1259.21", "size": 700}],
-        asks=[{"level": 1, "price": "1259.82", "size": 100}],
+        bids=[
+            {"level": 1, "price": "10", "size": 1000},
+            {"level": 2, "price": "0", "size": 500},
+            {"level": 3, "price": None, "size": 200},
+            {"level": 4, "price": "9.9", "size": None},
+            {"level": 5, "price": None, "size": None},
+        ],
+        asks=[
+            {"level": 1, "price": "10", "size": 1000},
+            {"level": 2, "price": "0", "size": 0},
+            {"level": 3, "price": "10.1", "size": 100},
+            {"level": 4, "price": None, "size": 100},
+            {"level": 5, "price": None, "size": None},
+        ],
+        sourceTimestamp="2026-09-28T10:00:00+08:00",
     )
     book_wire = book.model_dump(mode="json", by_alias=True)
     orderbook_validator.validate(book_wire)
     assert MarketOrderbookData.model_validate(book_wire) == book
+    assert book_wire["bids"][1] == {"level": 2, "price": "0", "size": 500}
+    assert book_wire["bids"][2] == {"level": 3, "price": None, "size": 200}
+    assert book_wire["asks"][1] == {"level": 2, "price": "0", "size": 0}
+    assert book_wire["asks"][3] == {"level": 4, "price": None, "size": 100}
+    assert book_wire["sourceTimestamp"] == "2026-09-28T10:00:00+08:00"
     with pytest.raises(jsonschema.ValidationError):
         orderbook_validator.validate(
-            {**book_wire, "bids": [{"level": 1, "price": "0", "size": 0}]}
+            {
+                **book_wire,
+                "bids": [
+                    {"level": 1, "price": "-1", "size": 0},
+                    *book_wire["bids"][1:],
+                ],
+            }
         )
+    with pytest.raises(jsonschema.ValidationError):
+        orderbook_validator.validate({**book_wire, "bids": book_wire["bids"][:4]})
     index_identity = {
         "code": "000001",
         "market": "cn_a",

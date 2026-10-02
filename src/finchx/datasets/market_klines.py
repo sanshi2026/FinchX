@@ -147,6 +147,9 @@ class _ProviderKlineRow:
     source_record_id: str | None = None
     captured_at: datetime | None = None
     source_url: str | None = None
+    requested_adjustment: KlineAdjustment | None = None
+    source_series: str | None = None
+    adjustment_fallback: bool = False
 
 
 def _kline_record_id(
@@ -183,7 +186,15 @@ def _normalize_klines_rows(
         bar = row.data
         if bar.instrument_id != request.instrument_id:
             raise ValueError("provider returned a bar for a different instrument")
-        if bar.adjustment is not expected_adjustment:
+        valid_tencent_qfq_day_fallback = (
+            expected_adjustment is KlineAdjustment.QFQ
+            and bar.adjustment is KlineAdjustment.NONE
+            and source.provider_id == "tencent.finance.qq"
+            and row.requested_adjustment is KlineAdjustment.QFQ
+            and row.source_series == "day"
+            and row.adjustment_fallback is True
+        )
+        if bar.adjustment is not expected_adjustment and not valid_tencent_qfq_day_fallback:
             raise ValueError("provider returned a bar with a different adjustment mode")
         if bar.bar_date < request.start_date or bar.bar_date > request.end_date:
             raise ValueError("provider returned a bar outside the requested date range")
@@ -232,7 +243,7 @@ def _normalize_klines_rows(
                 provenance=Provenance(
                     recordClass=ProvenanceClass.STANDARDIZED,
                     transformationVersion="market-klines-normalizer/1",
-                    adjustments=[Adjustment(name=expected_adjustment.value)],
+                    adjustments=[Adjustment(name=bar.adjustment.value)],
                 ),
                 data=bar.model_dump(mode="json", by_alias=True),
             )

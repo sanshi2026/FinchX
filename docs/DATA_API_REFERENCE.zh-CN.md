@@ -79,7 +79,7 @@ print(result.warnings)
 | `fx.market.fund_flow_intraday(...)` | 获取个股盘中资金流数据。 | `tencent.finance.qq.fund_flow` |
 | `fx.market.fund_flow_snapshot(...)` | 获取资金流快照。 | `tencent.finance.qq.fund_flow` |
 | `fx.market.ohlcv(...)` | 获取股票或受支持指数的日线 OHLCV 数据。 | `tencent.finance.qq.klines`, `sohu.finance.klines` |
-| `fx.market.orderbook(...)` | 获取个股盘口数据。 | `tencent.finance.qq.quote` |
+| `fx.market.orderbook(...)` | 获取腾讯来源的五档盘口槽位，保留零值与缺失值的区别。 | `tencent.finance.qq.quote` |
 | `fx.market.quote(...)` | 获取全市场行情快照。 | `tencent.finance.qq.market` |
 | `fx.market.ranking(...)` | 按指定指标获取 A 股个股排行。 | `tencent.finance.qq.market` |
 | `fx.market.quote_snapshot(...)` | 获取 SSE/SZSE 股票或受支持指数的行情快照。 | `tencent.finance.qq.quote` |
@@ -131,7 +131,7 @@ print(result.warnings)
 | `fx.market.abnormal_records(...)` | 按 abnormal_events、severe_events 或 prediction_history 获取单个上游分页。 | `eastmoney.regulation` |
 | `fx.market.severe_predictions(...)` | 获取有页数上限的严重异常预测池，保留未知预测状态和来源原值。 | `eastmoney.regulation` |
 | `fx.market.abnormal_counts(...)` | 获取有页数上限的异常次数榜；保留来源 count 与 open 等未解释元数据。 | `eastmoney.regulation` |
-| `fx.market.deviation(...)` | 计算经过审计的基于收盘价的偏离值。 | — |
+| `fx.market.deviation(...)` | 按盘前、当日和次日窗口边界计算板块基准偏离值。 | — |
 
 ### 其他
 
@@ -1364,6 +1364,8 @@ print(result.warnings)  # 检查部分数据和可恢复问题。
 **受支持的指数标识**
 请使用 `market:exchange:index:code` 完整标识，例如 `cn_a:sse:index:000001` 或 `cn_a:szse:index:399001`。当前白名单为 SSE `000001`、`000002`、`000688` 及 SZSE `399001`、`399006`、`399102`、`399107`。在这两个通用接口中，裸代码 `000001` 会解析为深交所股票，而不是上证指数。
 指数请求请省略 `adjustment` 或传入 `adjustment=None`；股票可使用 `qfq`、`hfq` 或不复权。OHLC 字段对股票表示每股 CNY，对指数表示指数点数。
+`market.ohlcv` 自动路由使用腾讯，不会自动回退到搜狐。搜狐仍可通过显式指定 Provider 用于其受支持的指数；股票请求会在联网前拒绝。腾讯对可重试传输故障及 HTTP 408/425/429/5xx 错误最多尝试四次，并受单次请求 45 秒总预算限制；HTTP 429 使用更长的有界指数退避。永久 HTTP、请求及响应格式错误不会重试。
+股票请求 `qfq` 时优先使用腾讯的 `qfqday`。只有响应中没有该键、且同一响应的 `day` 是合法数组时，FinchX 才使用未复权日线，不会重复请求。返回行及 provenance 均保留 `adjustment="none"`；`FetchResult.metadata` 记录 `requested_adjustment="qfq"`、`actual_adjustment="none"` 和 `source_series="day"`，`FetchResult.warnings` 会说明这些价格不是前复权数据。若 `qfqday` 为空或格式错误，不会触发回退。
 
 **示例**
 
@@ -1414,12 +1416,12 @@ print(index_bars.to_dicts()[:1])
 | close | Decimal | 收盘价：股票单位为每股 CNY；指数单位为点数。 |
 | volume | int | 来源成交量规范化为整股（来源手数乘以 100）。 |
 | amount | Decimal \| None | 来源提供时的成交金额，单位为 CNY。 |
-| adjustment | KlineAdjustment | 输出复权标记：`none`、`qfq`、`hfq` 或 `not_applicable`。 |
+| adjustment | KlineAdjustment | 来源实际提供的复权口径：`none`、`qfq`、`hfq` 或 `not_applicable`。`qfq` 请求只有在使用文档所述腾讯 `day` 回退时才可能返回 `none`，并附带 metadata 和 warning。 |
 
 ### `fx.market.orderbook(...)`
 
 **提供什么数据**
-获取个股盘口数据。
+获取腾讯来源的五档盘口槽位，保留零值与缺失值的区别。
 
 **数据源**
 `tencent.finance.qq.quote`
@@ -1441,7 +1443,7 @@ print(result.warnings)  # 检查部分数据和可恢复问题。
 ```
 
 **返回值与推荐用法**
-返回 `FetchResult`。`.data` 是标准化记录元组；每条记录的 `.data` 保存 Dataset 行载荷。 Dataset 行模式 `MarketOrderbookData` 的业务字段包括 `instrumentId`, `bids`, `asks` 等。使用这些业务字段进行后续筛选、比较或绘图。 用 `.to_dicts()` 导出 JSON 兼容数据，并检查 `.warnings` 了解部分结果情况。 `.dataset_id`、`.provider_id`、`.captured_at`、`.provenance`、`.attempts`、`.fallback_used` 和 `.cache_hit` 提供采集与审计信息。
+返回 `FetchResult`。`.data` 是一条标准化 `StandardRecord`。 `MarketOrderbookData` 展示腾讯盘口槽位。`bids` 和 `asks` 各含来源顺序的五档；FinchX 不排序，也不删除零值或 null 槽位。`price` 是 Decimal 字符串或 `null`；`size` 是整数股数或 `null`，Tencent 来源手数会乘以 100 转为股数。显式零值仍为 0。`sourceTimestamp` 是 Tencent 上海时区的来源行情时间，与 FinchX 的 `capturedAt` 分开。Tencent 空字符串、`-` 和 `--` 会转为带类型的 null；null 不证明交易所物理档位不存在。只有全部来源价格和数量都为 null 时状态才是 `missing`；任何显式零值都算来源已提供数据。下一未发布版本会有意改变旧版滤除空档并按价格排序的输出契约。不推断竞价封板、涨停入表或委托额语义。用 `.to_dicts()` 导出。 `.dataset_id`、`.provider_id`、`.captured_at`、`.provenance`、`.attempts`、`.fallback_used` 和 `.cache_hit` 提供采集与审计信息。
 
 **参数**
 
@@ -1455,17 +1457,18 @@ print(result.warnings)  # 检查部分数据和可恢复问题。
 
 | 字段 | 类型 | 含义 |
 | --- | --- | --- |
-| instrumentId | str | 证券代码。 |
-| bids | list[OrderbookLevel] | — |
-| asks | list[OrderbookLevel] | — |
+| instrumentId | str | 该来源盘口对应的股票证券标识。 |
+| bids | list[OrderbookLevel] | 腾讯来源顺序的五个买盘槽位；保留零值和 null。 |
+| asks | list[OrderbookLevel] | 腾讯来源顺序的五个卖盘槽位；保留零值和 null。 |
+| sourceTimestamp | datetime | 腾讯来源行情时间，保留上海时区 UTC+08:00；与 capturedAt 分开。 |
 
 嵌套业务模型： `OrderbookLevel`
 
 | 字段 | 类型 | 含义 |
 | --- | --- | --- |
-| level | int | — |
-| price | Decimal | 每股价格；币种为 CNY。 |
-| size | int | 非负整数股数。 |
+| level | int | 腾讯来源槽位编号，范围 1 至 5；按来源顺序保留。 |
+| price | Decimal \| None | 单位为 CNY/股的 Decimal 字符串或 null；显式零值会保留。 |
+| size | int \| None | 整数股数或 null；腾讯来源手数乘以 100。显式零值会保留。 |
 
 ### `fx.market.quote(...)`
 
@@ -1556,7 +1559,7 @@ print(result.warnings)  # 检查部分数据和可恢复问题。
 ```
 
 **返回值与推荐用法**
-返回 `FetchResult`。`.data` 是标准化记录元组；每条记录的 `.data` 保存 Dataset 行载荷。 Dataset 行模式 `MarketRankingData` 的业务字段包括 `instrumentId`, `name`, `price`, `priceChange` 等。使用这些业务字段进行后续筛选、比较或绘图。 用 `.to_dicts()` 导出 JSON 兼容数据，并检查 `.warnings` 了解部分结果情况。 `.dataset_id`、`.provider_id`、`.captured_at`、`.provenance`、`.attempts`、`.fallback_used` 和 `.cache_hit` 提供采集与审计信息。
+返回 `FetchResult`。`.data` 是标准化记录元组；每条记录的 `.data` 保存 Dataset 行载荷。 Dataset 行模式 `MarketRankingData` 的业务字段包括 `instrumentId`, `name`, `price`, `priceChange` 等。腾讯排名通过实时分页获取。如果某只股票在后续页再次出现，FinchX 保留首次记录并跳过重复行，此时结果会标记为部分覆盖。请求的 `limit` 按来源行数计；跳过重复行后不会再请求额外页面补足唯一记录。请检查 `.warnings` 和 `.metadata` 中的 `coverage_status`、`requested_count`、`source_row_count`、`unique_count`、`source_total` 与 `duplicate_rows_skipped`。`position` 保留来源行号，因此可能出现名次缺口。多页结果不代表同一时点快照，即使没有观察到重复也不能据此确认快照一致。用 `.to_dicts()` 导出 JSON 兼容数据。 `.dataset_id`、`.provider_id`、`.captured_at`、`.provenance`、`.attempts`、`.fallback_used` 和 `.cache_hit` 提供采集与审计信息。
 
 **参数**
 
@@ -3153,7 +3156,7 @@ print(result.warnings)  # 检查部分数据和可恢复问题。
 ```
 
 **返回值与推荐用法**
-返回 `FetchResult`。`.data` 是标准化记录元组；每条记录的 `.data` 保存 Dataset 行载荷。 Dataset 行模式 `MarketDailyReplayData` 的业务字段包括 `requestedDate`, `tradeDate`, `themes` 等。用 `tradeDate` 确认返回的交易日，再检查 `themes` 完成盘后复盘。 用 `.to_dicts()` 导出 JSON 兼容数据，并检查 `.warnings` 了解部分结果情况。 `.dataset_id`、`.provider_id`、`.captured_at`、`.provenance`、`.attempts`、`.fallback_used` 和 `.cache_hit` 提供采集与审计信息。
+返回 `FetchResult`。`.data` 是标准化记录元组；每条记录的 `.data` 保存 Dataset 行载荷。 Dataset 行模式 `MarketDailyReplayData` 的业务字段包括 `requestedDate`, `tradeDate`, `themes` 等。用 `tradeDate` 确认返回的交易日，再检查 `themes` 完成盘后复盘。重新登录后旧 `SESSION` 可能失效，请传入当前会话的 Cookie。错误会标明失败阶段，且不包含 Cookie、URL 查询参数或浏览器原始异常。来源明确返回 HTTP 401/403 或 `errCode=1/110` 时会立即报告认证或访问失败，即使另一个 API 响应缺失。 用 `.to_dicts()` 导出 JSON 兼容数据，并检查 `.warnings` 了解部分结果情况。 `.dataset_id`、`.provider_id`、`.captured_at`、`.provenance`、`.attempts`、`.fallback_used` 和 `.cache_hit` 提供采集与审计信息。
 
 **参数**
 
@@ -3611,13 +3614,13 @@ print(result.warnings)  # 检查部分数据和可恢复问题。
 ### `fx.market.deviation(...)`
 
 **提供什么数据**
-计算经过审计的基于收盘价的偏离值。
+按盘前、当日和次日窗口边界计算板块基准偏离值。
 
 **数据源**
-由 `market.ohlcv` 和 `reference.trading_calendar` 在本地计算；无直接 Provider。
+由 `market.ohlcv`、`market.quote_snapshot` 和 `reference.trading_calendar` 在本地计算；无直接 Provider。
 
 **计算口径与适用范围**
-这是基于收盘价的确定性计算，不是交易所公告、盘中估算、全市场扫描或特定应用的触发状态。
+FinchX 仅提供行情依据和计算结果，不判断是否构成正式异动，不返回触线、风险、交易或提醒结论。顶层 `effectiveAsOf` 与 `calculationMode` 是保留的兼容字段：`effectiveAsOf` 与 `asOf` 相同，`calculationMode` 为 `scenario_based`。
 适用个股为 SSE `60xxxx`、`68xxxx` 和 SZSE `00xxxx`、`30xxxx`；暂不支持 BSE 个股。不同板块使用对应的基准指数：
 
 | 代码范围 | 板块 | 基准指数 |
@@ -3627,36 +3630,42 @@ print(result.warnings)  # 检查部分数据和可恢复问题。
 | SZSE `00xxxx` | SZSE 主板 | SZSE A Share Index (`399107`) |
 | SZSE `30xxxx` | 创业板 | ChiNext Composite Index (`399102`) |
 
-股票收益使用前复权日 K 收盘价，基准收益使用未复权指数点位；交易时段取自 A 股交易日历。每个窗口按以下方式计算：
+每个请求窗口长度返回三条扁平记录，顺序为 `pre_open`、`current`、`next_session`。默认 `(10, 30)` 时 `windows` 有六条。`as_of` 表示观察基准交易日；非交易日沿用现有规则归一到此前交易日。`endDate` 是实际采用终值价格所属日，`targetDate` 决定该条记录的候选窗口边界，`startDate` 是最大偏离结果选中区间的统计开始日。
 
+观察日为 D10 时，`pre_open` 固定使用 D9 日线，不受 D10 价格影响。D10 盘中，`current` 和 `next_session` 使用通过校验的同日股票及指数快照。收盘后，每一侧优先采用可用的 D10 日线终值（股票前复权 K 线、指数未复权 K 线）；仅当某侧缺少 D10 日线时，才请求该侧同日快照作为终值。股票快照回退时，会用该快照的 `previousClose` 桥接 QFQ 股票历史；指数快照仍为未复权点位。盘后快照的来源时间可以早于 15:00，例如 14:59。程序校验证券标识、来源日期、正价格和时间戳不能晚于当前时间，但不会把快照称为已确认的日线收盘价。quote 回退警告只适用于 `current` 和 `next_session`。两侧终值来源分别记录在 `result.metadata.stock_terminal_source` 和 `benchmark_terminal_source`；来源为日线时行内来源时间戳为 null，来源为快照时保留来源时间戳。`next_session` 的终值同样截至 D10、目标日为 D11，与 `current` 共用同一份股票和指数终值，只把候选边界向后滚动一个交易日；不读取 D11 行情，也不构造 D11 K 线。历史 `as_of` 使用观察日的日线数据，日期参数无法复现过去某个盘中时刻。
+
+顶层 `priceBasis` 按实际股票 K 线口径返回：腾讯提供 QFQ 日线时为 `qfq_stock__raw_index`；QFQ 请求回退到文档所述未复权 `day` 数据时为 `raw_stock__raw_index`。使用 QFQ 日线时，股票快照回退会按其 `previousClose` 桥接历史；使用未复权日线时，历史和快照保留各自来源价格尺度，不做 QFQ 桥接。请求口径、实际口径、来源序列和回退 warning 可从 `result.metadata` 与 `result.warnings` 查询。指数日 K 线和快照均保持未复权点位。`price_inputs`、`stock_terminal_source` 和 `benchmark_terminal_source` 描述 `current` 与 `next_session` 的 D10 终值输入，`terminal_source_scope` 标明适用情景；`pre_open` 始终使用 D9 日线。终值来源值为 `same_day_daily_bar`、`same_day_quote` 或 `historical_daily_bar`。`price_inputs` 区分历史日线、盘中快照、盘后日线、单侧快照回退和双侧快照回退。快照来源时间按股票和指数分别保留；使用日线的一侧时间戳为 null。
+
+每个合格候选基准 `b` 使用未展示舍入的 Decimal 计算：
 ```text
-stock_return = 当前股票收盘价 / 窗口基准股票收盘价 - 1
-benchmark_return = 当前指数点位 / 窗口基准指数点位 - 1
-deviation = stock_return - benchmark_return
+stockReturn_b = currentPrice / stockBaselinePrice_b - 1
+benchmarkReturn_b = benchmarkCurrent / benchmarkStart_b - 1
+deviation_b = stockReturn_b - benchmarkReturn_b
+deviation = max(deviation_b)
 ```
+最大偏离候选决定该行的 `startDate`、股票/指数基准、收益和 `deviation`；若偏离值相同，选最早的合格候选。`next_session` 将候选边界向后移一个交易日并重新扫描；完整 10 日请求最多包含 9 个已发生统计交易日，不含基准点。`windowDays` 与上阈值仍为 10/30。最后一个 D10 候选可以使用实际 D9 基准和 D10 价格；不会加入虚构的 D11 零收益候选。负偏离和负距离均保留。
 
-基准值为所选窗口起点前一交易日的收盘价或指数点位。比例以小数表示（`0.03` 即 3%）。默认值为 `DeviationWindowConvention.MAX_DEVIATION_SCAN`，省略参数即可使用；`STRICT_EXCHANGE_WINDOW` 按交易所窗口形状确定起点。不支持的代码或不足的对齐历史数据会报错，不会返回零值。
-结果中的 `calculationMode` 为 `official_close`，`priceBasis` 为 `qfq_stock__raw_index`，`ruleVersion` 标识采用的冻结规则集。
+10 日上阈值为 `1.00`，30 日为 `2.00`。固定 `benchmarkCurrent` 时，`upperTriggerPrice_b = stockBaselinePrice_b * (1 + upperThreshold + benchmarkReturn_b)`。FinchX 先按未进位候选值独立于最大偏离候选选取最小理论价格，再将最终 `upperTriggerPrice` 向上进位到 0.01 CNY。原始未进位值通过 `upperTriggerPrice_original` 返回，选点依据可从 `result.metadata.windows[].upper_trigger_basis` 追溯。`remainingToUpper = upperTriggerPrice / currentPrice - 1` 使用进位后的价格。保留负值。理论价格不表示可成交价格，也不构成异动结论。
 
-| 窗口 | 上阈值 | 下阈值 |
-| --- | --- | --- |
-| 10 个交易日 | `+1.00` | `-0.50` |
-| 30 个交易日 | `+2.00` | `-0.70` |
+被前后个股 K 线夹住的缺失日仍仅作为本计算的停牌推定；首条可用 K 线之前的缺失属于历史不足。缺口后股票与指数基线可以不同；指数缺失不会推定为个股停牌。每条记录用 `tradingSessions`、`availableTradingSessions`、`windowStatus`、`coverageStatus` 和 `inferredHaltDates` 报告覆盖情况。`availableTradingSessions` 统计场景候选窗口内已观测的统计交易日，不包括基准点或未发生的目标日；它不表示请求长度，也不等同于最终选中区间长度。原始 OHLCV 不会被修改。
+比例字段使用小数（`0.03` 即 3%）；股票价格单位为每股 CNY，指数单位为点。`priceBasis` 根据实际股票 K 线口径为 `qfq_stock__raw_index` 或 `raw_stock__raw_index`，`ruleVersion` 标识计算契约版本。
+
+| 窗口 | 上阈值 |
+| --- | --- |
+| 10 个交易日 | `+1.00` |
+| 30 个交易日 | `+2.00` |
 
 **示例**
 
 <!-- api-example: market.deviation -->
 ```python
 from finchx import FinchX
-from finchx.computed import DeviationWindowConvention
 
 fx = FinchX()
-
 result = fx.market.deviation(
     instrument="600519",  # 六位 A 股代码；接口会解析其市场。
     windows=(10, 30),  # 比较 10 和 30 个交易时段。
-    as_of="2026-09-23",  # 纳入计算的最后一个已完成交易日。
-    window_convention=DeviationWindowConvention.MAX_DEVIATION_SCAN,  # 选择偏离窗口解释方式；省略时使用默认的 MAX_DEVIATION_SCAN。
+    as_of="2026-09-23",  # 观察基准交易日；历史查询使用该交易日的收盘数据。
 )
 print(result.data)  # 原生类型数据或记录。
 rows = result.to_dicts()  # JSON 兼容的业务数据行。
@@ -3665,7 +3674,7 @@ print(result.warnings)  # 检查部分数据和可恢复问题。
 ```
 
 **返回值与推荐用法**
-返回 `FetchResult`。`.data` 是一个 `DeviationData` 模型。 Dataset 行模式 `DeviationData` 的业务字段包括 `instrumentId`, `board`, `effectiveAsOf`, `calculationMode` 等。遍历 `windows` 比较各个交易窗口，并将 `effectiveAsOf` 与结果一起保留。 用 `.to_dicts()` 导出 JSON 兼容数据，并检查 `.warnings` 了解部分结果情况。 `.dataset_id`、`.provider_id`、`.captured_at`、`.provenance`、`.attempts`、`.fallback_used` 和 `.cache_hit` 提供采集与审计信息。
+返回 `FetchResult`。`.data` 是一个 `DeviationData` 模型。 Dataset 行模式 `DeviationData` 的业务字段包括 `instrumentId`, `board`, `asOf`, `effectiveAsOf` 等。遍历 `windows` 中每个请求窗口对应的三种情景记录；使用 `asOf` 作为观察日。`effectiveAsOf` 是兼容别名。 用 `.to_dicts()` 导出 JSON 兼容数据，并检查 `.warnings` 了解部分结果情况。 `.dataset_id`、`.provider_id`、`.captured_at`、`.provenance`、`.attempts`、`.fallback_used` 和 `.cache_hit` 提供采集与审计信息。
 
 **参数**
 
@@ -3673,8 +3682,7 @@ print(result.warnings)  # 检查部分数据和可恢复问题。
 | --- | --- | --- | --- | --- |
 | instrument | str | 必填 | — | 六位证券代码；FinchX 根据接口语义解析市场。 |
 | windows | Sequence[int] | 可选 | (10, 30) | 以交易时段计的偏离窗口。 |
-| as_of | date \| str \| None | 可选 | None | 可选的已完成交易时段日期；支持 YYYY-MM-DD、YYYYMMDD 或 YYYY/MM/DD 字符串。 |
-| window_convention | DeviationWindowConvention \| Literal['max_deviation_scan', 'strict_exchange_window'] | 可选 | DeviationWindowConvention.MAX_DEVIATION_SCAN | 选择偏离窗口解释方式；省略时使用默认的 MAX_DEVIATION_SCAN。 |
+| as_of | date \| str \| None | 可选 | None | 观察基准交易日；支持 YYYY-MM-DD、YYYYMMDD 或 YYYY/MM/DD 字符串。 |
 
 **输出字段**
 
@@ -3682,42 +3690,50 @@ print(result.warnings)  # 检查部分数据和可恢复问题。
 
 | 字段 | 类型 | 含义 |
 | --- | --- | --- |
-| instrumentId | str | 证券代码。 |
-| board | str | — |
-| effectiveAsOf | date | — |
-| calculationMode | Literal['official_close'] | — |
-| priceBasis | Literal['qfq_stock__raw_index'] | — |
-| ruleVersion | str | — |
-| windows | tuple[DeviationWindowData, Ellipsis] | — |
+| instrumentId | str | 请求 A 股的完整证券标识。 |
+| board | str | 用于选择基准指数的个股板块。 |
+| asOf | date | 所有情景记录共用的归一化观察交易日。 |
+| effectiveAsOf | date | 兼容字段，与 asOf 相同；它不是所有记录共用的结束日。 |
+| calculationMode | Literal['scenario_based'] | 兼容性摘要标签；各记录的行情来源由其 scenario 决定。 |
+| priceBasis | Literal['qfq_stock__raw_index', 'raw_stock__raw_index'] | 报告实际股票日线口径和未复权指数点位。股票快照仅在 QFQ 日线下按 previousClose 桥接历史；未复权 day 历史与快照保留来源价格尺度。 |
+| ruleVersion | str | 偏离值计算契约的版本标识。 |
+| coverageStatus | Literal['complete', 'short_history', 'halt_inferred_from_missing_kline', 'short_history_and_halt_inferred_from_missing_kline'] | 所请求情景记录的历史覆盖汇总状态。 |
+| inferredHaltDates | tuple[date, Ellipsis] | 各记录推定的个股缺口日期并集；这是计算依据，不是来源停牌记录。 |
+| windows | tuple[DeviationWindowData, Ellipsis] | 扁平情景记录；先按请求窗口长度排序，再依次为 pre_open、current、next_session。 |
 
 嵌套业务模型： `DeviationWindowData`
 
 | 字段 | 类型 | 含义 |
 | --- | --- | --- |
-| windowDays | Literal[10, 30] | — |
-| windowConvention | DeviationWindowConvention | — |
-| tradingSessions | int | — |
-| startDate | date | — |
-| baselineDate | date | — |
-| endDate | date | — |
-| startPrice | Decimal | — |
-| windowStartPrice | Decimal | — |
-| currentPrice | Decimal | — |
-| benchmarkInstrument | str | — |
-| benchmarkName | str | — |
-| benchmarkStart | Decimal | — |
-| benchmarkCurrent | Decimal | — |
-| stockReturn | Decimal | — |
-| benchmarkReturn | Decimal | — |
-| deviation | Decimal | — |
-| upperThreshold | Decimal | — |
-| lowerThreshold | Decimal | — |
-| remainingToUpper | Decimal | — |
-| remainingToLower | Decimal | — |
-| upperTriggerPrice | Decimal | — |
-| lowerTriggerPrice | Decimal | — |
-| remainingPricePctToUpper | Decimal | — |
-| remainingPricePctToLower | Decimal | — |
+| windowDays | Literal[10, 30] | 请求的目标窗口长度：10 或 30 个交易日；next_session 滚动候选边界但保留此长度。 |
+| scenario | Literal['pre_open', 'current', 'next_session'] | 记录口径：pre_open 截至前一交易日；current 截至 asOf；next_session 使用 asOf 价格并采用下一交易日候选边界。 |
+| tradingSessions | int | 最大偏离选中区间内已观测的统计交易日数，不含基准价格点。 |
+| availableTradingSessions | int | 该情景可用的已观测统计交易日数，不含基准点及未观测的未来目标日。 |
+| windowStatus | Literal['complete', 'partial_short_history', 'partial_after_inferred_halt', 'partial_short_history_and_inferred_halt'] | 可用观测构成完整目标窗口还是受支持的部分窗口。 |
+| coverageStatus | Literal['complete', 'short_history', 'halt_inferred_from_missing_kline', 'short_history_and_halt_inferred_from_missing_kline'] | 本记录的历史覆盖和个股缺口推定摘要。 |
+| startDate | date | 最大偏离选中区间的首个统计交易日；不是候选边界最早日，也不是收益基准日。 |
+| baselineDate | date | 现有兼容日期字段，与 stockBaselineDate 相同。 |
+| stockBaselineDate | date | 股票收益率基准价格所属日期。 |
+| benchmarkBaselineDate | date | 指数收益率基准点所属日期；停牌缺口推定后可能与股票基准日期不同。 |
+| endDate | date | 实际采用的股票和指数终值所属日期。 |
+| targetDate | date | 决定本记录候选窗口边界的交易日；next_session 不读取未来目标日行情。 |
+| inferredHaltDates | tuple[date, Ellipsis] | 前后个股 K 线之间推定缺失的日期；指数缺口不会被当作个股停牌。 |
+| stockBaselinePrice | Decimal | 股票收益率基准价，单位 CNY/股，采用返回的 priceBasis。 |
+| windowStartPrice | Decimal | startDate 当日股票价格，单位 CNY/股；与收益率基准价格不同。 |
+| currentPrice | Decimal | 本情景采用的股票终值，单位 CNY/股。 |
+| benchmarkInstrument | str | 板块对应基准指数的完整证券标识。 |
+| benchmarkName | str | 板块对应基准指数的名称。 |
+| benchmarkStart | Decimal | 指数收益率基准点位，保留现有字段名，单位为点。 |
+| benchmarkCurrent | Decimal | endDate 当日指数终值，采用未复权点位。 |
+| stockReturn | Decimal | 从 stockBaselinePrice 到 currentPrice 的股票收益率；0.03 表示 3%。 |
+| benchmarkReturn | Decimal | 从 benchmarkStart 到 benchmarkCurrent 的指数收益率；0.03 表示 3%。 |
+| deviation | Decimal | 最大偏离候选的股票收益率减指数收益率；保留负值。 |
+| upperThreshold | Decimal | 固定上方偏离阈值：10 日为 1.00，30 日为 2.00。 |
+| remainingToUpper | Decimal | 进位后的 upperTriggerPrice / currentPrice - 1；保留负值。 |
+| upperTriggerPrice | Decimal | 按未进位候选值选取合格候选对应的最小理论股价，再向上进位到 0.01 CNY。 |
+| upperTriggerPrice_original | Decimal | 选中的最小候选理论股价的未进位原始值，单位 CNY/股。 |
+| stockSourceTimestamp | datetime \| None | 股票快照终值的来源时间戳；终值来自日线时为 null。 |
+| benchmarkSourceTimestamp | datetime \| None | 基准指数快照终值的来源时间戳；终值来自日线时为 null。 |
 
 ## 4.9 其他
 
@@ -4163,6 +4179,10 @@ print(result.warnings)  # 检查部分数据和可恢复问题。
 ### Warnings
 
 `result.warnings` 用于记录可恢复的数据质量或兼容性问题，例如跳过存在 schema drift 的单条 News 记录。
+
+### 实时分页股票列表
+
+Tencent 全市场 `market.quote`、用于 `instrument` Dataset 精确查询的证券列表、`market.ranking` 以及 EastMoney 五个股票池接口都会读取实时分页数据。如果股票在后续页重复，FinchX 保留首次记录并跳过重复行；此时 `.warnings` 和 `.metadata` 会标明部分覆盖。分页按来源行数推进，因此 ranking 的 `limit` 是来源行预算，跳过重复行不会触发额外请求来补足唯一记录。多页实时数据不构成同一时点快照，即使没有观察到重复也不能据此确认快照一致；ranking 的 `position` 保留来源行号，可能出现名次缺口。
 
 ### 按日期范围搜索
 

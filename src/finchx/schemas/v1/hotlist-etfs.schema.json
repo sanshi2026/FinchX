@@ -100,7 +100,6 @@
       "title": "Changepct"
     },
     "heat": {
-      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
       "title": "Heat",
       "type": "string"
     },

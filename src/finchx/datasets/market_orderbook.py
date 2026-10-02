@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+from decimal import Decimal
+
 from pydantic import Field, field_validator, model_validator
 
 from finchx.contracts import (
@@ -10,8 +13,6 @@ from finchx.contracts import (
     Provenance,
     ProvenanceClass,
     Quality,
-    QualityIssue,
-    QualityIssueKind,
     Shares,
     Source,
     StandardRecord,
@@ -42,34 +43,65 @@ class MarketOrderbookRequest(ContractModel):
 
 
 class OrderbookLevel(ContractModel):
-    """One non-empty price level; size is a whole number of shares."""
+    """One Tencent source slot with nullable price and whole-share size."""
 
-    level: int = Field(strict=True, ge=1, le=5)
-    price: Price
-    size: Shares = Field(gt=0)
+    level: int = Field(
+        strict=True,
+        ge=1,
+        le=5,
+        description="Original Tencent source level number (1 through 5).",
+    )
+    price: Price | None = Field(
+        description="Source price in CNY per share; null means Tencent supplied no value.",
+        json_schema_extra={"pattern": r"^(?:0|[1-9]\d*)(?:\.\d+)?$"},
+    )
+    size: Shares | None = Field(
+        description=(
+            "Source quantity converted to whole shares (Tencent hands × 100); "
+            "null means Tencent supplied no value."
+        ),
+    )
 
     @field_validator("price")
     @classmethod
-    def price_must_be_positive(cls, value):
-        if value <= 0:
-            raise ValueError("orderbook level price must be positive")
+    def price_must_be_non_negative(cls, value):
+        if value is not None and value < 0:
+            raise ValueError("orderbook level price must not be negative")
         return value
 
 
 class MarketOrderbookData(ContractModel):
-    """Up to five best-to-worse bid and ask levels for an equity."""
+    """Tencent's five bid and ask source slots in their original level order."""
 
     instrument_id: InstrumentId = Field(alias="instrumentId")
-    bids: list[OrderbookLevel] = Field(max_length=5)
-    asks: list[OrderbookLevel] = Field(max_length=5)
+    bids: list[OrderbookLevel] = Field(
+        min_length=5,
+        max_length=5,
+        description="Five source bid slots in original order; zero and null values are retained.",
+    )
+    asks: list[OrderbookLevel] = Field(
+        min_length=5,
+        max_length=5,
+        description="Five source ask slots in original order; zero and null values are retained.",
+    )
+    source_timestamp: datetime = Field(
+        alias="sourceTimestamp",
+        description=(
+            "Tencent-reported quote time in Shanghai time (UTC+08:00), "
+            "separate from capturedAt."
+        ),
+    )
+
+    @field_validator("source_timestamp")
+    @classmethod
+    def source_timestamp_must_be_aware(cls, value: datetime) -> datetime:
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("source_timestamp must include a timezone")
+        return value
 
     @model_validator(mode="after")
     def validate_book(self) -> MarketOrderbookData:
         _validate_supported_equity(self.instrument_id)
-        if any(left.price < right.price for left, right in zip(self.bids, self.bids[1:])):
-            raise ValueError("bids must be ordered from highest price to lowest")
-        if any(left.price > right.price for left, right in zip(self.asks, self.asks[1:])):
-            raise ValueError("asks must be ordered from lowest price to highest")
         for side, levels in (("bids", self.bids), ("asks", self.asks)):
             if len({level.level for level in levels}) != len(levels):
                 raise ValueError(f"{side} cannot repeat a source level number")
@@ -97,47 +129,46 @@ def _normalize_orderbook_row(
     if row.captured_at.tzinfo is None or row.captured_at.utcoffset() is None:
         raise ValueError("provider returned a naive captured_at timestamp")
 
-    omitted = False
-
-    def normalized_levels(raw_levels, *, bids: bool) -> list[OrderbookLevel]:
-        nonlocal omitted
+    def normalized_levels(raw_levels) -> list[OrderbookLevel]:
+        if len(raw_levels) != 5:
+            raise ValueError("provider must return exactly five source book slots per side")
         levels: list[OrderbookLevel] = []
         for raw in raw_levels:
-            if raw.price is None or raw.size_hands is None:
-                omitted = True
-                continue
-            if raw.price < 0 or raw.size_hands < 0:
-                raise ValueError("provider returned a negative orderbook slot")
-            if raw.price == 0 or raw.size_hands == 0:
-                omitted = True
-                continue
-            shares = raw.size_hands * 100
-            if shares != shares.to_integral_value():
-                raise ValueError("orderbook size does not normalize to whole shares")
+            if raw.price is not None:
+                if not raw.price.is_finite() or raw.price < 0:
+                    raise ValueError("provider returned an invalid or negative orderbook price")
+            if raw.size_hands is not None:
+                if (
+                    not raw.size_hands.is_finite()
+                    or raw.size_hands < 0
+                ):
+                    raise ValueError("provider returned an invalid or negative orderbook size")
+                shares = raw.size_hands * Decimal("100")
+                if shares != shares.to_integral_value():
+                    raise ValueError("orderbook size does not normalize to whole shares")
+            else:
+                shares = None
             levels.append(
                 OrderbookLevel(
                     level=raw.level,
                     price=raw.price,
-                    size=int(shares),
+                    size=int(shares) if shares is not None else None,
                 )
             )
-        return sorted(levels, key=lambda level: (-level.price if bids else level.price, level.level))
+        return levels
+
+    bids = normalized_levels(row.bids)
+    asks = normalized_levels(row.asks)
 
     data = MarketOrderbookData(
         instrumentId=row.instrument_id,
-        bids=normalized_levels(row.bids, bids=True),
-        asks=normalized_levels(row.asks, bids=False),
+        bids=bids,
+        asks=asks,
+        sourceTimestamp=row.source_timestamp,
     )
-    has_levels = bool(data.bids or data.asks)
-    issues = (
-        [
-            QualityIssue(
-                kind=QualityIssueKind.PARTIAL,
-                detail="Zero or unavailable source depth slots were omitted.",
-            )
-        ]
-        if omitted and has_levels
-        else []
+    has_values = any(
+        level.price is not None or level.size is not None
+        for level in (*data.bids, *data.asks)
     )
     timestamp = row.source_timestamp.isoformat()
     return StandardRecord(
@@ -151,11 +182,11 @@ def _normalize_orderbook_row(
             sourceRecordId=row.source_record_id,
             sourceUrl=row.source_url,
         ),
-        status=DataStatus.LIVE if has_levels else DataStatus.MISSING,
-        quality=Quality(issues=issues),
+        status=DataStatus.LIVE if has_values else DataStatus.MISSING,
+        quality=Quality(),
         provenance=Provenance(
             recordClass=ProvenanceClass.STANDARDIZED,
-            transformationVersion="market-orderbook-normalizer/1",
+            transformationVersion="market-orderbook-normalizer/2",
         ),
         data=data.model_dump(mode="json", by_alias=True),
     )

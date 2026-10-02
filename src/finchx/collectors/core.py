@@ -170,6 +170,7 @@ from finchx.datasets.market_ranking import (
     MARKET_RANKING_DATASET,
     _normalize_ranking_rows,
 )
+from finchx.datasets.provider_rows import _ProviderRowsResponse
 from finchx.datasets.trading_calendar import (
     TRADING_CALENDAR_DATASET,
     _normalize_calendar_rows,
@@ -674,7 +675,11 @@ class Collector:
                 )
                 return result
 
-        specs = self._ordered_specs(definition, provider)
+        specs = self._ordered_specs(
+            definition,
+            provider,
+            request=kwargs.get("request"),
+        )
         attempts: list[FetchAttempt] = []
         fetch_started_at: datetime | None = None
 
@@ -728,7 +733,10 @@ class Collector:
                         started_at=started_at,
                         observed_at=captured_at,
                     )
-                    if self._policy.should_retry(routing_error, retry_count):
+                    if (
+                        not getattr(error, "retry_budget_exhausted", False)
+                        and self._policy.should_retry(routing_error, retry_count)
+                    ):
                         retry_count += 1
                         self._policy.wait_before_retry()
                         continue
@@ -1141,21 +1149,36 @@ class Collector:
         self,
         definition: DatasetDefinition[Any, Any],
         provider: str | None,
+        *,
+        request: Any = None,
     ) -> tuple[ProviderSpec, ...]:
         if provider is not None:
-            return (self._select_provider(definition, provider),)
+            spec = self._select_provider(definition, provider)
+            if not _provider_supports_request(spec, request):
+                raise InvalidRequest(
+                    f"provider {provider!r} does not support this request for {definition.name!r}"
+                )
+            return (spec,)
 
         configured = self._policy.provider_ids_for(definition)
         if configured is None:
             try:
-                specs = self._registry.providers_for(definition)
+                specs = tuple(
+                    spec
+                    for spec in self._registry.providers_for(definition)
+                    if spec.auto_selectable
+                )
             except KeyError as exc:
                 raise UnknownDataset(f"no Provider is registered for {definition.name!r}") from exc
         else:
             specs = tuple(self._select_provider(definition, provider_id) for provider_id in configured)
 
+        specs = tuple(spec for spec in specs if _provider_supports_request(spec, request))
+
         if not specs:
-            raise UnknownDataset(f"no Provider is registered for {definition.name!r}")
+            raise InvalidRequest(
+                f"no Provider supports this request for {definition.name!r}"
+            )
         semantics = self._registry.routing_semantics_for(definition)
         if (
             not self._policy.allow_fallback
@@ -1615,6 +1638,14 @@ def _calendar_route(
     return _normalize_calendar_rows(request, rows, source=provider.source)
 
 
+def _with_provider_rows_metadata(response: Any, data: Any) -> Any:
+    if not isinstance(response, _ProviderRowsResponse):
+        return data
+    metadata = dict(response.metadata)
+    metadata["returned_count"] = len(data)
+    return _RouteResult(data, response.warnings, metadata)
+
+
 def _request_normalizer_route(
     method_name: str,
     normalizer: Callable[..., Any],
@@ -1637,7 +1668,12 @@ def _request_normalizer_route(
                 return fetch(**dict(kwargs))
             raise AttributeError(f"Provider has no {method_name} method")
         raw = method(request)
-        return normalizer(request, raw, source=provider.source)
+        normalized = normalizer(
+            request,
+            raw.rows if isinstance(raw, _ProviderRowsResponse) else raw,
+            source=provider.source,
+        )
+        return _with_provider_rows_metadata(raw, normalized)
 
     return route
 
@@ -1784,12 +1820,13 @@ def _klines_route(
 ) -> Any:
     request = _request_for(definition, kwargs)
     rows = provider.fetch_klines(request)
-    return _normalize_klines_rows(
+    records = _normalize_klines_rows(
         request,
         rows,
         source=provider.source,
         captured_at=_route_capture_time(clock),
     )
+    return _with_provider_rows_metadata(rows, records)
 
 
 def _quote_route(
@@ -1800,12 +1837,13 @@ def _quote_route(
 ) -> Any:
     request = _request_for(definition, kwargs)
     rows = provider.fetch_quotes(request)
-    return _normalize_quote_rows(
+    records = _normalize_quote_rows(
         request,
         rows,
         source=provider.source,
         captured_at=_route_capture_time(clock),
     )
+    return _with_provider_rows_metadata(rows, records)
 
 
 def _ranking_route(
@@ -1816,12 +1854,13 @@ def _ranking_route(
 ) -> Any:
     request = _request_for(definition, kwargs)
     rows = provider.fetch_ranking(request)
-    return _normalize_ranking_rows(
+    records = _normalize_ranking_rows(
         request,
         rows,
         source=provider.source,
         captured_at=_route_capture_time(clock),
     )
+    return _with_provider_rows_metadata(rows, records)
 
 
 def _quote_snapshot_route(
@@ -1852,12 +1891,13 @@ def _instrument_route(
 ) -> Any:
     request = _request_for(definition, kwargs)
     rows = provider.fetch_instrument(request)
-    return _normalize_provider_rows(
+    records = _normalize_provider_rows(
         request,
         rows,
         source=provider.source,
         captured_at=_route_capture_time(clock),
     )
+    return _with_provider_rows_metadata(rows, records)
 
 
 def _instrument_listing_route(
@@ -1883,12 +1923,13 @@ def _instrument_listing_route(
     matching_rows = tuple(
         row for row in rows if _provider_row_identity(row) == request.instrument_id
     )
-    return _normalize_provider_rows(
+    records = _normalize_provider_rows(
         request,
         matching_rows,
         source=provider.source,
         captured_at=_route_capture_time(clock),
     )
+    return _with_provider_rows_metadata(rows, records)
 
 
 def _financial_statement_route(
@@ -2011,6 +2052,17 @@ def _matches_error(error: BaseException, error_types: frozenset[ErrorType]) -> b
     return any(isinstance(error, error_type) for error_type in error_types)
 
 
+def _provider_supports_request(spec: ProviderSpec, request: Any) -> bool:
+    """Apply optional request-level Provider capabilities before any I/O."""
+
+    if request is None:
+        return True
+    supports_request = getattr(spec.provider, "supports_request", None)
+    if not callable(supports_request):
+        return True
+    return bool(supports_request(request))
+
+
 def _routing_error(error: Exception) -> Exception:
     """Classify legacy ProviderError messages without changing their cause."""
 
@@ -2020,6 +2072,27 @@ def _routing_error(error: Exception) -> Exception:
         if isinstance(error, (ConnectionError, OSError)):
             return SourceUnavailable(str(error))
         return error
+
+    stage = getattr(error, "stage", None)
+    category = getattr(error, "category", None)
+    retryable = getattr(error, "retryable", None)
+    if stage is not None and category is not None:
+        if category == "insufficient_history":
+            return NoData(error.reason)
+        if category == "invalid_request":
+            return InvalidRequest(error.reason)
+        if category == "schema":
+            return SchemaDrift(error.reason)
+        if category == "transient_http" and retryable:
+            if "HTTP 429" in error.reason:
+                return RateLimitError(error.reason)
+            return SourceUnavailable(error.reason)
+        if category == "timeout" and retryable:
+            return Timeout(error.reason)
+        if stage == "transport" and retryable:
+            return SourceUnavailable(error.reason)
+        if category in {"dns_resolution", "connection", "tls_failure", "transport_error"}:
+            return error
 
     reason = error.reason.casefold()
     if "401" in reason or "403" in reason or "authentication" in reason or "session missing" in reason:

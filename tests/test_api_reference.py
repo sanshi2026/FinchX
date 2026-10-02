@@ -27,6 +27,7 @@ from tools.generate_api_reference import (  # noqa: E402
     endpoint_key,
     all_endpoint_keys,
     computed_endpoint_keys,
+    output_field_rows,
     provider_endpoint_keys,
     render,
 )
@@ -487,15 +488,13 @@ def test_deviation_example_is_explicitly_kept_out_of_provider_dry_run():
     )
     instrument_node = next(keyword.value for keyword in call.keywords if keyword.arg == "instrument")
     assert ast.literal_eval(instrument_node) == "600519"
-    assert any(
+    assert not any(
         isinstance(node, ast.ImportFrom)
         and node.module == "finchx.computed"
         and any(alias.name == "DeviationWindowConvention" for alias in node.names)
         for node in tree.body
     )
-    convention_node = next(keyword.value for keyword in call.keywords if keyword.arg == "window_convention")
-    assert isinstance(convention_node, ast.Attribute)
-    assert convention_node.attr == "MAX_DEVIATION_SCAN"
+    assert all(keyword.arg != "window_convention" for keyword in call.keywords)
     windows_node = next(keyword.value for keyword in call.keywords if keyword.arg == "windows")
     windows = ast.literal_eval(windows_node)
     assert windows == (10, 30)
@@ -518,6 +517,27 @@ def test_public_reference_hides_internal_request_and_identity_models():
         assert "**Call**" not in public_document
         assert "**调用方式**" not in public_document
     assert "FundamentalIndustryComparisonRequest" not in document
+
+
+def test_deviation_output_field_descriptions_are_complete_in_both_languages():
+    from finchx.computed.deviation import DeviationData, DeviationWindowData
+
+    for language in ("en", "zh"):
+        for model in (DeviationData, DeviationWindowData):
+            rows = output_field_rows(model, language=language, key="market.deviation")
+            assert rows
+            assert all(description != "—" for _, _, description in rows)
+            assert len({name for name, _, _ in rows}) == len(rows)
+
+        window_fields = {
+            name: description
+            for name, _, description in output_field_rows(
+                DeviationWindowData, language=language, key="market.deviation"
+            )
+        }
+        assert "CNY" in window_fields["stockBaselinePrice"]
+        assert "null" in window_fields["stockSourceTimestamp"]
+        assert "null" in window_fields["benchmarkSourceTimestamp"]
 
 
 def test_hotlist_options_and_ranking_criteria_are_clear_in_both_languages():

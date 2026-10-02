@@ -1,83 +1,492 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.finchx.invalid/v1/market-deviation.schema.json",
-  "title": "Market Deviation Computed Capability v1",
-  "type": "object",
+  "$id": "https://schemas.finchx.invalid/v2/market-deviation.schema.json",
   "$defs": {
-    "Decimal": {
-      "anyOf": [
-        {"type": "number"},
-        {"type": "string", "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"}
-      ]
-    },
-    "DeviationWindowConvention": {
-      "type": "string",
-      "enum": ["strict_exchange_window", "max_deviation_scan"]
-    },
     "DeviationWindowData": {
-      "type": "object",
+      "additionalProperties": false,
+      "description": "One scenario-specific deviation observation.",
       "properties": {
-        "windowDays": {"type": "integer", "enum": [10, 30]},
-        "windowConvention": {"$ref": "#/$defs/DeviationWindowConvention"},
-        "tradingSessions": {"type": "integer", "minimum": 2},
-        "startDate": {"type": "string", "format": "date"},
-        "baselineDate": {"type": "string", "format": "date"},
-        "endDate": {"type": "string", "format": "date"},
-        "startPrice": {"$ref": "#/$defs/PositiveDecimal"},
-        "windowStartPrice": {"$ref": "#/$defs/PositiveDecimal"},
-        "currentPrice": {"$ref": "#/$defs/PositiveDecimal"},
-        "benchmarkInstrument": {"$ref": "https://schemas.finchx.invalid/v1/instrument-identity.schema.json"},
-        "benchmarkName": {"type": "string", "minLength": 1},
-        "benchmarkStart": {"$ref": "#/$defs/PositiveDecimal"},
-        "benchmarkCurrent": {"$ref": "#/$defs/PositiveDecimal"},
-        "stockReturn": {"$ref": "#/$defs/Decimal"},
-        "benchmarkReturn": {"$ref": "#/$defs/Decimal"},
-        "deviation": {"$ref": "#/$defs/Decimal"},
-        "upperThreshold": {"$ref": "#/$defs/Decimal"},
-        "lowerThreshold": {"$ref": "#/$defs/Decimal"},
-        "remainingToUpper": {"$ref": "#/$defs/Decimal"},
-        "remainingToLower": {"$ref": "#/$defs/Decimal"},
-        "upperTriggerPrice": {"$ref": "#/$defs/PositiveDecimal"},
-        "lowerTriggerPrice": {"$ref": "#/$defs/PositiveDecimal"},
-        "remainingPricePctToUpper": {"$ref": "#/$defs/Decimal"},
-        "remainingPricePctToLower": {"$ref": "#/$defs/Decimal"}
+        "windowDays": {
+          "description": "Requested target window length; 10 or 30 trading sessions.",
+          "enum": [
+            10,
+            30
+          ],
+          "title": "Windowdays",
+          "type": "integer"
+        },
+        "scenario": {
+          "description": "pre_open uses the prior close; current uses the observation-date price; next_session rolls the candidate boundary forward one session.",
+          "enum": [
+            "pre_open",
+            "current",
+            "next_session"
+          ],
+          "title": "Scenario",
+          "type": "string"
+        },
+        "tradingSessions": {
+          "description": "Observed statistic sessions in the selected maximum-deviation interval; the baseline price point is excluded.",
+          "minimum": 1,
+          "title": "Tradingsessions",
+          "type": "integer"
+        },
+        "availableTradingSessions": {
+          "description": "Observed statistic sessions available in this scenario, excluding the baseline and any unobserved target session.",
+          "minimum": 1,
+          "title": "Availabletradingsessions",
+          "type": "integer"
+        },
+        "windowStatus": {
+          "description": "Whether the available observations form the requested window or a supported partial window.",
+          "enum": [
+            "complete",
+            "partial_short_history",
+            "partial_after_inferred_halt",
+            "partial_short_history_and_inferred_halt"
+          ],
+          "title": "Windowstatus",
+          "type": "string"
+        },
+        "coverageStatus": {
+          "description": "Historical coverage and inferred-stock-gap summary for this row.",
+          "enum": [
+            "complete",
+            "short_history",
+            "halt_inferred_from_missing_kline",
+            "short_history_and_halt_inferred_from_missing_kline"
+          ],
+          "title": "Coveragestatus",
+          "type": "string"
+        },
+        "startDate": {
+          "description": "First statistic session in the interval selected for maximum deviation; not the earliest candidate boundary.",
+          "format": "date",
+          "title": "Startdate",
+          "type": "string"
+        },
+        "baselineDate": {
+          "description": "Compatibility date for the stock return baseline; equal to stockBaselineDate.",
+          "format": "date",
+          "title": "Baselinedate",
+          "type": "string"
+        },
+        "stockBaselineDate": {
+          "description": "Date of the stock price used as the return baseline.",
+          "format": "date",
+          "title": "Stockbaselinedate",
+          "type": "string"
+        },
+        "benchmarkBaselineDate": {
+          "description": "Date of the index point used as the return baseline; it may differ from the stock baseline after an inferred halt.",
+          "format": "date",
+          "title": "Benchmarkbaselinedate",
+          "type": "string"
+        },
+        "endDate": {
+          "description": "Date of the stock and benchmark terminal prices used in this row.",
+          "format": "date",
+          "title": "Enddate",
+          "type": "string"
+        },
+        "targetDate": {
+          "description": "Trading date that defines the candidate-window boundary; for next_session this is a future calendar date with no price data read.",
+          "format": "date",
+          "title": "Targetdate",
+          "type": "string"
+        },
+        "inferredHaltDates": {
+          "description": "Missing stock Kline dates inferred as a gap between observed stock bars; index gaps are never inferred as halts.",
+          "items": {
+            "format": "date",
+            "type": "string"
+          },
+          "title": "Inferredhaltdates",
+          "type": "array"
+        },
+        "stockBaselinePrice": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0.0,
+              "type": "number"
+            },
+            {
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            }
+          ],
+          "description": "Stock return baseline in CNY per share, on the priceBasis reported by DeviationData.",
+          "title": "Stockbaselineprice"
+        },
+        "windowStartPrice": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0.0,
+              "type": "number"
+            },
+            {
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            }
+          ],
+          "description": "Stock price at startDate in CNY per share; distinct from the preceding baseline price.",
+          "title": "Windowstartprice"
+        },
+        "currentPrice": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0.0,
+              "type": "number"
+            },
+            {
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            }
+          ],
+          "description": "Terminal stock price in CNY per share, using the source and date selected for this scenario.",
+          "title": "Currentprice"
+        },
+        "benchmarkInstrument": {
+          "$ref": "#/$defs/InstrumentId",
+          "description": "Full identity of the board-specific benchmark index."
+        },
+        "benchmarkName": {
+          "description": "Human-readable name of the board-specific benchmark index.",
+          "minLength": 1,
+          "title": "Benchmarkname",
+          "type": "string"
+        },
+        "benchmarkStart": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0.0,
+              "type": "number"
+            },
+            {
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            }
+          ],
+          "description": "Benchmark baseline in index points; retained under its existing field name.",
+          "title": "Benchmarkstart"
+        },
+        "benchmarkCurrent": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0.0,
+              "type": "number"
+            },
+            {
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            }
+          ],
+          "description": "Terminal benchmark value in index points, on endDate.",
+          "title": "Benchmarkcurrent"
+        },
+        "stockReturn": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            }
+          ],
+          "description": "Stock return ratio from stockBaselinePrice to currentPrice; 0.03 means 3%.",
+          "title": "Stockreturn"
+        },
+        "benchmarkReturn": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            }
+          ],
+          "description": "Benchmark return ratio from benchmarkStart to benchmarkCurrent; 0.03 means 3%.",
+          "title": "Benchmarkreturn"
+        },
+        "deviation": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            }
+          ],
+          "description": "stockReturn minus benchmarkReturn for the candidate interval with the greatest deviation; negative values are preserved.",
+          "title": "Deviation"
+        },
+        "upperThreshold": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            }
+          ],
+          "description": "Fixed upper threshold ratio: 1.00 for 10 sessions or 2.00 for 30 sessions.",
+          "title": "Upperthreshold"
+        },
+        "remainingToUpper": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            }
+          ],
+          "description": "Rounded upperTriggerPrice divided by currentPrice minus 1; negative values are preserved.",
+          "title": "Remainingtoupper"
+        },
+        "upperTriggerPrice": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0.0,
+              "type": "number"
+            },
+            {
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            }
+          ],
+          "description": "Minimum theoretical stock price across eligible candidates, rounded up to CNY 0.01 after selection; CNY per share.",
+          "title": "Uppertriggerprice"
+        },
+        "upperTriggerPrice_original": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0.0,
+              "type": "number"
+            },
+            {
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            }
+          ],
+          "description": "Unrounded theoretical price for the selected minimum-price candidate; CNY per share.",
+          "title": "Uppertriggerprice Original"
+        },
+        "stockSourceTimestamp": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Source-reported timestamp for a live stock quote; null when the row uses daily close data.",
+          "title": "Stocksourcetimestamp"
+        },
+        "benchmarkSourceTimestamp": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Source-reported timestamp for a live benchmark quote; null when the row uses daily close data.",
+          "title": "Benchmarksourcetimestamp"
+        }
       },
       "required": [
-        "windowDays", "windowConvention", "tradingSessions", "startDate",
-        "baselineDate", "endDate", "startPrice", "windowStartPrice",
-        "currentPrice", "benchmarkInstrument", "benchmarkName",
-        "benchmarkStart", "benchmarkCurrent", "stockReturn",
-        "benchmarkReturn", "deviation", "upperThreshold", "lowerThreshold",
-        "remainingToUpper", "remainingToLower", "upperTriggerPrice",
-        "lowerTriggerPrice", "remainingPricePctToUpper",
-        "remainingPricePctToLower"
+        "windowDays",
+        "scenario",
+        "tradingSessions",
+        "availableTradingSessions",
+        "windowStatus",
+        "coverageStatus",
+        "startDate",
+        "baselineDate",
+        "stockBaselineDate",
+        "benchmarkBaselineDate",
+        "endDate",
+        "targetDate",
+        "inferredHaltDates",
+        "stockBaselinePrice",
+        "windowStartPrice",
+        "currentPrice",
+        "benchmarkInstrument",
+        "benchmarkName",
+        "benchmarkStart",
+        "benchmarkCurrent",
+        "stockReturn",
+        "benchmarkReturn",
+        "deviation",
+        "upperThreshold",
+        "remainingToUpper",
+        "upperTriggerPrice",
+        "upperTriggerPrice_original"
       ],
-      "additionalProperties": false
+      "title": "DeviationWindowData",
+      "type": "object"
     },
-    "PositiveDecimal": {
-      "anyOf": [
-        {"type": "number", "exclusiveMinimum": 0},
-        {"type": "string", "pattern": "^(?=\\d|\\.)(?:\\d+\\.?\\d*|\\.\\d+)$"}
-      ]
+    "Exchange": {
+      "enum": [
+        "sse",
+        "szse",
+        "bse"
+      ],
+      "title": "Exchange",
+      "type": "string"
+    },
+    "InstrumentId": {
+      "additionalProperties": false,
+      "description": "Identity for an instrument whose code, market, and kind are already known.",
+      "properties": {
+        "code": {
+          "minLength": 1,
+          "pattern": ".*\\S.*",
+          "title": "Code",
+          "type": "string"
+        },
+        "market": {
+          "$ref": "#/$defs/Market"
+        },
+        "kind": {
+          "$ref": "#/$defs/InstrumentKind"
+        },
+        "exchange": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Exchange"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "code",
+        "market",
+        "kind"
+      ],
+      "title": "InstrumentId",
+      "type": "object"
+    },
+    "InstrumentKind": {
+      "enum": [
+        "equity",
+        "index",
+        "etf"
+      ],
+      "title": "InstrumentKind",
+      "type": "string"
+    },
+    "Market": {
+      "enum": [
+        "cn_a"
+      ],
+      "title": "Market",
+      "type": "string"
     }
   },
+  "additionalProperties": false,
+  "description": "Public computed result returned inside FetchResult.",
   "properties": {
-    "instrumentId": {"$ref": "https://schemas.finchx.invalid/v1/instrument-identity.schema.json"},
-    "board": {"type": "string", "minLength": 1},
-    "effectiveAsOf": {"type": "string", "format": "date"},
-    "calculationMode": {"const": "official_close"},
-    "priceBasis": {"const": "qfq_stock__raw_index"},
-    "ruleVersion": {"type": "string", "minLength": 1},
+    "instrumentId": {
+      "$ref": "#/$defs/InstrumentId",
+      "description": "Full identity of the requested A-share equity."
+    },
+    "board": {
+      "description": "Resolved board used to select the benchmark index.",
+      "minLength": 1,
+      "title": "Board",
+      "type": "string"
+    },
+    "asOf": {
+      "description": "Normalized observation trading date shared by the scenario rows.",
+      "format": "date",
+      "title": "Asof",
+      "type": "string"
+    },
+    "effectiveAsOf": {
+      "description": "Legacy alias retained for migration; it matches asOf and is not a shared window end date.",
+      "format": "date",
+      "title": "Effectiveasof",
+      "type": "string"
+    },
+    "calculationMode": {
+      "const": "scenario_based",
+      "description": "Legacy summary label retained for migration; each window's scenario determines its price source.",
+      "title": "Calculationmode",
+      "type": "string"
+    },
+    "priceBasis": {
+      "description": "Reports the actual stock Kline adjustment and raw index points: qfq_stock__raw_index when the provider returns QFQ bars, or raw_stock__raw_index when it falls back to unadjusted day bars. A stock quote bridges QFQ history by previousClose only for QFQ bars; raw stock history and quotes stay on their source price scale.",
+      "enum": [
+        "qfq_stock__raw_index",
+        "raw_stock__raw_index"
+      ],
+      "title": "Pricebasis",
+      "type": "string"
+    },
+    "ruleVersion": {
+      "description": "Identifier for the frozen deviation threshold and scenario algorithm.",
+      "minLength": 1,
+      "title": "Ruleversion",
+      "type": "string"
+    },
+    "coverageStatus": {
+      "description": "Aggregate historical coverage summary across the requested scenario rows.",
+      "enum": [
+        "complete",
+        "short_history",
+        "halt_inferred_from_missing_kline",
+        "short_history_and_halt_inferred_from_missing_kline"
+      ],
+      "title": "Coveragestatus",
+      "type": "string"
+    },
+    "inferredHaltDates": {
+      "description": "Union of stock-gap dates inferred by the requested rows.",
+      "items": {
+        "format": "date",
+        "type": "string"
+      },
+      "title": "Inferredhaltdates",
+      "type": "array"
+    },
     "windows": {
-      "type": "array",
-      "minItems": 1,
-      "maxItems": 2,
-      "items": {"$ref": "#/$defs/DeviationWindowData"}
+      "description": "Flat records ordered by requested window and then pre_open, current, next_session.",
+      "items": {
+        "$ref": "#/$defs/DeviationWindowData"
+      },
+      "title": "Windows",
+      "type": "array"
     }
   },
   "required": [
-    "instrumentId", "board", "effectiveAsOf", "calculationMode",
-    "priceBasis", "ruleVersion", "windows"
+    "instrumentId",
+    "board",
+    "asOf",
+    "effectiveAsOf",
+    "calculationMode",
+    "priceBasis",
+    "ruleVersion",
+    "coverageStatus",
+    "inferredHaltDates",
+    "windows"
   ],
-  "additionalProperties": false
+  "title": "Market Deviation Computed Capability v2",
+  "type": "object"
 }

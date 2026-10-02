@@ -3,7 +3,7 @@ from decimal import Decimal
 
 import pytest
 
-from finchx.computed import DeviationData, DeviationWindowConvention, DeviationWindowData
+from finchx.computed import DeviationData, DeviationWindowData
 from finchx.collectors import FetchResult
 from finchx.contracts import (
     DataStatus,
@@ -169,24 +169,37 @@ def _disclosure_ref() -> DisclosureDocumentRef:
 
 
 def _deviation_data() -> DeviationData:
+    current_price = Decimal("11")
+    upper_trigger_price = Decimal("12.25")
+    remaining_to_upper = upper_trigger_price / current_price - Decimal("1")
     return DeviationData(
         instrumentId=_instrument(),
         board="main",
+        asOf=date(2026, 9, 22),
         effectiveAsOf=date(2026, 9, 22),
-        calculationMode="official_close",
+        calculationMode="scenario_based",
         priceBasis="qfq_stock__raw_index",
         ruleVersion="test/1",
+        coverageStatus="complete",
+        inferredHaltDates=(),
         windows=[
             DeviationWindowData(
                 windowDays=10,
-                windowConvention=DeviationWindowConvention.MAX_DEVIATION_SCAN,
-                tradingSessions=11,
+                scenario="current",
+                tradingSessions=10,
+                availableTradingSessions=10,
+                windowStatus="complete",
+                coverageStatus="complete",
                 startDate=date(2026, 9, 8),
                 baselineDate=date(2026, 9, 8),
+                stockBaselineDate=date(2026, 9, 8),
+                benchmarkBaselineDate=date(2026, 9, 8),
                 endDate=date(2026, 9, 22),
-                startPrice=Decimal("10"),
+                targetDate=date(2026, 9, 22),
+                inferredHaltDates=(),
+                stockBaselinePrice=Decimal("10"),
                 windowStartPrice=Decimal("10"),
-                currentPrice=Decimal("11"),
+                currentPrice=current_price,
                 benchmarkInstrument=InstrumentId(
                     code="000300",
                     market=Market.CN_A,
@@ -200,13 +213,9 @@ def _deviation_data() -> DeviationData:
                 benchmarkReturn=Decimal("0.025"),
                 deviation=Decimal("0.075"),
                 upperThreshold=Decimal("0.2"),
-                lowerThreshold=Decimal("-0.2"),
-                remainingToUpper=Decimal("0.125"),
-                remainingToLower=Decimal("0.275"),
-                upperTriggerPrice=Decimal("12.25"),
-                lowerTriggerPrice=Decimal("8.25"),
-                remainingPricePctToUpper=Decimal("0.1136"),
-                remainingPricePctToLower=Decimal("-0.25"),
+                remainingToUpper=remaining_to_upper,
+                upperTriggerPrice=upper_trigger_price,
+                upperTriggerPrice_original=upper_trigger_price,
             )
         ],
     )
@@ -218,6 +227,7 @@ def test_pydantic_model_results_export_as_json_dicts():
 
     assert result.to_dicts() == [data.model_dump(mode="json", by_alias=True)]
     assert result.to_dicts()[0]["windows"][0]["windowDays"] == 10
+    assert result.to_dicts()[0]["windows"][0]["upperTriggerPrice_original"] == "12.25"
 
 
 def test_pydantic_model_lists_export_one_dict_per_model():

@@ -16,6 +16,7 @@ from finchx.datasets import (
     HOT_SECTORS_DATASET, HOT_STOCKS_DATASET, HotContentRequest, HotStocksRequest,
     HotEtfsRequest,
 )
+from finchx.datasets.hotlist import HotStockData
 from finchx.entities import Exchange, InstrumentKind
 from finchx.providers import (
     DatasetRoutingSemantics, PROVIDER_REGISTRY, ProviderError, THSHotListProvider,
@@ -283,8 +284,29 @@ def test_hotlist_schemas_match_model_and_standard_decimal_wire_values():
         else:
             assert schema["oneOf"]==expected["oneOf"]
             assert schema["discriminator"]==expected["discriminator"]
+            assert schema["$defs"]==expected["$defs"]
         Draft202012Validator.check_schema(schema)
     fx,_=client()
     record=fx.hotlist.stocks().data[0]
     schema=schemas["standard-record.schema.json"]
     Draft202012Validator(schema,registry=registry,format_checker=FormatChecker()).validate(record.model_dump(mode="json",by_alias=True))
+
+def test_hotlist_decimal_serialization_schema_preserves_native_decimal_wire_values():
+    record = HotStockData(
+        rank=1,
+        symbol="600001",
+        instrumentId={"code": "600001", "market": "cn_a", "kind": "equity"},
+        name="Fixture",
+        category="popular",
+        period="1h",
+        heat=Decimal("1.2345678901234567890123456789E-40"),
+        pe=1.25,
+    )
+
+    payload = record.model_dump(mode="json", by_alias=True)
+
+    assert payload["heat"] == "1.2345678901234567890123456789E-40"
+    assert payload["pe"] == "1.25"
+    expected = HotStockData.model_json_schema(by_alias=True, mode="serialization")
+    assert expected["properties"]["heat"]["anyOf"][0] == {"type": "string"}
+    assert expected["properties"]["pe"]["anyOf"][0] == {"type": "string"}

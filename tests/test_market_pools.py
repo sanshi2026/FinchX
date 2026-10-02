@@ -5,7 +5,14 @@ from typing import Any
 import pytest
 
 from finchx.contracts import StandardRecord
+from finchx import FinchX
+from finchx.collector import CachePolicy, Collector
 from finchx.datasets import (
+    MARKET_BROKEN_LIMIT_POOL_DATASET,
+    MARKET_LIMIT_DOWN_POOL_DATASET,
+    MARKET_LIMIT_UP_POOL_DATASET,
+    MARKET_STRONG_POOL_DATASET,
+    MARKET_YESTERDAY_LIMIT_UP_POOL_DATASET,
     MarketBrokenLimitPoolRequest,
     MarketLimitDownPoolRequest,
     MarketLimitUpPoolRequest,
@@ -33,6 +40,7 @@ from finchx.providers.eastmoney_market import (
     EASTMONEY_YESTERDAY_LIMIT_UP_POOL_ENDPOINT,
 )
 from finchx.providers.errors import ProviderError
+from finchx.storage import Cache, MemoryStorage
 
 
 OBSERVED_DATE = date(2026, 9, 22)
@@ -219,6 +227,172 @@ def test_pool_pagination_reuses_source_snapshot_date():
     assert [call["params"]["Pageindex"] for call in pool_calls] == [0, 1]
     assert all(call["params"]["pagesize"] == 1 for call in pool_calls)
     assert all(call["params"]["date"] == "20260922" for call in pool_calls)
+
+
+class _PublicOverlapTransport:
+    def __init__(self, endpoint: str, rows: list[dict[str, Any]]) -> None:
+        self.endpoint = endpoint
+        self.rows = rows
+        self.calls: list[dict[str, Any]] = []
+
+    def get(self, url, *, params, headers, timeout_seconds):
+        self.calls.append({"url": url, "params": dict(params)})
+        if url == EASTMONEY_BREADTH_ENDPOINT:
+            data = {"qdate": "20260922", "tc": 0, "pool": []}
+        else:
+            page = int(params["Pageindex"])
+            data = {
+                "qdate": "20260922",
+                "tc": 3,
+                "pool": self.rows[page : page + 1],
+            }
+        return _Response(f"finchxEastmoney({json.dumps({'rc': 0, 'data': data})})")
+
+
+@pytest.mark.parametrize(
+    "provider_type,request_type,normalizer,fetch_method,row",
+    _provider_case(),
+)
+def test_public_pool_route_keeps_cross_page_overlap_partial_metadata_in_cache(
+    provider_type, request_type, normalizer, fetch_method, row
+):
+    endpoint_and_dataset = {
+        EastmoneyLimitUpPoolProvider: (EASTMONEY_LIMIT_UP_POOL_ENDPOINT, MARKET_LIMIT_UP_POOL_DATASET),
+        EastmoneyLimitDownPoolProvider: (EASTMONEY_LIMIT_DOWN_POOL_ENDPOINT, MARKET_LIMIT_DOWN_POOL_DATASET),
+        EastmoneyYesterdayLimitUpPoolProvider: (
+            EASTMONEY_YESTERDAY_LIMIT_UP_POOL_ENDPOINT,
+            MARKET_YESTERDAY_LIMIT_UP_POOL_DATASET,
+        ),
+        EastmoneyStrongPoolProvider: (EASTMONEY_STRONG_POOL_ENDPOINT, MARKET_STRONG_POOL_DATASET),
+        EastmoneyBrokenLimitPoolProvider: (
+            EASTMONEY_BROKEN_LIMIT_POOL_ENDPOINT,
+            MARKET_BROKEN_LIMIT_POOL_DATASET,
+        ),
+    }
+    endpoint, dataset = endpoint_and_dataset[provider_type]
+    repeated = dict(row)
+    repeated["n"] = "Later repeated copy"
+    unique = dict(row)
+    code = str(row["c"])
+    unique["c"] = f"{int(code) + 1:06d}"
+    transport = _PublicOverlapTransport(endpoint, [row, unique, repeated])
+    provider = provider_type(
+        transport=transport,
+        clock=lambda: CAPTURED_AT,
+        page_size=1,
+    )
+    provider_ids = {
+        EastmoneyLimitUpPoolProvider: "eastmoney.push2ex.limit_up_pool",
+        EastmoneyLimitDownPoolProvider: "eastmoney.push2ex.limit_down_pool",
+        EastmoneyYesterdayLimitUpPoolProvider: "eastmoney.push2ex.yesterday_limit_up_pool",
+        EastmoneyStrongPoolProvider: "eastmoney.push2ex.strong_pool",
+        EastmoneyBrokenLimitPoolProvider: "eastmoney.push2ex.broken_limit_pool",
+    }
+    captured_at = datetime(2026, 9, 22, 8, 0, tzinfo=timezone.utc)
+    client = FinchX(collector=Collector(
+        provider_instances={provider_ids[provider_type]: provider},
+        cache=Cache(MemoryStorage(clock=lambda: captured_at), clock=lambda: captured_at),
+        cache_policy={dataset.name: CachePolicy(enabled=True, ttl=60)},
+        clock=lambda: captured_at,
+    ))
+
+    first = client.fetch(dataset, request=request_type())
+    cached = client.fetch(dataset, request=request_type())
+    pool_calls = [call for call in transport.calls if call["url"] == endpoint]
+
+    assert len(first.data) == 2
+    assert first.data[0].data["name"] == row["n"]
+    assert all(record.data["name"] != "Later repeated copy" for record in first.data)
+    assert first.metadata == {
+        "coverage_status": "partial",
+        "requested_count": 3,
+        "source_row_count": 3,
+        "unique_count": 2,
+        "source_total": 3,
+        "duplicate_rows_skipped": 1,
+        "returned_count": 2,
+    }
+    assert len(first.warnings) == 1
+    assert "not a consistent point-in-time" in first.warnings[0]
+    assert [call["params"]["Pageindex"] for call in pool_calls] == [0, 1, 2]
+    assert cached.cache_hit is True
+    assert cached.metadata == first.metadata
+    assert cached.warnings == first.warnings
+    assert len([call for call in transport.calls if call["url"] == endpoint]) == 3
+
+
+def test_limit_up_parses_cross_page_duplicate_before_skipping_it():
+    first = _limit_up_row("600519")
+    malformed_repeat = dict(first, p="not-a-number")
+
+    class TwoRowTransport(_PublicOverlapTransport):
+        def get(self, url, *, params, headers, timeout_seconds):
+            self.calls.append({"url": url, "params": dict(params)})
+            if url == EASTMONEY_BREADTH_ENDPOINT:
+                data = {"qdate": "20260922", "tc": 0, "pool": []}
+            else:
+                page = int(params["Pageindex"])
+                data = {
+                    "qdate": "20260922",
+                    "tc": 2,
+                    "pool": self.rows[page : page + 1],
+                }
+            return _Response(f"finchxEastmoney({json.dumps({'rc': 0, 'data': data})})")
+
+    transport = TwoRowTransport(EASTMONEY_LIMIT_UP_POOL_ENDPOINT, [first, malformed_repeat])
+    provider = EastmoneyLimitUpPoolProvider(transport=transport, page_size=1)
+
+    with pytest.raises(ProviderError, match="limit-up row.p is not a valid Decimal"):
+        provider.fetch_raw_limit_up_pool(MarketLimitUpPoolRequest())
+
+
+@pytest.mark.parametrize(
+    "page_size,total,pages,error",
+    [
+        (1, 3, [[_limit_up_row("600519")], []], "page 1 is empty before tc was reached"),
+        (2, 3, [[_limit_up_row("600519")]], "ended on a short page before tc"),
+        (
+            1,
+            2,
+            [[_limit_up_row("600519"), _limit_up_row("600520")]],
+            "page size exceeds requested tc",
+        ),
+    ],
+)
+def test_limit_up_pagination_still_rejects_incomplete_or_oversized_pages(
+    page_size, total, pages, error
+):
+    class ConfiguredTransport:
+        def get(self, url, *, params, headers, timeout_seconds):
+            if url == EASTMONEY_BREADTH_ENDPOINT:
+                data = {"qdate": "20260922", "tc": 0, "pool": []}
+            else:
+                page = int(params["Pageindex"])
+                data = {"qdate": "20260922", "tc": total, "pool": pages[page] if page < len(pages) else []}
+            return _Response(f"finchxEastmoney({json.dumps({'rc': 0, 'data': data})})")
+
+    provider = EastmoneyLimitUpPoolProvider(
+        transport=ConfiguredTransport(),
+        page_size=page_size,
+    )
+    with pytest.raises(ProviderError, match=error):
+        provider.fetch_raw_limit_up_pool(MarketLimitUpPoolRequest())
+
+
+def test_limit_up_repeated_identity_within_one_page_remains_fatal():
+    row = _limit_up_row("600519")
+
+    class SamePageTransport:
+        def get(self, url, *, params, headers, timeout_seconds):
+            if url == EASTMONEY_BREADTH_ENDPOINT:
+                data = {"qdate": "20260922", "tc": 0, "pool": []}
+            else:
+                data = {"qdate": "20260922", "tc": 2, "pool": [row, row]}
+            return _Response(f"finchxEastmoney({json.dumps({'rc': 0, 'data': data})})")
+
+    provider = EastmoneyLimitUpPoolProvider(transport=SamePageTransport(), page_size=2)
+    with pytest.raises(ProviderError, match="repeated instrument 600519"):
+        provider.fetch_raw_limit_up_pool(MarketLimitUpPoolRequest())
 
 
 class _RcFailureTransport:

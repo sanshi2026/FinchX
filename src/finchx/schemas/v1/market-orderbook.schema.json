@@ -9,23 +9,34 @@
     },
     "bids": {
       "type": "array",
+      "minItems": 5,
       "maxItems": 5,
+      "description": "Five source bid slots in original order; zero and null values are retained.",
       "items": {
         "$ref": "#/$defs/OrderbookLevel"
       }
     },
     "asks": {
       "type": "array",
+      "minItems": 5,
       "maxItems": 5,
+      "description": "Five source ask slots in original order; zero and null values are retained.",
       "items": {
         "$ref": "#/$defs/OrderbookLevel"
       }
+    },
+    "sourceTimestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^(?!.*-00:00$)[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,6})?(?:[Zz]|[+-][0-9]{2}:[0-9]{2})$",
+      "description": "Tencent-reported quote time in Shanghai time (UTC+08:00), separate from capturedAt."
     }
   },
   "required": [
     "instrumentId",
     "bids",
-    "asks"
+    "asks",
+    "sourceTimestamp"
   ],
   "additionalProperties": false,
   "$defs": {
@@ -36,14 +47,40 @@
         "level": {
           "type": "integer",
           "minimum": 1,
-          "maximum": 5
+          "maximum": 5,
+          "description": "Original Tencent source level number (1 through 5)."
         },
         "price": {
-          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Price"
+          "anyOf": [
+            {
+              "allOf": [
+                {
+                  "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Price"
+                },
+                {
+                  "not": {
+                    "pattern": "^-"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "pattern": "^(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+          "description": "Source price in CNY per share; null means Tencent supplied no value."
         },
         "size": {
-          "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Shares",
-          "exclusiveMinimum": 0
+          "anyOf": [
+            {
+              "$ref": "https://schemas.finchx.invalid/v1/units.schema.json#/$defs/Shares"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Source quantity converted to whole shares (Tencent hands × 100); null means Tencent supplied no value."
         }
       },
       "required": [
