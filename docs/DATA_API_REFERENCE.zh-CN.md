@@ -1758,7 +1758,7 @@ print(result.warnings)  # 检查部分数据和可恢复问题。
 ```
 
 **返回值与推荐用法**
-返回 `FetchResult`。`.data` 是标准化记录元组；每条记录的 `.data` 保存 Dataset 行载荷。 Dataset 行模式 `FinancialSummaryData` 的业务字段包括 `symbol`, `periods` 等。用类型化字段或导出行比较报告期、股东、高管或公司行动。 用 `.to_dicts()` 导出 JSON 兼容数据，并检查 `.warnings` 了解部分结果情况。 `.dataset_id`、`.provider_id`、`.captured_at`、`.provenance`、`.attempts`、`.fallback_used` 和 `.cache_hit` 提供采集与审计信息。
+返回 `FetchResult`。`.data` 是一条标准化 `StandardRecord`，保持 2.0.2 的实际返回形状；旧类型注解仍写作元组。可选的 `source_financial_periods` provenance 保留来源字段映射及未明确的指标/期间口径。 Dataset 行模式 `FinancialSummaryData` 的业务字段包括 `symbol`, `periods` 等。用类型化字段或导出行比较报告期、股东、高管或公司行动。 用 `.to_dicts()` 导出 JSON 兼容数据，并检查 `.warnings` 了解部分结果情况。 `.dataset_id`、`.provider_id`、`.captured_at`、`.provenance`、`.attempts`、`.fallback_used` 和 `.cache_hit` 提供采集与审计信息。
 
 **参数**
 
@@ -4175,6 +4175,10 @@ print(result.warnings)  # 检查部分数据和可恢复问题。
 ### 日期输入
 
 公开日期参数接受 `datetime.date`，或 `YYYY-MM-DD`、`YYYYMMDD`、`YYYY/MM/DD` 三种无歧义字符串。非法日期和 `09/01/2026` 这类歧义格式会被拒绝。仅日期字段不接受 `datetime`；新闻、公告、全市场新闻和论坛的时间范围也接受带时区 `datetime`。
+
+### 来源语义
+
+保留来源期间标签和零值/缺失区别；年度、单季、累计季度不能混用，净利润不自动视为归母净利润。财务摘要通过可选的 `source_financial_periods` provenance adjustment 保留来源字段映射，未明确的期间、EPS 和利润口径仍标为未明确。现有业务行与 warnings 不变。参见[数据语义](DATA_SEMANTICS.md)与[2.0.3 兼容说明](COMPATIBILITY_2_0_3.md)。
 
 ### Warnings
 

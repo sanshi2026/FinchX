@@ -78,5 +78,8 @@ FinchX 会标准化第三方数据源的响应，但不重新分发其数据集�
 
 - [English API reference](https://github.com/sanshi2026/FinchX/blob/main/docs/DATA_API_REFERENCE.md)
 - [简体中文 API 参考](https://github.com/sanshi2026/FinchX/blob/main/docs/DATA_API_REFERENCE.zh-CN.md)
+- [来源数据语义](https://github.com/sanshi2026/FinchX/blob/main/docs/DATA_SEMANTICS.md)
+- [目录与存储维护规则](https://github.com/sanshi2026/FinchX/blob/main/docs/MAINTENANCE.md)
+- [2.0.3 兼容说明](https://github.com/sanshi2026/FinchX/blob/main/docs/COMPATIBILITY_2_0_3.md)
 
 FinchX 使用 Apache-2.0 许可证；第三方数据仍受相应数据源条款约束。

@@ -61,3 +61,22 @@ def test_release_version_outputs_are_available_to_artifact_jobs():
     assert upload_name == download_name
     assert "${{ needs.validate.outputs.version }}" in upload_name
     assert "${{ needs.validate.outputs.version }}" in publish
+
+
+def test_branch_ci_only_tests_and_builds_without_publication():
+    workflow = (WORKFLOW_PATH.parent / "ci.yml").read_text()
+    assert re.search(r"(?m)^  push:\s*$", workflow)
+    assert re.search(r"(?m)^  pull_request:\s*$", workflow)
+    assert 'python-version: ["3.10", "3.11", "3.12", "3.13"]' in workflow
+    assert _needs(_job_block(workflow, "build")) == {"test"}
+    assert 'run: python -m pytest' in workflow
+    assert 'run: python -m build' in workflow
+    assert 'python -m twine check dist/*' in workflow
+    assert 'smoke_dir/bin/python' in workflow
+    assert 'pypi-publish' not in workflow
+    assert 'id-token: write' not in workflow
+    assert not re.search(r"(?m)^  (release|publish):", workflow)
+    release = WORKFLOW_PATH.read_text()
+    assert re.search(r"(?m)^  release:\s*$", release)
+    assert 'types: [published]' in release
+    assert 'pypa/gh-action-pypi-publish' in release

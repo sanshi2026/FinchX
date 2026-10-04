@@ -9,6 +9,12 @@ prune tests
 prune docs
 prune examples
 prune .firecrawl
+prune .codex
+prune .agents
+prune data
+prune cache
+prune logs
+exclude AGENTS.md
 
 global-exclude .DS_Store
 global-exclude *.py[cod]

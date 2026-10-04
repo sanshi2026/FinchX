@@ -229,7 +229,6 @@ from finchx.datasets.trading_calendar import (
     TradingCalendarData,
     TradingCalendarRequest,
 )
-from finchx.datasets.trading_calendar_service import TradingCalendarService
 from finchx.datasets.news import (
     NEWS_DOCUMENT_DATASET,
     MarketNewsSearchRequest,
@@ -533,3 +532,18 @@ __all__ = [
     "UnsupportedTopicURL",
     "classify_topic_url",
 ]
+
+
+def __getattr__(name: str):
+    # Orchestration lives in query; defer this historical export until the
+    # Collector has finished importing Dataset definitions.
+    if name == "TradingCalendarService":
+        from finchx.query.trading_calendar import TradingCalendarService
+
+        globals()[name] = TradingCalendarService
+        return TradingCalendarService
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__() -> list[str]:
+    return sorted(set(globals()) | set(__all__))

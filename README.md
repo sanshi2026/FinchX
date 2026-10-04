@@ -78,5 +78,8 @@ FinchX normalizes responses from third-party providers but does not redistribute
 
 - [English API reference](https://github.com/sanshi2026/FinchX/blob/main/docs/DATA_API_REFERENCE.md)
 - [简体中文 API 参考](https://github.com/sanshi2026/FinchX/blob/main/docs/DATA_API_REFERENCE.zh-CN.md)
+- [Source data semantics](https://github.com/sanshi2026/FinchX/blob/main/docs/DATA_SEMANTICS.md)
+- [Repository maintenance](https://github.com/sanshi2026/FinchX/blob/main/docs/MAINTENANCE.md)
+- [2.0.3 compatibility notes](https://github.com/sanshi2026/FinchX/blob/main/docs/COMPATIBILITY_2_0_3.md)
 
 FinchX is licensed under Apache-2.0. Third-party provider data remains subject to its provider's terms.

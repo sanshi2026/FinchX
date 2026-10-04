@@ -1143,6 +1143,9 @@ def _result_usage_note(key: str, model: type[BaseModel], *, language: str) -> st
     elif key == "market.orderbook":
         shape_en = "`.data` is one normalized `StandardRecord`."
         shape_zh = "`.data` 是一条标准化 `StandardRecord`。"
+    elif key == "fundamental.financial_summary":
+        shape_en = "`.data` is one normalized `StandardRecord`, retaining the 2.0.2 runtime shape despite the legacy tuple annotation. Optional `source_financial_periods` provenance retains source field mappings and unspecified metric/period basis."
+        shape_zh = "`.data` 是一条标准化 `StandardRecord`，保持 2.0.2 的实际返回形状；旧类型注解仍写作元组。可选的 `source_financial_periods` provenance 保留来源字段映射及未明确的指标/期间口径。"
     else:
         shape_en = "`.data` is a tuple of normalized records; each record's `.data` contains the Dataset row payload."
         shape_zh = "`.data` 是标准化记录元组；每条记录的 `.data` 保存 Dataset 行载荷。"
@@ -2174,6 +2177,7 @@ def _shared_notes(*, language: str) -> list[str]:
             "## 5. Shared notes", "", "### Security input rules", "",
             "- Plain codes are resolved using the endpoint context: stock endpoints treat `000001` as a SZSE equity, while index endpoints treat `000001` as the SSE index.", "- FinchX validates supported code prefixes and market rules internally; callers provide code strings.", "",
             "### Date inputs", "", "Public date parameters accept `datetime.date` values or unambiguous strings in `YYYY-MM-DD`, `YYYYMMDD`, and `YYYY/MM/DD` forms. Invalid calendar dates and ambiguous forms such as `09/01/2026` are rejected. Date-only fields do not accept `datetime` values; news, disclosure, all-market news, and forum time bounds also accept timezone-aware `datetime` values.", "",
+            "### Source semantics", "", "Keep native period labels and zero/null distinctions. Annual, single-quarter and cumulative values are different; net profit is not automatically parent-attributable profit. Financial summaries retain source field mappings in the optional `source_financial_periods` provenance adjustment; unspecified period/EPS/profit basis stays unspecified. Existing business rows and warnings are unchanged. See [source data semantics](DATA_SEMANTICS.md) and [2.0.3 compatibility](COMPATIBILITY_2_0_3.md).", "",
             "### Warnings", "", "`result.warnings` contains recoverable quality or compatibility issues, such as a skipped News row with schema drift.", "",
             "### Live paginated stock lists", "", "Tencent's full-market `market.quote`, its instrument listing used by exact `instrument` Dataset lookups, `market.ranking`, and the five EastMoney pool methods read live pages. If a stock repeats on a later page, FinchX keeps the first row and skips the repeated row; `.warnings` and `.metadata` then report partial coverage. Pagination uses source-row counts, so ranking `limit` is a source-row budget and skipped repeats never cause extra pages to refill unique rows. Multiple live pages do not form a consistent point-in-time snapshot, even when no repeat is observed; ranking `position` retains the original source row number and may have gaps.", "",
             "### Date-bounded searches", "", "For `news.search`, `disclosure.search`, `market_news.search`, and `forum.replies`, `since` and `until` are inclusive time filters. Start at `page=1`; the Client scans source pages within a safety bound, stops after reaching an older page for descending results or exhausting the source, and honors `max_results`. If the safety bound is reached before the date boundary or source end, `result.warnings` reports that results may be incomplete. Set a practical `max_results` cap and inspect warnings when completeness matters.", "",
@@ -2184,6 +2188,7 @@ def _shared_notes(*, language: str) -> list[str]:
         "## 5. 通用说明", "", "### 证券输入规则", "",
         "- 裸代码会按接口语义解析：股票接口把 `000001` 解释为深市股票，指数接口把 `000001` 解释为上证指数。", "- 支持的代码前缀和市场规则由 FinchX 在内部校验，调用方只需传入代码字符串。", "",
         "### 日期输入", "", "公开日期参数接受 `datetime.date`，或 `YYYY-MM-DD`、`YYYYMMDD`、`YYYY/MM/DD` 三种无歧义字符串。非法日期和 `09/01/2026` 这类歧义格式会被拒绝。仅日期字段不接受 `datetime`；新闻、公告、全市场新闻和论坛的时间范围也接受带时区 `datetime`。", "",
+        "### 来源语义", "", "保留来源期间标签和零值/缺失区别；年度、单季、累计季度不能混用，净利润不自动视为归母净利润。财务摘要通过可选的 `source_financial_periods` provenance adjustment 保留来源字段映射，未明确的期间、EPS 和利润口径仍标为未明确。现有业务行与 warnings 不变。参见[数据语义](DATA_SEMANTICS.md)与[2.0.3 兼容说明](COMPATIBILITY_2_0_3.md)。", "",
         "### Warnings", "", "`result.warnings` 用于记录可恢复的数据质量或兼容性问题，例如跳过存在 schema drift 的单条 News 记录。", "",
         "### 实时分页股票列表", "", "Tencent 全市场 `market.quote`、用于 `instrument` Dataset 精确查询的证券列表、`market.ranking` 以及 EastMoney 五个股票池接口都会读取实时分页数据。如果股票在后续页重复，FinchX 保留首次记录并跳过重复行；此时 `.warnings` 和 `.metadata` 会标明部分覆盖。分页按来源行数推进，因此 ranking 的 `limit` 是来源行预算，跳过重复行不会触发额外请求来补足唯一记录。多页实时数据不构成同一时点快照，即使没有观察到重复也不能据此确认快照一致；ranking 的 `position` 保留来源行号，可能出现名次缺口。", "",
         "### 按日期范围搜索", "", "`news.search`、`disclosure.search`、`market_news.search` 和 `forum.replies` 的 `since` 与 `until` 是包含边界的时间筛选。请从 `page=1` 开始；Client 会在安全上限内跨页扫描，在降序结果到达早于起始日期的整页或数据源耗尽时停止，并遵守 `max_results`。如果触及安全上限时仍未到达日期边界或源末尾，`result.warnings` 会说明结果可能不完整。需要控制返回量时设置合适的 `max_results`，并在要求完整性时检查 warnings。", "",

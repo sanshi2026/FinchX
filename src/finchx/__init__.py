@@ -1,6 +1,6 @@
 """FinchX: an independent Python package for A-share market data."""
 
-__version__ = "2.0.2"
+__version__ = "2.0.3"
 
 from finchx.collector import Collector
 from finchx.client import CLIENT_ENDPOINTS, FinchX

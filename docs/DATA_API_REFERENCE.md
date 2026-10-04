@@ -1787,7 +1787,7 @@ print(result.warnings)  # Check for partial or recoverable issues.
 ```
 
 **Returned value and recommended use**
-Returns a `FetchResult`. `.data` is a tuple of normalized records; each record's `.data` contains the Dataset row payload. The Dataset row schema `FinancialSummaryData` has business fields such as `symbol`, `periods`. Use the typed fields or exported rows to compare periods, holders, officers, or corporate actions. Export JSON-compatible rows with `.to_dicts()` and inspect `.warnings` for partial results. `.dataset_id`, `.provider_id`, `.captured_at`, `.provenance`, `.attempts`, `.fallback_used`, and `.cache_hit` carry retrieval and audit details.
+Returns a `FetchResult`. `.data` is one normalized `StandardRecord`, retaining the 2.0.2 runtime shape despite the legacy tuple annotation. Optional `source_financial_periods` provenance retains source field mappings and unspecified metric/period basis. The Dataset row schema `FinancialSummaryData` has business fields such as `symbol`, `periods`. Use the typed fields or exported rows to compare periods, holders, officers, or corporate actions. Export JSON-compatible rows with `.to_dicts()` and inspect `.warnings` for partial results. `.dataset_id`, `.provider_id`, `.captured_at`, `.provenance`, `.attempts`, `.fallback_used`, and `.cache_hit` carry retrieval and audit details.
 
 **Parameters**
 
@@ -4233,6 +4233,10 @@ Data model: `IwencaiReportDetailData`
 ### Date inputs
 
 Public date parameters accept `datetime.date` values or unambiguous strings in `YYYY-MM-DD`, `YYYYMMDD`, and `YYYY/MM/DD` forms. Invalid calendar dates and ambiguous forms such as `09/01/2026` are rejected. Date-only fields do not accept `datetime` values; news, disclosure, all-market news, and forum time bounds also accept timezone-aware `datetime` values.
+
+### Source semantics
+
+Keep native period labels and zero/null distinctions. Annual, single-quarter and cumulative values are different; net profit is not automatically parent-attributable profit. Financial summaries retain source field mappings in the optional `source_financial_periods` provenance adjustment; unspecified period/EPS/profit basis stays unspecified. Existing business rows and warnings are unchanged. See [source data semantics](DATA_SEMANTICS.md) and [2.0.3 compatibility](COMPATIBILITY_2_0_3.md).
 
 ### Warnings
 

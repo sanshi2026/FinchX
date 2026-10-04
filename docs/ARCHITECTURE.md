@@ -24,7 +24,21 @@ FetchResult with data, source identity, capture time and attempts
 ```
 
 Constructing `FinchX()` is in-memory only. It does not select a Provider, make a
-network request, create a cache, or create a local database file.
+network request, or create a local database file. Collector caching is disabled
+by default; article details have a separate in-memory cache.
+
+Namespace implementations live in `api/`; `client.py` keeps the public entry
+point, endpoint inventory and historical namespace imports. Collector execution,
+Dataset adapters, immutable envelopes and policies live in `collectors/runtime.py`,
+`routing.py`, `results.py` and `policies.py`. `collectors/core.py` and `collector.py`
+retain compatibility exports. Trading-calendar orchestration lives in
+`query/trading_calendar.py`, with the previous service imports still supported.
+Deviation models and calculations retain their module; private helpers for source
+inputs and Decimal thresholds live in `computed/_deviation_inputs.py` and
+`computed/_deviation_math.py`.
+
+See [maintenance boundaries](MAINTENANCE.md), [data semantics](DATA_SEMANTICS.md)
+and the [2.0.3 compatibility notes](COMPATIBILITY_2_0_3.md).
 
 ## Public boundary
 

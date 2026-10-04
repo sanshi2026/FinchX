@@ -1,0 +1,1654 @@
+{
+  "constructors": {
+    "CachePolicy": "(enabled: 'bool' = False, ttl: 'float | timedelta | None' = None) -> None",
+    "Collector": "(*, registry: 'ProviderRegistry' = <finchx.providers.registry.ProviderRegistry object at <address>>, provider_instances: 'Mapping[str, Any] | None' = None, provider_factories: 'Mapping[str, ProviderFactory] | None' = None, routes: 'Iterable[CollectorRoute] | Mapping[tuple[DatasetDefinition[Any, Any] | str, str], RouteHandler] | None' = None, clock: 'Callable[[], datetime] | None' = None, policy: 'RoutingPolicy | None' = None, cache: 'Cache | None' = None, cache_policy: 'CachePolicy | Mapping[str, CachePolicy] | None' = None, health: 'HealthMonitor | None' = None, quality: 'QualityMonitor | None' = None, observability: 'ObservabilityMonitor | None' = None) -> 'None'",
+    "CollectorRoute": "(dataset: 'DatasetDefinition[Any, Any] | str', provider_id: 'str', handler: 'RouteHandler') -> None",
+    "FetchAttempt": "(provider: 'str', attempt: 'int', started_at: 'datetime', captured_at: 'datetime', success: 'bool', error_type: 'str | None' = None, error_message: 'str | None' = None) -> None",
+    "FetchResult": "(data: 'DataT', dataset: 'DatasetDefinition[Any, Any]', provider: 'str | None', captured_at: 'datetime', warnings: 'tuple[str, ...]' = (), provenance: 'tuple[Source, ...]' = (), attempts: 'tuple[FetchAttempt, ...]' = (), fallback_used: 'bool' = False, cache_hit: 'bool' = False, metadata: 'Mapping[str, Any]' = <factory>) -> None",
+    "FinchX": "(collector: 'CollectorLike | None' = None, *, registry: 'ProviderRegistry' = <finchx.providers.registry.ProviderRegistry object at <address>>, cache: 'Cache | None' = None, policy: 'RoutingPolicy | None' = None, cache_policy: 'CachePolicy | Mapping[str, CachePolicy] | None' = None) -> 'None'",
+    "RoutingPolicy": "(provider_order: 'Mapping[str, tuple[str, ...]]' = <factory>, max_retries: 'int' = 1, retryable_errors: 'frozenset[ErrorType]' = frozenset({<class 'finchx.collectors.errors.RateLimitError'>, <class 'finchx.collectors.errors.SourceUnavailable'>, <class 'finchx.collectors.errors.Timeout'>}), fallback_errors: 'frozenset[ErrorType]' = frozenset({<class 'finchx.collectors.errors.NoData'>, <class 'finchx.collectors.errors.RateLimitError'>, <class 'finchx.collectors.errors.SourceUnavailable'>, <class 'finchx.collectors.errors.Timeout'>}), allow_fallback: 'bool' = True, retry_delay_seconds: 'float' = 0.25, sleeper: 'Callable[[float], None]' = <built-in function sleep>) -> None"
+  },
+  "datasets": [
+    [
+      "articles.detail",
+      "1.0",
+      "finchx.datasets.article_detail:ArticleDetailRequest",
+      "finchx.datasets.article_detail:ArticleDetailData"
+    ],
+    [
+      "hotlist.stocks",
+      "1.0",
+      "finchx.datasets.hotlist:HotStocksRequest",
+      "finchx.datasets.hotlist:HotStockData"
+    ],
+    [
+      "hotlist.sectors",
+      "1.0",
+      "finchx.datasets.hotlist:HotSectorsRequest",
+      "finchx.datasets.hotlist:HotSectorData"
+    ],
+    [
+      "hotlist.convertible_bonds",
+      "1.0",
+      "finchx.datasets.hotlist:HotConvertibleBondsRequest",
+      "finchx.datasets.hotlist:HotConvertibleBondData"
+    ],
+    [
+      "hotlist.etfs",
+      "1.0",
+      "finchx.datasets.hotlist:HotEtfsRequest",
+      "finchx.datasets.hotlist:HotEtfData"
+    ],
+    [
+      "hotlist.content",
+      "1.0",
+      "finchx.datasets.hotlist:HotContentRequest",
+      "finchx.datasets.hotlist:HotContentData"
+    ],
+    [
+      "articles.topic",
+      "1.0",
+      "finchx.datasets.topic_articles:TopicArticlesRequest",
+      "finchx.datasets.topic_articles:TopicArticleData"
+    ],
+    [
+      "iwencai.selection",
+      "1.0",
+      "finchx.datasets.iwencai:IwencaiSelectionRequest",
+      "finchx.datasets.iwencai:IwencaiSelectionData"
+    ],
+    [
+      "iwencai.search",
+      "1.0",
+      "finchx.datasets.iwencai:IwencaiSearchRequest",
+      "finchx.datasets.iwencai:IwencaiSearchData"
+    ],
+    [
+      "iwencai.report_detail",
+      "1.0",
+      "finchx.datasets.iwencai:IwencaiReportDetailRequest",
+      "finchx.datasets.iwencai:IwencaiReportDetailData"
+    ],
+    [
+      "market.concept_list",
+      "1.0",
+      "finchx.datasets.market_concept:ConceptListRequest",
+      "finchx.datasets.market_concept:ConceptRef"
+    ],
+    [
+      "market.concept_quote_snapshot",
+      "1.0",
+      "finchx.datasets.market_concept:ConceptQuoteSnapshotRequest",
+      "finchx.datasets.market_concept:ConceptQuoteSnapshotData"
+    ],
+    [
+      "market.concept_ohlcv",
+      "1.0",
+      "finchx.datasets.market_concept:ConceptOhlcvRequest",
+      "finchx.datasets.market_concept:ConceptOhlcvData"
+    ],
+    [
+      "trading_calendar",
+      "1.0",
+      "finchx.datasets.trading_calendar:TradingCalendarRequest",
+      "finchx.datasets.trading_calendar:TradingCalendarData"
+    ],
+    [
+      "instrument",
+      "1.0",
+      "finchx.datasets.instrument:InstrumentRequest",
+      "finchx.datasets.instrument:InstrumentData"
+    ],
+    [
+      "market.quote",
+      "1.0",
+      "finchx.datasets.market_quote:MarketQuoteUniverseRequest",
+      "finchx.datasets.market_quote:MarketQuoteData"
+    ],
+    [
+      "market.ranking",
+      "1.0",
+      "finchx.datasets.market_ranking:MarketRankingRequest",
+      "finchx.datasets.market_ranking:MarketRankingData"
+    ],
+    [
+      "market.quote_snapshot",
+      "1.0",
+      "finchx.datasets.market_quote_snapshot:MarketQuoteSnapshotRequest",
+      "finchx.datasets.market_quote_snapshot:MarketQuoteSnapshotData"
+    ],
+    [
+      "market.orderbook",
+      "1.0",
+      "finchx.datasets.market_orderbook:MarketOrderbookRequest",
+      "finchx.datasets.market_orderbook:MarketOrderbookData"
+    ],
+    [
+      "market.klines",
+      "1.0",
+      "finchx.datasets.market_klines:KlinesRequest",
+      "finchx.datasets.market_klines:MarketKlineData"
+    ],
+    [
+      "market.equity_intraday",
+      "1.0",
+      "finchx.datasets.market_intraday:EquityIntradayRequest",
+      "finchx.datasets.market_intraday:EquityIntradayData"
+    ],
+    [
+      "market.equity_intraday_5d",
+      "1.0",
+      "finchx.datasets.market_intraday:EquityIntraday5dRequest",
+      "finchx.datasets.market_intraday:EquityIntradayData"
+    ],
+    [
+      "market.index_intraday",
+      "1.0",
+      "finchx.datasets.market_intraday:IndexIntradayRequest",
+      "finchx.datasets.market_intraday:IndexIntradayData"
+    ],
+    [
+      "market.index_intraday_5d",
+      "1.0",
+      "finchx.datasets.market_intraday:IndexIntraday5dRequest",
+      "finchx.datasets.market_intraday:IndexIntradayData"
+    ],
+    [
+      "market.fund_flow_snapshot",
+      "1.0",
+      "finchx.datasets.market_fund_flow:MarketFundFlowRequest",
+      "finchx.datasets.market_fund_flow:MarketFundFlowSnapshotData"
+    ],
+    [
+      "market.fund_flow_intraday",
+      "1.0",
+      "finchx.datasets.market_fund_flow:MarketFundFlowRequest",
+      "finchx.datasets.market_fund_flow:MarketFundFlowIntradayData"
+    ],
+    [
+      "market.fund_flow_daily",
+      "1.0",
+      "finchx.datasets.market_fund_flow:MarketFundFlowRequest",
+      "finchx.datasets.market_fund_flow:MarketFundFlowDailyData"
+    ],
+    [
+      "market.breadth",
+      "1.0",
+      "finchx.datasets.market_breadth:MarketBreadthRequest",
+      "finchx.datasets.market_breadth:MarketBreadthData"
+    ],
+    [
+      "market.limit_up_pool",
+      "1.0",
+      "finchx.datasets.market_limit_up_pool:MarketLimitUpPoolRequest",
+      "finchx.datasets.market_limit_up_pool:MarketLimitUpPoolData"
+    ],
+    [
+      "market.limit_down_pool",
+      "1.0",
+      "finchx.datasets.market_limit_down_pool:MarketLimitDownPoolRequest",
+      "finchx.datasets.market_limit_down_pool:MarketLimitDownPoolData"
+    ],
+    [
+      "market.yesterday_limit_up_pool",
+      "1.0",
+      "finchx.datasets.market_yesterday_limit_up_pool:MarketYesterdayLimitUpPoolRequest",
+      "finchx.datasets.market_yesterday_limit_up_pool:MarketYesterdayLimitUpPoolData"
+    ],
+    [
+      "market.strong_pool",
+      "1.0",
+      "finchx.datasets.market_strong_pool:MarketStrongPoolRequest",
+      "finchx.datasets.market_strong_pool:MarketStrongPoolData"
+    ],
+    [
+      "market.broken_limit_pool",
+      "1.0",
+      "finchx.datasets.market_broken_limit_pool:MarketBrokenLimitPoolRequest",
+      "finchx.datasets.market_broken_limit_pool:MarketBrokenLimitPoolData"
+    ],
+    [
+      "market.regulation_watchlist",
+      "1.0",
+      "finchx.datasets.market_regulation:RegulationWatchlistRequest",
+      "finchx.datasets.market_regulation:RegulationWatchlistData"
+    ],
+    [
+      "market.abnormal_records",
+      "1.0",
+      "finchx.datasets.market_regulation:AbnormalRecordsRequest",
+      "finchx.datasets.market_regulation:AbnormalRecordData"
+    ],
+    [
+      "market.severe_predictions",
+      "1.0",
+      "finchx.datasets.market_regulation:SeverePredictionsRequest",
+      "finchx.datasets.market_regulation:SeverePredictionData"
+    ],
+    [
+      "market.abnormal_counts",
+      "1.0",
+      "finchx.datasets.market_regulation:AbnormalCountsRequest",
+      "finchx.datasets.market_regulation:AbnormalCountData"
+    ],
+    [
+      "market.instrument_sector_snapshot",
+      "1.0",
+      "finchx.datasets.market_instrument_sector_snapshot:MarketInstrumentSectorSnapshotRequest",
+      "finchx.datasets.market_instrument_sector_snapshot:MarketInstrumentSectorSnapshotData"
+    ],
+    [
+      "market.stock_keyword",
+      "1.0",
+      "finchx.datasets.market_stock_keyword:MarketStockKeywordRequest",
+      "finchx.datasets.market_stock_keyword:MarketStockKeywordData"
+    ],
+    [
+      "market.industry_comparison",
+      "1.0",
+      "finchx.datasets.market_industry_comparison:MarketIndustryComparisonRequest",
+      "finchx.datasets.market_industry_comparison:MarketIndustryComparisonData"
+    ],
+    [
+      "financial.statement",
+      "1.0",
+      "finchx.datasets.financial_statement:FinancialStatementRequest",
+      "finchx.datasets.financial_statement:FinancialStatementData"
+    ],
+    [
+      "fundamental.company_profile",
+      "1.0",
+      "finchx.datasets.fundamental_company_profile:CompanyProfileRequest",
+      "finchx.datasets.fundamental_company_profile:CompanyProfileData"
+    ],
+    [
+      "fundamental.financial_summary",
+      "1.0",
+      "finchx.datasets.fundamental_financial_summary:FinancialSummaryRequest",
+      "finchx.datasets.fundamental_financial_summary:FinancialSummaryData"
+    ],
+    [
+      "fundamental.revenue_breakdown",
+      "1.0",
+      "finchx.datasets.fundamental_revenue_breakdown:RevenueBreakdownRequest",
+      "finchx.datasets.fundamental_revenue_breakdown:RevenueBreakdownData"
+    ],
+    [
+      "fundamental.industry_comparison",
+      "1.0",
+      "finchx.datasets.fundamental_industry_comparison:IndustryComparisonRequest",
+      "finchx.datasets.fundamental_industry_comparison:IndustryComparisonData"
+    ],
+    [
+      "ownership.capital_snapshot",
+      "1.0",
+      "finchx.datasets.ownership_capital_snapshot:CapitalSnapshotRequest",
+      "finchx.datasets.ownership_capital_snapshot:CapitalSnapshotData"
+    ],
+    [
+      "ownership.holder_summary_snapshot",
+      "1.0",
+      "finchx.datasets.ownership_holder_summary_snapshot:HolderSummarySnapshotRequest",
+      "finchx.datasets.ownership_holder_summary_snapshot:HolderSummarySnapshotData"
+    ],
+    [
+      "company.executive_snapshot",
+      "1.0",
+      "finchx.datasets.company_executive_snapshot:ExecutiveSnapshotRequest",
+      "finchx.datasets.company_executive_snapshot:ExecutiveSnapshotData"
+    ],
+    [
+      "company.executive_share_change",
+      "1.0",
+      "finchx.datasets.company_executive_share_change:ExecutiveShareChangeRequest",
+      "finchx.datasets.company_executive_share_change:ExecutiveShareChangeData"
+    ],
+    [
+      "corporate_action.dividend",
+      "1.0",
+      "finchx.datasets.corporate_action_dividend:DividendRequest",
+      "finchx.datasets.corporate_action_dividend:DividendData"
+    ],
+    [
+      "corporate_action.repurchase",
+      "1.0",
+      "finchx.datasets.corporate_action_repurchase:RepurchaseRequest",
+      "finchx.datasets.corporate_action_repurchase:RepurchaseData"
+    ],
+    [
+      "ownership.float_holder",
+      "1.0",
+      "finchx.datasets.ownership_float_holder:FloatHolderRequest",
+      "finchx.datasets.ownership_float_holder:FloatHolderData"
+    ],
+    [
+      "news.document",
+      "1.0",
+      "finchx.datasets.news:NewsSearchRequest",
+      "finchx.datasets.news:NewsDocumentData"
+    ],
+    [
+      "disclosure.document",
+      "1.0",
+      "finchx.datasets.disclosure:DisclosureSearchRequest",
+      "finchx.datasets.disclosure:DisclosureDocumentData"
+    ],
+    [
+      "market.sentiment_snapshot",
+      "1.0",
+      "finchx.datasets.market_sentiment:MarketSentimentRequest",
+      "finchx.datasets.market_sentiment:MarketSentimentData"
+    ],
+    [
+      "market.consecutive_limit_up_snapshot",
+      "1.0",
+      "finchx.datasets.market_consecutive_limit_up:MarketConsecutiveLimitUpRequest",
+      "finchx.datasets.market_consecutive_limit_up:MarketConsecutiveLimitUpData"
+    ],
+    [
+      "market.dragon_tiger_list",
+      "1.0",
+      "finchx.datasets.market_dragon_tiger:MarketDragonTigerListRequest",
+      "finchx.datasets.market_dragon_tiger:MarketDragonTigerListData"
+    ],
+    [
+      "market.dragon_tiger_detail",
+      "1.0",
+      "finchx.datasets.market_dragon_tiger:MarketDragonTigerDetailRequest",
+      "finchx.datasets.market_dragon_tiger:MarketDragonTigerDetailData"
+    ],
+    [
+      "market.daily_replay",
+      "1.0",
+      "finchx.datasets.market_daily_replay:MarketDailyReplayRequest",
+      "finchx.datasets.market_daily_replay:MarketDailyReplayData"
+    ]
+  ],
+  "endpoints": [
+    [
+      "reference",
+      "trading_calendar",
+      "trading_calendar",
+      "1.0",
+      "finchx.datasets.trading_calendar:TradingCalendarRequest",
+      "finchx.datasets.trading_calendar:TradingCalendarData"
+    ],
+    [
+      "market",
+      "breadth",
+      "market.breadth",
+      "1.0",
+      "finchx.datasets.market_breadth:MarketBreadthRequest",
+      "finchx.datasets.market_breadth:MarketBreadthData"
+    ],
+    [
+      "market",
+      "regulation_watchlist",
+      "market.regulation_watchlist",
+      "1.0",
+      "finchx.datasets.market_regulation:RegulationWatchlistRequest",
+      "finchx.datasets.market_regulation:RegulationWatchlistData"
+    ],
+    [
+      "market",
+      "abnormal_records",
+      "market.abnormal_records",
+      "1.0",
+      "finchx.datasets.market_regulation:AbnormalRecordsRequest",
+      "finchx.datasets.market_regulation:AbnormalRecordData"
+    ],
+    [
+      "market",
+      "severe_predictions",
+      "market.severe_predictions",
+      "1.0",
+      "finchx.datasets.market_regulation:SeverePredictionsRequest",
+      "finchx.datasets.market_regulation:SeverePredictionData"
+    ],
+    [
+      "market",
+      "abnormal_counts",
+      "market.abnormal_counts",
+      "1.0",
+      "finchx.datasets.market_regulation:AbnormalCountsRequest",
+      "finchx.datasets.market_regulation:AbnormalCountData"
+    ],
+    [
+      "market",
+      "broken_limit_pool",
+      "market.broken_limit_pool",
+      "1.0",
+      "finchx.datasets.market_broken_limit_pool:MarketBrokenLimitPoolRequest",
+      "finchx.datasets.market_broken_limit_pool:MarketBrokenLimitPoolData"
+    ],
+    [
+      "market",
+      "consecutive_limit_up",
+      "market.consecutive_limit_up_snapshot",
+      "1.0",
+      "finchx.datasets.market_consecutive_limit_up:MarketConsecutiveLimitUpRequest",
+      "finchx.datasets.market_consecutive_limit_up:MarketConsecutiveLimitUpData"
+    ],
+    [
+      "market",
+      "daily_replay",
+      "market.daily_replay",
+      "1.0",
+      "finchx.datasets.market_daily_replay:MarketDailyReplayRequest",
+      "finchx.datasets.market_daily_replay:MarketDailyReplayData"
+    ],
+    [
+      "market",
+      "dragon_tiger_detail",
+      "market.dragon_tiger_detail",
+      "1.0",
+      "finchx.datasets.market_dragon_tiger:MarketDragonTigerDetailRequest",
+      "finchx.datasets.market_dragon_tiger:MarketDragonTigerDetailData"
+    ],
+    [
+      "market",
+      "dragon_tiger_list",
+      "market.dragon_tiger_list",
+      "1.0",
+      "finchx.datasets.market_dragon_tiger:MarketDragonTigerListRequest",
+      "finchx.datasets.market_dragon_tiger:MarketDragonTigerListData"
+    ],
+    [
+      "market",
+      "equity_intraday",
+      "market.equity_intraday",
+      "1.0",
+      "finchx.datasets.market_intraday:EquityIntradayRequest",
+      "finchx.datasets.market_intraday:EquityIntradayData"
+    ],
+    [
+      "market",
+      "equity_intraday_5d",
+      "market.equity_intraday_5d",
+      "1.0",
+      "finchx.datasets.market_intraday:EquityIntraday5dRequest",
+      "finchx.datasets.market_intraday:EquityIntradayData"
+    ],
+    [
+      "market",
+      "fund_flow_daily",
+      "market.fund_flow_daily",
+      "1.0",
+      "finchx.datasets.market_fund_flow:MarketFundFlowRequest",
+      "finchx.datasets.market_fund_flow:MarketFundFlowDailyData"
+    ],
+    [
+      "market",
+      "fund_flow_intraday",
+      "market.fund_flow_intraday",
+      "1.0",
+      "finchx.datasets.market_fund_flow:MarketFundFlowRequest",
+      "finchx.datasets.market_fund_flow:MarketFundFlowIntradayData"
+    ],
+    [
+      "market",
+      "fund_flow_snapshot",
+      "market.fund_flow_snapshot",
+      "1.0",
+      "finchx.datasets.market_fund_flow:MarketFundFlowRequest",
+      "finchx.datasets.market_fund_flow:MarketFundFlowSnapshotData"
+    ],
+    [
+      "market",
+      "concept_list",
+      "market.concept_list",
+      "1.0",
+      "finchx.datasets.market_concept:ConceptListRequest",
+      "finchx.datasets.market_concept:ConceptRef"
+    ],
+    [
+      "market",
+      "concept_quote_snapshot",
+      "market.concept_quote_snapshot",
+      "1.0",
+      "finchx.datasets.market_concept:ConceptQuoteSnapshotRequest",
+      "finchx.datasets.market_concept:ConceptQuoteSnapshotData"
+    ],
+    [
+      "market",
+      "concept_ohlcv",
+      "market.concept_ohlcv",
+      "1.0",
+      "finchx.datasets.market_concept:ConceptOhlcvRequest",
+      "finchx.datasets.market_concept:ConceptOhlcvData"
+    ],
+    [
+      "market",
+      "index_intraday",
+      "market.index_intraday",
+      "1.0",
+      "finchx.datasets.market_intraday:IndexIntradayRequest",
+      "finchx.datasets.market_intraday:IndexIntradayData"
+    ],
+    [
+      "market",
+      "index_intraday_5d",
+      "market.index_intraday_5d",
+      "1.0",
+      "finchx.datasets.market_intraday:IndexIntraday5dRequest",
+      "finchx.datasets.market_intraday:IndexIntradayData"
+    ],
+    [
+      "market",
+      "industry_comparison",
+      "market.industry_comparison",
+      "1.0",
+      "finchx.datasets.market_industry_comparison:MarketIndustryComparisonRequest",
+      "finchx.datasets.market_industry_comparison:MarketIndustryComparisonData"
+    ],
+    [
+      "market",
+      "instrument_sector_snapshot",
+      "market.instrument_sector_snapshot",
+      "1.0",
+      "finchx.datasets.market_instrument_sector_snapshot:MarketInstrumentSectorSnapshotRequest",
+      "finchx.datasets.market_instrument_sector_snapshot:MarketInstrumentSectorSnapshotData"
+    ],
+    [
+      "market",
+      "stock_keyword",
+      "market.stock_keyword",
+      "1.0",
+      "finchx.datasets.market_stock_keyword:MarketStockKeywordRequest",
+      "finchx.datasets.market_stock_keyword:MarketStockKeywordData"
+    ],
+    [
+      "market",
+      "limit_down_pool",
+      "market.limit_down_pool",
+      "1.0",
+      "finchx.datasets.market_limit_down_pool:MarketLimitDownPoolRequest",
+      "finchx.datasets.market_limit_down_pool:MarketLimitDownPoolData"
+    ],
+    [
+      "market",
+      "limit_up_pool",
+      "market.limit_up_pool",
+      "1.0",
+      "finchx.datasets.market_limit_up_pool:MarketLimitUpPoolRequest",
+      "finchx.datasets.market_limit_up_pool:MarketLimitUpPoolData"
+    ],
+    [
+      "market",
+      "ohlcv",
+      "market.klines",
+      "1.0",
+      "finchx.datasets.market_klines:KlinesRequest",
+      "finchx.datasets.market_klines:MarketKlineData"
+    ],
+    [
+      "market",
+      "orderbook",
+      "market.orderbook",
+      "1.0",
+      "finchx.datasets.market_orderbook:MarketOrderbookRequest",
+      "finchx.datasets.market_orderbook:MarketOrderbookData"
+    ],
+    [
+      "market",
+      "quote",
+      "market.quote",
+      "1.0",
+      "finchx.datasets.market_quote:MarketQuoteUniverseRequest",
+      "finchx.datasets.market_quote:MarketQuoteData"
+    ],
+    [
+      "market",
+      "quote_snapshot",
+      "market.quote_snapshot",
+      "1.0",
+      "finchx.datasets.market_quote_snapshot:MarketQuoteSnapshotRequest",
+      "finchx.datasets.market_quote_snapshot:MarketQuoteSnapshotData"
+    ],
+    [
+      "market",
+      "ranking",
+      "market.ranking",
+      "1.0",
+      "finchx.datasets.market_ranking:MarketRankingRequest",
+      "finchx.datasets.market_ranking:MarketRankingData"
+    ],
+    [
+      "market",
+      "sentiment",
+      "market.sentiment_snapshot",
+      "1.0",
+      "finchx.datasets.market_sentiment:MarketSentimentRequest",
+      "finchx.datasets.market_sentiment:MarketSentimentData"
+    ],
+    [
+      "market",
+      "strong_pool",
+      "market.strong_pool",
+      "1.0",
+      "finchx.datasets.market_strong_pool:MarketStrongPoolRequest",
+      "finchx.datasets.market_strong_pool:MarketStrongPoolData"
+    ],
+    [
+      "market",
+      "yesterday_limit_up_pool",
+      "market.yesterday_limit_up_pool",
+      "1.0",
+      "finchx.datasets.market_yesterday_limit_up_pool:MarketYesterdayLimitUpPoolRequest",
+      "finchx.datasets.market_yesterday_limit_up_pool:MarketYesterdayLimitUpPoolData"
+    ],
+    [
+      "hotlist",
+      "stocks",
+      "hotlist.stocks",
+      "1.0",
+      "finchx.datasets.hotlist:HotStocksRequest",
+      "finchx.datasets.hotlist:HotStockData"
+    ],
+    [
+      "hotlist",
+      "sectors",
+      "hotlist.sectors",
+      "1.0",
+      "finchx.datasets.hotlist:HotSectorsRequest",
+      "finchx.datasets.hotlist:HotSectorData"
+    ],
+    [
+      "hotlist",
+      "convertible_bonds",
+      "hotlist.convertible_bonds",
+      "1.0",
+      "finchx.datasets.hotlist:HotConvertibleBondsRequest",
+      "finchx.datasets.hotlist:HotConvertibleBondData"
+    ],
+    [
+      "hotlist",
+      "etfs",
+      "hotlist.etfs",
+      "1.0",
+      "finchx.datasets.hotlist:HotEtfsRequest",
+      "finchx.datasets.hotlist:HotEtfData"
+    ],
+    [
+      "hotlist",
+      "content",
+      "hotlist.content",
+      "1.0",
+      "finchx.datasets.hotlist:HotContentRequest",
+      "finchx.datasets.hotlist:HotContentData"
+    ],
+    [
+      "fundamental",
+      "company_profile",
+      "fundamental.company_profile",
+      "1.0",
+      "finchx.datasets.fundamental_company_profile:CompanyProfileRequest",
+      "finchx.datasets.fundamental_company_profile:CompanyProfileData"
+    ],
+    [
+      "fundamental",
+      "financial_summary",
+      "fundamental.financial_summary",
+      "1.0",
+      "finchx.datasets.fundamental_financial_summary:FinancialSummaryRequest",
+      "finchx.datasets.fundamental_financial_summary:FinancialSummaryData"
+    ],
+    [
+      "fundamental",
+      "industry_comparison",
+      "fundamental.industry_comparison",
+      "1.0",
+      "finchx.datasets.fundamental_industry_comparison:IndustryComparisonRequest",
+      "finchx.datasets.fundamental_industry_comparison:IndustryComparisonData"
+    ],
+    [
+      "fundamental",
+      "revenue_breakdown",
+      "fundamental.revenue_breakdown",
+      "1.0",
+      "finchx.datasets.fundamental_revenue_breakdown:RevenueBreakdownRequest",
+      "finchx.datasets.fundamental_revenue_breakdown:RevenueBreakdownData"
+    ],
+    [
+      "financial",
+      "statements",
+      "financial.statement",
+      "1.0",
+      "finchx.datasets.financial_statement:FinancialStatementRequest",
+      "finchx.datasets.financial_statement:FinancialStatementData"
+    ],
+    [
+      "iwencai",
+      "select",
+      "iwencai.selection",
+      "1.0",
+      "finchx.datasets.iwencai:IwencaiSelectionRequest",
+      "finchx.datasets.iwencai:IwencaiSelectionData"
+    ],
+    [
+      "iwencai",
+      "search",
+      "iwencai.search",
+      "1.0",
+      "finchx.datasets.iwencai:IwencaiSearchRequest",
+      "finchx.datasets.iwencai:IwencaiSearchData"
+    ],
+    [
+      "iwencai",
+      "report_detail",
+      "iwencai.report_detail",
+      "1.0",
+      "finchx.datasets.iwencai:IwencaiReportDetailRequest",
+      "finchx.datasets.iwencai:IwencaiReportDetailData"
+    ],
+    [
+      "news",
+      "search",
+      "news.document",
+      "1.0",
+      "finchx.datasets.news:NewsSearchRequest",
+      "finchx.datasets.news:NewsDocumentData"
+    ],
+    [
+      "articles",
+      "get",
+      "articles.detail",
+      "1.0",
+      "finchx.datasets.article_detail:ArticleDetailRequest",
+      "finchx.datasets.article_detail:ArticleDetailData"
+    ],
+    [
+      "articles",
+      "from_topic",
+      "articles.topic",
+      "1.0",
+      "finchx.datasets.topic_articles:TopicArticlesRequest",
+      "finchx.datasets.topic_articles:TopicArticleData"
+    ],
+    [
+      "disclosure",
+      "search",
+      "disclosure.document",
+      "1.0",
+      "finchx.datasets.disclosure:DisclosureSearchRequest",
+      "finchx.datasets.disclosure:DisclosureDocumentData"
+    ],
+    [
+      "ownership",
+      "capital_snapshot",
+      "ownership.capital_snapshot",
+      "1.0",
+      "finchx.datasets.ownership_capital_snapshot:CapitalSnapshotRequest",
+      "finchx.datasets.ownership_capital_snapshot:CapitalSnapshotData"
+    ],
+    [
+      "ownership",
+      "float_holder",
+      "ownership.float_holder",
+      "1.0",
+      "finchx.datasets.ownership_float_holder:FloatHolderRequest",
+      "finchx.datasets.ownership_float_holder:FloatHolderData"
+    ],
+    [
+      "ownership",
+      "holder_summary_snapshot",
+      "ownership.holder_summary_snapshot",
+      "1.0",
+      "finchx.datasets.ownership_holder_summary_snapshot:HolderSummarySnapshotRequest",
+      "finchx.datasets.ownership_holder_summary_snapshot:HolderSummarySnapshotData"
+    ],
+    [
+      "company",
+      "executive_share_change",
+      "company.executive_share_change",
+      "1.0",
+      "finchx.datasets.company_executive_share_change:ExecutiveShareChangeRequest",
+      "finchx.datasets.company_executive_share_change:ExecutiveShareChangeData"
+    ],
+    [
+      "company",
+      "executive_snapshot",
+      "company.executive_snapshot",
+      "1.0",
+      "finchx.datasets.company_executive_snapshot:ExecutiveSnapshotRequest",
+      "finchx.datasets.company_executive_snapshot:ExecutiveSnapshotData"
+    ],
+    [
+      "corporate_action",
+      "dividend",
+      "corporate_action.dividend",
+      "1.0",
+      "finchx.datasets.corporate_action_dividend:DividendRequest",
+      "finchx.datasets.corporate_action_dividend:DividendData"
+    ],
+    [
+      "corporate_action",
+      "repurchase",
+      "corporate_action.repurchase",
+      "1.0",
+      "finchx.datasets.corporate_action_repurchase:RepurchaseRequest",
+      "finchx.datasets.corporate_action_repurchase:RepurchaseData"
+    ]
+  ],
+  "methods": {
+    "articles.from_topic": "(topic_url: 'str', *, sort: \"Literal['recommend']\" = 'recommend', limit: 'int' = 20, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "articles.get": "(url: 'str', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[StandardRecord]'",
+    "company.executive_share_change": "(instrument: 'str', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "company.executive_snapshot": "(instrument: 'str', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "corporate_action.dividend": "(instrument: 'str', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "corporate_action.repurchase": "(instrument: 'str', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "disclosure.get_document": "(ref: 'DisclosureDocumentRef') -> 'FetchResult[StandardRecord]'",
+    "disclosure.get_documents": "(refs: 'Iterable[DisclosureDocumentRef]') -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "disclosure.search": "(instrument: 'str', *, page: 'int' = 1, page_size: 'int' = 20, max_results: 'int | None' = None, since: 'date | datetime | str | None' = None, until: 'date | datetime | str | None' = None, categories: 'Sequence[str] | None' = None, sort: 'str' = 'published_desc', provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[DisclosureDocumentRef, ...]]'",
+    "financial.statements": "(instrument: 'str', statement_type: 'StatementType', *, period_end: 'date | str | None' = None, max_periods: 'int | None' = None, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "forum.replies": "(*, cookies: 'str | Mapping[str, str]', user_names: 'Sequence[str] | None' = None, max_results: 'int | None' = None, since: 'date | datetime | str | None' = None, until: 'date | datetime | str | None' = None) -> 'FetchResult[tuple[ForumReply, ...]]'",
+    "fundamental.company_profile": "(instrument: 'str', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "fundamental.financial_summary": "(instrument: 'str', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "fundamental.industry_comparison": "(instrument: 'str', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "fundamental.revenue_breakdown": "(instrument: 'str', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "hotlist.content": "(content_type: 'str' = 'topic', limit: 'int' = 20, *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "hotlist.convertible_bonds": "(limit: 'int' = 20, *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "hotlist.etfs": "(category: 'str' = 'popular', limit: 'int' = 20, *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "hotlist.sectors": "(sector_type: 'str' = 'concept', limit: 'int' = 20, *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "hotlist.stocks": "(category: 'str' = 'popular', period: 'str | None' = None, limit: 'int' = 20, *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "iwencai.detail": "(url: 'str', *, cookies: 'str | Mapping[str, str]', uid: 'str | None' = None, title: 'str | None' = None, published_at: 'str | None' = None, user_agent: 'str | None' = None, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "iwencai.report_detail": "(url: 'str', *, cookies: 'str | Mapping[str, str]', uid: 'str | None' = None, title: 'str | None' = None, published_at: 'str | None' = None, user_agent: 'str | None' = None, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "iwencai.search": "(query: 'str', *, channel: 'str' = 'report', size: 'int' = 50, cookies: 'str | Mapping[str, str] | None' = None, api_key: 'str | None' = None, deduplicate: 'bool' = True, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "iwencai.select": "(query: 'str', *, cookies: 'str | Mapping[str, str]', user_agent: 'str | None' = None, page_size: 'int' = 100, max_pages: 'int' = 100, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "market.abnormal_counts": "(*, sort_by: \"Literal['count', 'price', 'max_deviation']\" = 'count', order: \"Literal['asc', 'desc']\" = 'desc', provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "market.abnormal_records": "(*, dataset: \"Literal['abnormal_events', 'severe_events', 'prediction_history']\", page: 'int' = 1, page_size: 'int' = 20, status: \"Literal['current', 'history', 'all'] | None\" = None, triggered: \"Literal['all', 'yes', 'no'] | None\" = None, rise_only: 'bool | None' = None, include_current: 'bool | None' = None, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "market.breadth": "(*, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "market.broken_limit_pool": "(*, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "market.concept_list": "(*, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "market.concept_ohlcv": "(concept: 'ConceptRef | str', start_date: 'date | str', end_date: 'date | str', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "market.concept_quote_snapshot": "(concept: 'ConceptRef | str', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "market.consecutive_limit_up": "(*, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "market.daily_replay": "(requested_date: 'date | str', *, session: 'str', provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "market.deviation": "(instrument: 'str', *, windows: 'Sequence[int]' = (10, 30), as_of: 'date | str | None' = None, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[DeviationData]'",
+    "market.dragon_tiger_detail": "(instrument: 'str', trade_date: 'date | str', trade_id: 'str', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "market.dragon_tiger_list": "(trade_date: 'date | str', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "market.equity_intraday": "(instrument: 'str', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "market.equity_intraday_5d": "(instrument: 'str', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "market.fund_flow_daily": "(instrument: 'str', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "market.fund_flow_intraday": "(instrument: 'str', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "market.fund_flow_snapshot": "(instrument: 'str', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "market.index_intraday": "(instrument: 'str', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "market.index_intraday_5d": "(instrument: 'str', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "market.industry_comparison": "(instrument: 'str', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "market.instrument_sector_snapshot": "(instrument: 'str', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "market.limit_down_pool": "(*, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "market.limit_up_pool": "(*, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "market.ohlcv": "(instrument: 'str', start_date: 'date | str', end_date: 'date | str', adjustment: 'str | None' = None, *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "market.orderbook": "(instrument: 'str', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[StandardRecord]'",
+    "market.quote": "(*, universe: 'InstrumentUniverse' = <InstrumentUniverse.CN_A_SHARE: 'cn_a_share'>, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "market.quote_snapshot": "(instrument: 'str', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "market.ranking": "(criterion: 'str', direction: 'str', limit: 'int | None', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "market.regulation_watchlist": "(*, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "market.sentiment": "(*, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "market.severe_predictions": "(*, rise_only: 'bool' = False, include_bse: 'bool' = True, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "market.stock_keyword": "(instrument: 'str', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "market.strong_pool": "(*, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "market.yesterday_limit_up_pool": "(*, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "market_news.get_document": "(ref: 'NewsDocumentRef') -> 'FetchResult[StandardRecord]'",
+    "market_news.get_documents": "(refs: 'Iterable[NewsDocumentRef]') -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "market_news.search": "(*, page: 'int' = 1, page_size: 'int' = 20, max_results: 'int | None' = None, since: 'date | datetime | str | None' = None, until: 'date | datetime | str | None' = None, sort: 'str' = 'published_desc') -> 'FetchResult[tuple[NewsDocumentRef, ...]]'",
+    "news.get_document": "(ref: 'NewsDocumentRef') -> 'FetchResult[StandardRecord]'",
+    "news.get_documents": "(refs: 'Iterable[NewsDocumentRef]') -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "news.search": "(instrument: 'str', *, page: 'int' = 1, page_size: 'int' = 20, max_results: 'int | None' = None, since: 'date | datetime | str | None' = None, until: 'date | datetime | str | None' = None, sort: 'str' = 'published_desc', provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[NewsDocumentRef, ...]]'",
+    "ownership.capital_snapshot": "(instrument: 'str', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "ownership.float_holder": "(instrument: 'str', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "ownership.holder_summary_snapshot": "(instrument: 'str', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'",
+    "reference.trading_calendar": "(start_date: 'date | str', end_date: 'date | str', *, provider: 'str | None' = None, use_cache: 'bool | None' = None) -> 'FetchResult[tuple[StandardRecord, ...]]'"
+  },
+  "models": {
+    "finchx.contracts.models:Adjustment": "894a240da517772601b57e66f6b857c639a985489bbe729bf3511d1718c0b3d7",
+    "finchx.contracts.models:ContractModel": "e1416e5c341bf22bf2427f87bce6fdea89df69dffb6242b0a7c5e6e7edf6b1aa",
+    "finchx.contracts.models:Provenance": "b2f67b5401eab586324539684d6144b4a96b52d6592bed839c94afc9595c4517",
+    "finchx.contracts.models:Quality": "a192fc8a03a69474892bb93cce694fab690e65b5784e072dd8f3be48bafb9328",
+    "finchx.contracts.models:QualityIssue": "f9a761da2de021b09909276a7fffdf099f6b4727509229851f17ee3fa40bcc56",
+    "finchx.contracts.models:Source": "698c8f0c179c65ec9a684361005d46016fdb34412de9ce76955a143e1936ea7b",
+    "finchx.contracts.models:SourceReference": "5b27c8d9f728613f401159af213d4d4fbf04d8d4411c94b4bee03808dc222631",
+    "finchx.contracts.models:StandardRecord": "fec01b105a3418a3d998d2b8c292954cddaa514799a5b61c99b81af120cfe18b",
+    "finchx.datasets.article_detail:ArticleDetailData": "e7bdcc483e330cb2b44367a9ef151a0073409a6c581a8c1ad93c684469eca500",
+    "finchx.datasets.article_detail:ArticleDetailRequest": "89550b4e7d13595b1f8af33f887d82d2bb0387acf221ac264654eaefeba2aae6",
+    "finchx.datasets.article_detail:ArticleRelatedStock": "0fb0282a333719007dc48a52e04fb0fd72403c5c8c3ccac1d9095a63e85406b8",
+    "finchx.datasets.company_executive_share_change:ExecutiveShareChange": "ce1b0d0756245856bbb9792c6ceffcc6f96cd725721c3d5e1c5cd84738bfbe3e",
+    "finchx.datasets.company_executive_share_change:ExecutiveShareChangeData": "c1599c5ac722b8e4bb190421f0b006b52a6c33bf3d0cfd0e3a01b77640508046",
+    "finchx.datasets.company_executive_share_change:ExecutiveShareChangeRequest": "c157ee36ce5409ab26c1215a2547f92943d30a10fad2c0c0b472191152217b7e",
+    "finchx.datasets.company_executive_snapshot:ExecutiveEntry": "792cbd9b2933c86700416c20dba0731523c355487ac0b694c7573217e2d76323",
+    "finchx.datasets.company_executive_snapshot:ExecutiveSnapshotData": "48143a1942a90f46aedbb627502218f94903eae5448f0ba5db2c6f2e19be6d44",
+    "finchx.datasets.company_executive_snapshot:ExecutiveSnapshotRequest": "ad83a7f1c75e76b78885b8b33d67bfea56013d85fd1790de827658d907cc6fd2",
+    "finchx.datasets.corporate_action_dividend:Dividend": "5c4deff5a164e1ec2485bdf92d4a42dade8acfd2f774828ce681c455772d63be",
+    "finchx.datasets.corporate_action_dividend:DividendData": "de99e593c33ecc449e9f88ea6f3d0d082cc7beea4f96007afeb26a173acec851",
+    "finchx.datasets.corporate_action_dividend:DividendRequest": "e76da90b10e4f6cb0bf04300cd40525708b97bb5d359384b3bdcf4e52b2f0c1f",
+    "finchx.datasets.corporate_action_repurchase:Repurchase": "690cfe7406948c7f1c58196919e917bc8cde85c9a7e9908d93714255575af4b8",
+    "finchx.datasets.corporate_action_repurchase:RepurchaseData": "0e6c42a959b44b18a55fbc8877ed4fefd6f52e2e3bf92839f84d71788d8b42c4",
+    "finchx.datasets.corporate_action_repurchase:RepurchaseRequest": "a24831348b45fb0b92d585169480d08b58aef45f3f41b313716525175c9eccab",
+    "finchx.datasets.disclosure:DisclosureAttachment": "30b3e329edbaa55609bbab8eb26a4465f4312395d04ee6fdfdcc32b1c72a81ce",
+    "finchx.datasets.disclosure:DisclosureCategory": "eed6b91200eaca0f07f37dac9771b68244fcae79faf912f5cdfa76f6515451a3",
+    "finchx.datasets.disclosure:DisclosureDocumentData": "42dcf3e93f774383d8b5d88e2ef7a98acb2603135d7efaf9ed8861dcf0e714d8",
+    "finchx.datasets.disclosure:DisclosureDocumentRef": "f0c6ee14adda052baf16bb03a81035d9f3ad32834f2e8d65d820333d066e8f15",
+    "finchx.datasets.disclosure:DisclosureSearchRequest": "79676861a47c38b27db5710fbaeb362dba58e644e03f39dfe9610d3af423b58d",
+    "finchx.datasets.financial_statement:FinancialStatementData": "c8d5020878c2e8b9b760d7d779a424e1ba906f2a534422161b967d0f12ad424d",
+    "finchx.datasets.financial_statement:FinancialStatementLineItem": "a5674601437a5d68d2fafe5ab76fdb828c98c7ecb4c594eefcae60419673137f",
+    "finchx.datasets.financial_statement:FinancialStatementPeriod": "d20cea7b6f66c9d4234b3725d6d264a33e4844256b82c28316f9500d0e078792",
+    "finchx.datasets.financial_statement:FinancialStatementRequest": "58891522007ea2ca998eaf28216aba2807ec47fadbacfbbe72d16bb337feadda",
+    "finchx.datasets.forum:ForumRepliesRequest": "192d476f9aeffe57716d54805d4e81c7a9cc725e2979f5684d5df90f841ec8a0",
+    "finchx.datasets.forum:ForumReply": "9eed52ee24cb42bd185141184454f86c579ad99f93c137b3ed3e9a7d61a7a1cf",
+    "finchx.datasets.fundamental_company_profile:CompanyProfileData": "3c217ee71ed7d25c7f67bcf77c85a98120d34c045495ca58fde38ffb2f7d1c42",
+    "finchx.datasets.fundamental_company_profile:CompanyProfileRequest": "1fbcd275cc439f2a154af6e6b94ea62d95964e97b4a76510cc4c13e8e4451a72",
+    "finchx.datasets.fundamental_financial_summary:FinancialSummaryData": "06dbd82e7490bbd3460190d8f8db27354d584246aebae31109d69dd3ef042f6f",
+    "finchx.datasets.fundamental_financial_summary:FinancialSummaryPeriod": "49d41c741ab3fc8bbb46f20b83ad702ddd2db4a16e2e2948cb1114108c173ccc",
+    "finchx.datasets.fundamental_financial_summary:FinancialSummaryRequest": "422f4b50a3e5a571db056215450f8fa9460b7a1f92058cac16567db329b64043",
+    "finchx.datasets.fundamental_industry_comparison:IndustryComparisonData": "287dc16a51ef6aa1acc4041f87d0f065184f0392361703ecb9cf312cc28b2e61",
+    "finchx.datasets.fundamental_industry_comparison:IndustryComparisonMetric": "d85e2945ed16e9e8208fdfd9e90d798e77941b7eb4fe1d692716e2d80c4494d1",
+    "finchx.datasets.fundamental_industry_comparison:IndustryComparisonRequest": "b6f73565bd29a4a1237959aee012690ef81b8b0bb0eed45c1cb56216b6647db4",
+    "finchx.datasets.fundamental_revenue_breakdown:RevenueBreakdownData": "ce0f27e0d9b7dfa2360ef96cdccb461248028d2af7d1f8a45f2e412d22c823d6",
+    "finchx.datasets.fundamental_revenue_breakdown:RevenueBreakdownRequest": "0d227822463e60fa4adce6a9627d88b5f4506d10bd86a0b005cddb698eaf276c",
+    "finchx.datasets.fundamental_revenue_breakdown:RevenueBreakdownRow": "9369050af13b86d68d783f37577b315efa23ff088487664de792af155cf0bebc",
+    "finchx.datasets.hotlist:HotArticleData": "344b2ee42e5779972f9a03e0467b4218df18bf432ff1217b6257838cb52ff9e8",
+    "finchx.datasets.hotlist:HotArticleRelatedStock": "093e6ec9d800081b0a46f83c72d8fbc738041aac03b5237c03ca353ca765a672",
+    "finchx.datasets.hotlist:HotCommentData": "15e21a63ff07b0f9bab9a4c8c0f08d4ebb9a3f4abe26124a21e1842133e68f41",
+    "finchx.datasets.hotlist:HotContentData": "f747d19a3d3ac9ddfb4a0b566c74a9b59851a90e975f1a5bc0cca982e4e18fea",
+    "finchx.datasets.hotlist:HotContentRequest": "0d551ff9f81dc4f2784cfb3ebd5a7866189c97ab19ab994b733017222c9df7ae",
+    "finchx.datasets.hotlist:HotConvertibleBondData": "ac3d24f3977c2cc02b72ef5061c245b1a3d5976897ed84e244733dd1ce0c0eb0",
+    "finchx.datasets.hotlist:HotConvertibleBondsRequest": "992005b40574e9170d25029e8260859564cb6d624e4ca7d9b1c0e0ea34cd579d",
+    "finchx.datasets.hotlist:HotEtfData": "e4bd231e6bc7c09990a52c09a0cde18d4b07a2279a481ff33499dac52344cde1",
+    "finchx.datasets.hotlist:HotEtfsRequest": "7068ebcd3ca2ba9965640e04abc0cbbaf4f1c7aa1f9cfdcd450c39a4d3cedd79",
+    "finchx.datasets.hotlist:HotRelatedStock": "af428df8c060c2ed2dc60414790ab8a7968b2f1fbb3de36f31b0550febb28131",
+    "finchx.datasets.hotlist:HotSectorData": "0c57240181f69d63579e59e4379b0e587966cab95007194e8f271420cbf4324f",
+    "finchx.datasets.hotlist:HotSectorsRequest": "7bdb3108481fc0cf4540881bf671c8a729934c1792c080b7ac07ce0d56005755",
+    "finchx.datasets.hotlist:HotStockData": "f7fba9488e88a2442dd94ad7a370e9883fde43483e9e311031ce5b43671f4d80",
+    "finchx.datasets.hotlist:HotStocksRequest": "e633bf4b50eb328a0529411110d85139f5073306600df6d338f5ca85f832cdc9",
+    "finchx.datasets.hotlist:HotTopicData": "706a5cfa524784b8386eaf587c25ec159a99c3e575001d2e7f49625472ff1772",
+    "finchx.datasets.instrument:InstrumentData": "b9863f8d13384cc322a0ebb2c8112d7b8a8fefe3904f0bac253845e47303225c",
+    "finchx.datasets.instrument:InstrumentRequest": "156dab14f1d0b633e08e7f5062625f3a28b24373a47cd965f003bb69319adcc3",
+    "finchx.datasets.instrument:InstrumentUniverseRequest": "e20858e56ee0007173123d476c7e56687f2fd34001da29492dc7811e80c20749",
+    "finchx.datasets.iwencai:IwencaiReportDetailData": "db368f274ab71dd6fc0cfea30668402f508308b4c3a49b1506bf05da75041e34",
+    "finchx.datasets.iwencai:IwencaiReportDetailRequest": "7d78219a19975dde1190ed443087c66b8046c9dba3bc5a95255e0c3a2ebdcab0",
+    "finchx.datasets.iwencai:IwencaiSearchData": "9e8552cea87f2d07fbcb416991098e6ca78c1bf1f01d40b3243d45634cc5a14d",
+    "finchx.datasets.iwencai:IwencaiSearchRequest": "ebdac8952edc320c17db6071efc1bfcca869c54380730c8a726e25e65f05db67",
+    "finchx.datasets.iwencai:IwencaiSelectionData": "429d3a4b35e3d80b33c613c4cd3f764bc0746b336221f510446c63ff5a5382d6",
+    "finchx.datasets.iwencai:IwencaiSelectionRequest": "4ae72130da68e4e72b803c4b7af48829cf5f936ac22e5502de55c6303f4e9bd7",
+    "finchx.datasets.market_breadth:MarketBreadthData": "e4c6ca8692b36b260d21370f8dee811047ddd38da282d386710dd3709f5a0dec",
+    "finchx.datasets.market_breadth:MarketBreadthDistributionEntry": "8d6dbd22c77158836189276e08f8edf72a0596799e8b34232273a915c951384e",
+    "finchx.datasets.market_breadth:MarketBreadthRequest": "0e03b2426dc19e67abc0ef0c092b6b2a00e20fcad7e7c093f210298dfeb9f6b8",
+    "finchx.datasets.market_broken_limit_pool:MarketBrokenLimitPoolData": "4a032f372a8b0603d2810431bfdf81014abbf387900ab9c44f0ffadbf0e6e21d",
+    "finchx.datasets.market_broken_limit_pool:MarketBrokenLimitPoolRequest": "c49d33180e31f4d4612e420e20784fa7a5f639fa2c094e44ddb929330946bace",
+    "finchx.datasets.market_concept:ConceptListRequest": "3d0ca847d426c23c94e142373fd40b9e313be53e412eb26c40ed9d1cabc8a1ad",
+    "finchx.datasets.market_concept:ConceptOhlcvData": "8b29315dc6de5919862e13fa4e7584aad291a3224c15dddee4d08c8a78ab5c60",
+    "finchx.datasets.market_concept:ConceptOhlcvRequest": "15c72739f4e9587cf175275fdc7904f07f85e6b905a1891b447d9aa0bae33d8a",
+    "finchx.datasets.market_concept:ConceptQuoteSnapshotData": "ca65346248ccf7afb782982054599d6a9bb0f13733e2518b2ed42d32ea283aec",
+    "finchx.datasets.market_concept:ConceptQuoteSnapshotRequest": "75c6f8413ed7c597021b16618dbc7bb08c059b27bfe8c3fa6ce3e87f15ca1ef2",
+    "finchx.datasets.market_concept:ConceptRef": "163020cd7d5c81113255f8aa895ec0a56ce4a7b5766c98893413ee7e0d83d808",
+    "finchx.datasets.market_consecutive_limit_up:MarketConsecutiveLimitUpData": "aa47698156cf8e8dceca5a485b4043a3c0dd12ce8c9ffad75d3b1ead5c32ee04",
+    "finchx.datasets.market_consecutive_limit_up:MarketConsecutiveLimitUpRequest": "4b3df8a4c98a1baacd0b7429d47d49173a0f9ce20d2c2f54c71f17778b14fc74",
+    "finchx.datasets.market_daily_replay:MarketDailyReplayData": "d276bdf6e20d5bf2d60929354a7ce8657e157ff346e4bc97307ce144e8737ef2",
+    "finchx.datasets.market_daily_replay:MarketDailyReplayRequest": "2d2b2fb4b9f091e5fe0f1a691ec2bae4d608ef15215bf21acdfca8aeb9adc8e1",
+    "finchx.datasets.market_daily_replay:ReplayStock": "a02f0cafc4e012563a858d9a8e3c1055e90585dc60379192f78feeff3a841902",
+    "finchx.datasets.market_daily_replay:ReplayTheme": "dc43a9a14b1814ca715cb06ce720434b7d88b515f75282938da8c4282d6e94da",
+    "finchx.datasets.market_dragon_tiger:DragonTigerSeat": "6221166d3a21ed8490e84cccda01d6c9cf2c3f09a873e98f99b9b16efe979ebb",
+    "finchx.datasets.market_dragon_tiger:MarketDragonTigerDetailData": "31bbf1db4cb50a5ff19942700c988ea593aff80d299b083bc01059fc5bb73d31",
+    "finchx.datasets.market_dragon_tiger:MarketDragonTigerDetailRequest": "f944dab9205a6d390b41f8b4eb1d01fb8a558655bfd52db3ff3896e2078e3f2b",
+    "finchx.datasets.market_dragon_tiger:MarketDragonTigerListData": "174157b791c49fd5b27c449ec777aef55ef23afb7dc6a939328fe8ff94733335",
+    "finchx.datasets.market_dragon_tiger:MarketDragonTigerListRequest": "b8162eddb260fb943e9f2347927db976113e1a8d77069499ed0fb4957b16c04b",
+    "finchx.datasets.market_fund_flow:MarketFundFlowDailyData": "dab82a4e6a526fcaff9b4a9451c27f357e943203ce140c59d7cb9744d48ec95b",
+    "finchx.datasets.market_fund_flow:MarketFundFlowIntradayData": "7bf458ee2b7b5956e409cbb85cff9eacf1354b464f83a3704ebd7a6a95dc27b9",
+    "finchx.datasets.market_fund_flow:MarketFundFlowRequest": "0205647d713bdbbcf34449cf077995896f936667615ec801f9493a8ecc76b0d8",
+    "finchx.datasets.market_fund_flow:MarketFundFlowSnapshotData": "e4c7b0edd9c91cc67fabcf1a735747719ea72027790b7de3c6476a76381f1956",
+    "finchx.datasets.market_industry_comparison:IndustryAggregate": "6516d1593bbb850bf763f962ea14da81ec5516f79e68a2e7ee594538f406f989",
+    "finchx.datasets.market_industry_comparison:IndustryComparisonRanks": "be73c8bd5c188c95b3a06f6c308bd40346eeb01c25b231b261de2ff1b008e64c",
+    "finchx.datasets.market_industry_comparison:IndustryComparisonValues": "4e029196c3ac83f2cf34c06d2794f7ffeb1411009cb24f78d44078e2ef47dada",
+    "finchx.datasets.market_industry_comparison:IndustryIdentity": "1d00a594d7788bea787de1237d2ea1cd0b8851bba39f9b463b27b5932455dca2",
+    "finchx.datasets.market_industry_comparison:MarketAggregate": "b21969cf512906635bbcacade6d4efb6a519f7e656e6bf3b2c361dde0c71023f",
+    "finchx.datasets.market_industry_comparison:MarketIndustryComparisonData": "04d0bbd02d3b188fb579f1dbdeaf5a0ee91b5f0a0d02f9d5c916e2f2781efc2e",
+    "finchx.datasets.market_industry_comparison:MarketIndustryComparisonRequest": "5f19f3cd1ee52c84adb969054039c151ff773b4fe92022f658eb6c3c0ec42132",
+    "finchx.datasets.market_instrument_sector_snapshot:InstrumentSectorEntry": "f9355f3254a9565ad742625f64672c7f296d34ee162ea88684812fa19199d6e1",
+    "finchx.datasets.market_instrument_sector_snapshot:MarketInstrumentSectorSnapshotData": "63d38a470872be7818c1ce0b32b6c96dd3f0fc02f40f13e11e889c6e73c4e26c",
+    "finchx.datasets.market_instrument_sector_snapshot:MarketInstrumentSectorSnapshotRequest": "a8fff32f70aa90b3677072f2cd86d5634adfbc0981260b4bb967e5a5cb7635af",
+    "finchx.datasets.market_intraday:EquityIntraday5dRequest": "21cfc0ecf5f77af50426ea7dee19a51766cd7a44b9cebc5849268061785884a9",
+    "finchx.datasets.market_intraday:EquityIntradayData": "8f247c15dbcaf7615f432203b760092ebd6c18906fc769ef34d900db68094ccd",
+    "finchx.datasets.market_intraday:EquityIntradayRequest": "8f322b797aa3e33495237fcf1b307a394003260921c91ade339898771ed13613",
+    "finchx.datasets.market_intraday:IndexIntraday5dRequest": "0e0d0503fd67f3622d4328fcc17eef9a90afcd473df54a65df99433c8629b7a5",
+    "finchx.datasets.market_intraday:IndexIntradayData": "9da842045ac5fb46605ba9a8a934cc796b796d85f12cee8967f689909e7119c0",
+    "finchx.datasets.market_intraday:IndexIntradayRequest": "c9170eb0f6191b417966f47337de30ceb77085970823737f378aa5159cab4f42",
+    "finchx.datasets.market_klines:KlinesRequest": "9288c96c049b3516ec5a373537f5cae84d2d1566b5852300f1e9fe350e9cf5bd",
+    "finchx.datasets.market_klines:MarketKlineData": "9bf2c1eab4ea6e5d9a4efd47f47da07fc8836832b8030ae59a38e273ce479c3b",
+    "finchx.datasets.market_limit_down_pool:MarketLimitDownPoolData": "bdaf66b8d78c73d3b73e630e1842d20165789e14e15ba530f38b9bcc6dc0983f",
+    "finchx.datasets.market_limit_down_pool:MarketLimitDownPoolRequest": "3770b31c53ad1d1f71ab3a16ef8cc6a5b9d6cfaa12c67221488d1a65e960f1dc",
+    "finchx.datasets.market_limit_up_pool:MarketLimitUpPoolData": "e1e5158e0d708e57030f58fe007307bf33f07c254407ede8f5b8d31ac0b0137e",
+    "finchx.datasets.market_limit_up_pool:MarketLimitUpPoolRequest": "4a8769cc5b44a2a49013e7c0817e3f6f3da54d0485f7a58f1670e1b4675cc80f",
+    "finchx.datasets.market_limit_up_pool:MarketLimitUpStats": "564ad2da3fa42ebaff4ff77deae1fbed07d2ce1d16c3adc22b36c6300b2902e7",
+    "finchx.datasets.market_orderbook:MarketOrderbookData": "3ee841a6b9f3ccd52eccefa6e631a762324e8e4f400c41ebfad02f7bdd000d6f",
+    "finchx.datasets.market_orderbook:MarketOrderbookRequest": "d1bf70973e9f61c8ba2335a237a70b961165a5c33c808cf28944d6d0a52bdaa6",
+    "finchx.datasets.market_orderbook:OrderbookLevel": "2d2ef9e395e7b9daafbfea5c56d3cdcd2836e6ad7aeedfc6fe03acf9d21fa015",
+    "finchx.datasets.market_quote:MarketQuoteData": "8839d450d6a1f7e22d662a16486997c4df76f138563010d289b4422d600654af",
+    "finchx.datasets.market_quote:MarketQuoteUniverseRequest": "ce37544d2b08c168e4527e95cbf8c6b1dd5edb301d26b0b84cdd2b76c866b9e5",
+    "finchx.datasets.market_quote_snapshot:MarketQuoteSnapshotData": "61a6a92acdb54fa6a42249f53181c85b2182b20b595c1fa30fe247c084829cff",
+    "finchx.datasets.market_quote_snapshot:MarketQuoteSnapshotRequest": "502c154aebeb091600d8096b2c3f676112b21be28ed9016aea38425afe1ba49a",
+    "finchx.datasets.market_ranking:ChangePercentRankingMetric": "056ce36ed6efe151a66098a4333c9fcc7fe785237a435cd1dd2a7596bda80a2e",
+    "finchx.datasets.market_ranking:MarketRankingData": "311c6a4488a332e2bb410c45d65dc94ddb0ffbaaf35255a3c5048f1319413453",
+    "finchx.datasets.market_ranking:MarketRankingRequest": "3a4274cd5ae901c670637414701a5bd3562ae2543f1cda176b2740a39b7426ec",
+    "finchx.datasets.market_ranking:TurnoverRankingMetric": "f856e65f783c1fd91c19b5f4fa305fb9ecceeadeab1ffdfe8723a93e53b042a7",
+    "finchx.datasets.market_ranking:VolumeRankingMetric": "87162b06e46620ed8745f142976a80509e4ec8781b655670e7d97ce2243d0b08",
+    "finchx.datasets.market_regulation:AbnormalCountData": "36cb8875cb246649a57d950216fcbde8756bb0f599e973ed1a936d8715a00dfd",
+    "finchx.datasets.market_regulation:AbnormalCountsRequest": "6824bd5f73412e40fe4b04246257826cca5098f58f0cc6faec231772c67d16dd",
+    "finchx.datasets.market_regulation:AbnormalEventData": "81d87285958e66b981558ab16a994e61aada5cf35b24db597dd27e6dbf28c3a6",
+    "finchx.datasets.market_regulation:AbnormalRecordData": "de5d03690c6fd8924af8df8774e1a4cd20ea7b64811fdf2df9cde649b81dfa04",
+    "finchx.datasets.market_regulation:AbnormalRecordsRequest": "3ed51baa124fbfc9bf33693523c33f4efd8e5c0bd5001f701546cc6653453c34",
+    "finchx.datasets.market_regulation:PredictionHistoryData": "dae8e03ea320c92fa15144dae37236d7f10eb99bf584d4ee3b095c9f4d0c92f7",
+    "finchx.datasets.market_regulation:RegulationWatchlistData": "75490f5258605d3e2938d0209cb55a6008a9dea5cea396d375a51dab7e39ffaa",
+    "finchx.datasets.market_regulation:RegulationWatchlistRequest": "8abd3787d63315ece5cb4ab83c7821a58407c08ff8deb24ed2534531cf51adf0",
+    "finchx.datasets.market_regulation:SevereEventData": "252870cb2ce27676f883bf6c28ba1b700383a88dc60b65cd9305b8e4ed986291",
+    "finchx.datasets.market_regulation:SeverePredictionData": "dba0c0ae6e1da147c502aa6392a7bd2ffdad302079530da9dc12de1795e8d6c0",
+    "finchx.datasets.market_regulation:SeverePredictionsRequest": "1324fe3e084abbb38708125451c135d511bbd6cb42e36aff9affe7e4c40e798d",
+    "finchx.datasets.market_sentiment:MarketSentimentData": "53c3fa62b51747ad2281c9d7c0cb6a85e45e8c2367ae1f6006dc8f18aadc9cb3",
+    "finchx.datasets.market_sentiment:MarketSentimentRequest": "27d2d504aeee18d595f37b36983b60fed15613028692218b1e910efcf59e4057",
+    "finchx.datasets.market_stock_keyword:MarketStockKeywordData": "2d2267a54acf480a3b22f7cb7777e4dc159a16d8d35d2b4e2f93408aeedadd57",
+    "finchx.datasets.market_stock_keyword:MarketStockKeywordRequest": "3cd37395a8dd6705cd619632992c2fa7a258203c4ff6579c29212be120dcc729",
+    "finchx.datasets.market_stock_keyword:StockKeywordEntry": "33b9461e3ec8613d7e3f62b6fe65c87b6a2d085aba66fc73e50d7a305eaf8f66",
+    "finchx.datasets.market_strong_pool:MarketStrongPoolData": "3f27e882e8dff27072085f715d4489be430126349471f2372337d0ca23ad966f",
+    "finchx.datasets.market_strong_pool:MarketStrongPoolRequest": "5611fde5f45c31c4953ef9590ee394650fce6bbb0865321979851ba44d464f4f",
+    "finchx.datasets.market_yesterday_limit_up_pool:MarketYesterdayLimitUpPoolData": "607307b1828456fc2f9b0053ade3b0dcb7d836280fe96f66e38ccedaad3b63b9",
+    "finchx.datasets.market_yesterday_limit_up_pool:MarketYesterdayLimitUpPoolRequest": "fc3faa03e5055c227b48de4a1e97c4214179d05d0fbabf721035092610ffe9d5",
+    "finchx.datasets.news:MarketNewsSearchRequest": "97fc4bbaadd879685feb439862a07d4cf43314ffef7273126f55471ce5c9d64f",
+    "finchx.datasets.news:NewsDocumentData": "4551628885213ba598df999b97340a1aefcbc4b9ecf5fa1c851cc599baa9f50f",
+    "finchx.datasets.news:NewsDocumentRef": "02300c9c84410e51da35ee9ad284fdeccc452b6c722e4f77b192e9f19cefef5e",
+    "finchx.datasets.news:NewsSearchRequest": "6451570cf58e2fa26ec10f0febdb1292ce14fb5a5f558a214dbe6879012138cc",
+    "finchx.datasets.news:NewsSourceOccurrence": "29694f1933c5dd82ecb51fa71aa834706c832bc04bc05f3ec64db93d5b01efab",
+    "finchx.datasets.ownership_capital_snapshot:CapitalSnapshotData": "169e77828e65b9a02896edf4c10ca2e46e9873b7afa08109f20da7ab9f1a5387",
+    "finchx.datasets.ownership_capital_snapshot:CapitalSnapshotRequest": "81c0eb6df18a924e0e33bd4a5ba5a6c417a60e006ce1a829e8842167d560fa4f",
+    "finchx.datasets.ownership_float_holder:FloatHolderData": "3bdba44f183df231e8af692f3ab6eba37779ee60cc1a76eb5a5fb376760e5010",
+    "finchx.datasets.ownership_float_holder:FloatHolderPeriod": "a020c5b76599046d4429108ab029ba9098051b7947434d9cb7a3af41eae6679b",
+    "finchx.datasets.ownership_float_holder:FloatHolderRequest": "8bc0a75e9dd0b272afb9a07a7aba65abdc2d107363e231ad2e90a9bb6bed0975",
+    "finchx.datasets.ownership_float_holder:FloatHolderRow": "3bfded80a3e25135d502e2038ebd2b7c5fb8662218974978b28a0b6f29a94cc1",
+    "finchx.datasets.ownership_holder_summary_snapshot:HolderSummarySnapshotData": "0dccda76b2cbcccce28694e3d445abd46c0d140562a590c26541bb8555e70dff",
+    "finchx.datasets.ownership_holder_summary_snapshot:HolderSummarySnapshotRequest": "574c06d1c0718b61b27823b82702dd4d2efeeca8503eb3338651bfaca27f1376",
+    "finchx.datasets.topic_articles:TopicArticleData": "f5ea757d932106c99ef5ae90c7fa59b73829b870181c7b20f57b5c06c2f5e121",
+    "finchx.datasets.topic_articles:TopicArticlesRequest": "1a221b92ee15276435b98a35b2a2a86bb800deda35044ba3b853b77e69fc8cd7",
+    "finchx.datasets.trading_calendar:TradingCalendarData": "41551c42c68c133de1ddfadf12f16010a1ded8f6dfb2466b3aac4be216ed9e71",
+    "finchx.datasets.trading_calendar:TradingCalendarRequest": "4751a8b750b271fd24a7433e246da43d9f24058abc0a1b6a0f3edaa812f4442f",
+    "finchx.entities.instrument:InstrumentId": "177cba25dd11443daa5558ee1d4d523770782de61cabab149b78a64483ac9478"
+  },
+  "providers": [
+    [
+      "tonghuashun.articles",
+      [
+        [
+          "articles.detail",
+          "1.0"
+        ]
+      ],
+      false,
+      [],
+      "mappingproxy({'articles.detail': <DatasetRoutingSemantics.SINGLE_SOURCE: 'single_source'>})",
+      true
+    ],
+    [
+      "tonghuashun.hotlist",
+      [
+        [
+          "hotlist.stocks",
+          "1.0"
+        ],
+        [
+          "hotlist.sectors",
+          "1.0"
+        ],
+        [
+          "hotlist.convertible_bonds",
+          "1.0"
+        ],
+        [
+          "hotlist.etfs",
+          "1.0"
+        ],
+        [
+          "hotlist.content",
+          "1.0"
+        ]
+      ],
+      false,
+      [],
+      "mappingproxy({'hotlist.stocks': <DatasetRoutingSemantics.SINGLE_SOURCE: 'single_source'>, 'hotlist.sectors': <DatasetRoutingSemantics.SINGLE_SOURCE: 'single_source'>, 'hotlist.convertible_bonds': <DatasetRoutingSemantics.SINGLE_SOURCE: 'single_source'>, 'hotlist.etfs': <DatasetRoutingSemantics.SINGLE_SOURCE: 'single_source'>, 'hotlist.content': <DatasetRoutingSemantics.SINGLE_SOURCE: 'single_source'>})",
+      true
+    ],
+    [
+      "tonghuashun.topic",
+      [
+        [
+          "articles.topic",
+          "1.0"
+        ]
+      ],
+      false,
+      [],
+      "mappingproxy({'articles.topic': <DatasetRoutingSemantics.SINGLE_SOURCE: 'single_source'>})",
+      true
+    ],
+    [
+      "iwencai",
+      [
+        [
+          "iwencai.selection",
+          "1.0"
+        ],
+        [
+          "iwencai.search",
+          "1.0"
+        ],
+        [
+          "iwencai.report_detail",
+          "1.0"
+        ]
+      ],
+      false,
+      [],
+      "mappingproxy({'iwencai.selection': <DatasetRoutingSemantics.SINGLE_SOURCE: 'single_source'>, 'iwencai.search': <DatasetRoutingSemantics.SINGLE_SOURCE: 'single_source'>, 'iwencai.report_detail': <DatasetRoutingSemantics.SINGLE_SOURCE: 'single_source'>})",
+      true
+    ],
+    [
+      "tonghuashun.concept",
+      [
+        [
+          "market.concept_list",
+          "1.0"
+        ],
+        [
+          "market.concept_quote_snapshot",
+          "1.0"
+        ],
+        [
+          "market.concept_ohlcv",
+          "1.0"
+        ]
+      ],
+      false,
+      [],
+      "mappingproxy({'market.concept_list': <DatasetRoutingSemantics.SINGLE_SOURCE: 'single_source'>, 'market.concept_quote_snapshot': <DatasetRoutingSemantics.SINGLE_SOURCE: 'single_source'>, 'market.concept_ohlcv': <DatasetRoutingSemantics.SINGLE_SOURCE: 'single_source'>})",
+      true
+    ],
+    [
+      "szse.official.calendar",
+      [
+        [
+          "trading_calendar",
+          "1.0"
+        ]
+      ],
+      false,
+      [],
+      "mappingproxy({'trading_calendar': <DatasetRoutingSemantics.MULTI_PROVIDER: 'multi_provider'>})",
+      true
+    ],
+    [
+      "pandas_market_calendars",
+      [
+        [
+          "trading_calendar",
+          "1.0"
+        ]
+      ],
+      false,
+      [
+        "pandas_market_calendars"
+      ],
+      "mappingproxy({'trading_calendar': <DatasetRoutingSemantics.MULTI_PROVIDER: 'multi_provider'>})",
+      true
+    ],
+    [
+      "tencent.finance.qq.market",
+      [
+        [
+          "instrument",
+          "1.0"
+        ],
+        [
+          "market.quote",
+          "1.0"
+        ],
+        [
+          "market.ranking",
+          "1.0"
+        ]
+      ],
+      false,
+      [],
+      "mappingproxy({'instrument': <DatasetRoutingSemantics.MULTI_PROVIDER: 'multi_provider'>, 'market.quote': <DatasetRoutingSemantics.MULTI_PROVIDER: 'multi_provider'>, 'market.ranking': <DatasetRoutingSemantics.MULTI_PROVIDER: 'multi_provider'>})",
+      true
+    ],
+    [
+      "tencent.finance.qq.quote",
+      [
+        [
+          "market.quote_snapshot",
+          "1.0"
+        ],
+        [
+          "market.orderbook",
+          "1.0"
+        ]
+      ],
+      false,
+      [],
+      "mappingproxy({'market.quote_snapshot': <DatasetRoutingSemantics.MULTI_PROVIDER: 'multi_provider'>, 'market.orderbook': <DatasetRoutingSemantics.MULTI_PROVIDER: 'multi_provider'>})",
+      true
+    ],
+    [
+      "tencent.finance.qq.klines",
+      [
+        [
+          "market.klines",
+          "1.0"
+        ]
+      ],
+      false,
+      [],
+      "mappingproxy({'market.klines': <DatasetRoutingSemantics.MULTI_PROVIDER: 'multi_provider'>})",
+      true
+    ],
+    [
+      "sohu.finance.klines",
+      [
+        [
+          "market.klines",
+          "1.0"
+        ]
+      ],
+      false,
+      [],
+      "mappingproxy({'market.klines': <DatasetRoutingSemantics.MULTI_PROVIDER: 'multi_provider'>})",
+      false
+    ],
+    [
+      "tencent.finance.qq.intraday",
+      [
+        [
+          "market.equity_intraday",
+          "1.0"
+        ],
+        [
+          "market.equity_intraday_5d",
+          "1.0"
+        ],
+        [
+          "market.index_intraday",
+          "1.0"
+        ],
+        [
+          "market.index_intraday_5d",
+          "1.0"
+        ]
+      ],
+      false,
+      [],
+      "mappingproxy({'market.equity_intraday': <DatasetRoutingSemantics.MULTI_PROVIDER: 'multi_provider'>, 'market.equity_intraday_5d': <DatasetRoutingSemantics.MULTI_PROVIDER: 'multi_provider'>, 'market.index_intraday': <DatasetRoutingSemantics.MULTI_PROVIDER: 'multi_provider'>, 'market.index_intraday_5d': <DatasetRoutingSemantics.MULTI_PROVIDER: 'multi_provider'>})",
+      true
+    ],
+    [
+      "tencent.finance.qq.fund_flow",
+      [
+        [
+          "market.fund_flow_snapshot",
+          "1.0"
+        ],
+        [
+          "market.fund_flow_intraday",
+          "1.0"
+        ],
+        [
+          "market.fund_flow_daily",
+          "1.0"
+        ]
+      ],
+      false,
+      [],
+      "mappingproxy({'market.fund_flow_snapshot': <DatasetRoutingSemantics.MULTI_PROVIDER: 'multi_provider'>, 'market.fund_flow_intraday': <DatasetRoutingSemantics.MULTI_PROVIDER: 'multi_provider'>, 'market.fund_flow_daily': <DatasetRoutingSemantics.MULTI_PROVIDER: 'multi_provider'>})",
+      true
+    ],
+    [
+      "eastmoney.push2ex.breadth",
+      [
+        [
+          "market.breadth",
+          "1.0"
+        ]
+      ],
+      false,
+      [],
+      "mappingproxy({'market.breadth': <DatasetRoutingSemantics.SINGLE_SOURCE: 'single_source'>})",
+      true
+    ],
+    [
+      "eastmoney.push2ex.limit_up_pool",
+      [
+        [
+          "market.limit_up_pool",
+          "1.0"
+        ]
+      ],
+      false,
+      [],
+      "mappingproxy({'market.limit_up_pool': <DatasetRoutingSemantics.SINGLE_SOURCE: 'single_source'>})",
+      true
+    ],
+    [
+      "eastmoney.push2ex.limit_down_pool",
+      [
+        [
+          "market.limit_down_pool",
+          "1.0"
+        ]
+      ],
+      false,
+      [],
+      "mappingproxy({'market.limit_down_pool': <DatasetRoutingSemantics.SINGLE_SOURCE: 'single_source'>})",
+      true
+    ],
+    [
+      "eastmoney.push2ex.yesterday_limit_up_pool",
+      [
+        [
+          "market.yesterday_limit_up_pool",
+          "1.0"
+        ]
+      ],
+      false,
+      [],
+      "mappingproxy({'market.yesterday_limit_up_pool': <DatasetRoutingSemantics.SINGLE_SOURCE: 'single_source'>})",
+      true
+    ],
+    [
+      "eastmoney.push2ex.strong_pool",
+      [
+        [
+          "market.strong_pool",
+          "1.0"
+        ]
+      ],
+      false,
+      [],
+      "mappingproxy({'market.strong_pool': <DatasetRoutingSemantics.SINGLE_SOURCE: 'single_source'>})",
+      true
+    ],
+    [
+      "eastmoney.push2ex.broken_limit_pool",
+      [
+        [
+          "market.broken_limit_pool",
+          "1.0"
+        ]
+      ],
+      false,
+      [],
+      "mappingproxy({'market.broken_limit_pool': <DatasetRoutingSemantics.SINGLE_SOURCE: 'single_source'>})",
+      true
+    ],
+    [
+      "eastmoney.regulation",
+      [
+        [
+          "market.regulation_watchlist",
+          "1.0"
+        ],
+        [
+          "market.abnormal_records",
+          "1.0"
+        ],
+        [
+          "market.severe_predictions",
+          "1.0"
+        ],
+        [
+          "market.abnormal_counts",
+          "1.0"
+        ]
+      ],
+      false,
+      [],
+      "mappingproxy({'market.regulation_watchlist': <DatasetRoutingSemantics.SINGLE_SOURCE: 'single_source'>, 'market.abnormal_records': <DatasetRoutingSemantics.SINGLE_SOURCE: 'single_source'>, 'market.severe_predictions': <DatasetRoutingSemantics.SINGLE_SOURCE: 'single_source'>, 'market.abnormal_counts': <DatasetRoutingSemantics.SINGLE_SOURCE: 'single_source'>})",
+      true
+    ],
+    [
+      "tencent.finance.qq.sector",
+      [
+        [
+          "market.instrument_sector_snapshot",
+          "1.0"
+        ]
+      ],
+      false,
+      [],
+      "mappingproxy({'market.instrument_sector_snapshot': <DatasetRoutingSemantics.SINGLE_SOURCE: 'single_source'>})",
+      true
+    ],
+    [
+      "eastmoney.stockrank",
+      [
+        [
+          "market.stock_keyword",
+          "1.0"
+        ]
+      ],
+      false,
+      [],
+      "mappingproxy({'market.stock_keyword': <DatasetRoutingSemantics.SINGLE_SOURCE: 'single_source'>})",
+      true
+    ],
+    [
+      "tencent.finance.qq.industry",
+      [
+        [
+          "market.industry_comparison",
+          "1.0"
+        ]
+      ],
+      false,
+      [],
+      "mappingproxy({'market.industry_comparison': <DatasetRoutingSemantics.SINGLE_SOURCE: 'single_source'>})",
+      true
+    ],
+    [
+      "tonghuashun.financial",
+      [
+        [
+          "financial.statement",
+          "1.0"
+        ]
+      ],
+      false,
+      [],
+      "mappingproxy({'financial.statement': <DatasetRoutingSemantics.MULTI_PROVIDER: 'multi_provider'>})",
+      true
+    ],
+    [
+      "tencent.finance.qq.f10",
+      [
+        [
+          "fundamental.company_profile",
+          "1.0"
+        ],
+        [
+          "fundamental.financial_summary",
+          "1.0"
+        ],
+        [
+          "fundamental.revenue_breakdown",
+          "1.0"
+        ],
+        [
+          "fundamental.industry_comparison",
+          "1.0"
+        ],
+        [
+          "ownership.capital_snapshot",
+          "1.0"
+        ],
+        [
+          "ownership.holder_summary_snapshot",
+          "1.0"
+        ],
+        [
+          "company.executive_snapshot",
+          "1.0"
+        ],
+        [
+          "company.executive_share_change",
+          "1.0"
+        ],
+        [
+          "corporate_action.dividend",
+          "1.0"
+        ],
+        [
+          "corporate_action.repurchase",
+          "1.0"
+        ]
+      ],
+      false,
+      [],
+      "mappingproxy({'fundamental.company_profile': <DatasetRoutingSemantics.MULTI_PROVIDER: 'multi_provider'>, 'fundamental.financial_summary': <DatasetRoutingSemantics.MULTI_PROVIDER: 'multi_provider'>, 'fundamental.revenue_breakdown': <DatasetRoutingSemantics.MULTI_PROVIDER: 'multi_provider'>, 'fundamental.industry_comparison': <DatasetRoutingSemantics.MULTI_PROVIDER: 'multi_provider'>, 'ownership.capital_snapshot': <DatasetRoutingSemantics.MULTI_PROVIDER: 'multi_provider'>, 'ownership.holder_summary_snapshot': <DatasetRoutingSemantics.MULTI_PROVIDER: 'multi_provider'>, 'company.executive_snapshot': <DatasetRoutingSemantics.MULTI_PROVIDER: 'multi_provider'>, 'company.executive_share_change': <DatasetRoutingSemantics.MULTI_PROVIDER: 'multi_provider'>, 'corporate_action.dividend': <DatasetRoutingSemantics.MULTI_PROVIDER: 'multi_provider'>, 'corporate_action.repurchase': <DatasetRoutingSemantics.MULTI_PROVIDER: 'multi_provider'>})",
+      true
+    ],
+    [
+      "tencent.finance.qq.float_holder",
+      [
+        [
+          "ownership.float_holder",
+          "1.0"
+        ]
+      ],
+      false,
+      [],
+      "mappingproxy({'ownership.float_holder': <DatasetRoutingSemantics.MULTI_PROVIDER: 'multi_provider'>})",
+      true
+    ],
+    [
+      "eastmoney.news",
+      [
+        [
+          "news.document",
+          "1.0"
+        ]
+      ],
+      false,
+      [],
+      "mappingproxy({'news.document': <DatasetRoutingSemantics.MULTI_PROVIDER: 'multi_provider'>})",
+      true
+    ],
+    [
+      "eastmoney.disclosure",
+      [
+        [
+          "disclosure.document",
+          "1.0"
+        ]
+      ],
+      false,
+      [],
+      "mappingproxy({'disclosure.document': <DatasetRoutingSemantics.MULTI_PROVIDER: 'multi_provider'>})",
+      true
+    ],
+    [
+      "eastmoney.market_news",
+      [
+        [
+          "news.document",
+          "1.0"
+        ]
+      ],
+      false,
+      [],
+      "mappingproxy({'news.document': <DatasetRoutingSemantics.MULTI_PROVIDER: 'multi_provider'>})",
+      true
+    ],
+    [
+      "aigupiao.market_news",
+      [
+        [
+          "news.document",
+          "1.0"
+        ]
+      ],
+      false,
+      [],
+      "mappingproxy({'news.document': <DatasetRoutingSemantics.MULTI_PROVIDER: 'multi_provider'>})",
+      true
+    ],
+    [
+      "baidu.finscope.market_news",
+      [
+        [
+          "news.document",
+          "1.0"
+        ]
+      ],
+      false,
+      [],
+      "mappingproxy({'news.document': <DatasetRoutingSemantics.MULTI_PROVIDER: 'multi_provider'>})",
+      true
+    ],
+    [
+      "aigupiao.market_sentiment",
+      [
+        [
+          "market.sentiment_snapshot",
+          "1.0"
+        ]
+      ],
+      false,
+      [],
+      "mappingproxy({'market.sentiment_snapshot': <DatasetRoutingSemantics.SINGLE_SOURCE: 'single_source'>})",
+      true
+    ],
+    [
+      "aigupiao.series_limit_up",
+      [
+        [
+          "market.consecutive_limit_up_snapshot",
+          "1.0"
+        ]
+      ],
+      false,
+      [],
+      "mappingproxy({'market.consecutive_limit_up_snapshot': <DatasetRoutingSemantics.SINGLE_SOURCE: 'single_source'>})",
+      true
+    ],
+    [
+      "aigupiao.dragon_tiger",
+      [
+        [
+          "market.dragon_tiger_list",
+          "1.0"
+        ],
+        [
+          "market.dragon_tiger_detail",
+          "1.0"
+        ]
+      ],
+      false,
+      [],
+      "mappingproxy({'market.dragon_tiger_list': <DatasetRoutingSemantics.SINGLE_SOURCE: 'single_source'>, 'market.dragon_tiger_detail': <DatasetRoutingSemantics.SINGLE_SOURCE: 'single_source'>})",
+      true
+    ],
+    [
+      "jiuyangongshe.daily_replay",
+      [
+        [
+          "market.daily_replay",
+          "1.0"
+        ]
+      ],
+      true,
+      [
+        "playwright"
+      ],
+      "mappingproxy({'market.daily_replay': <DatasetRoutingSemantics.SINGLE_SOURCE: 'single_source'>})",
+      true
+    ]
+  ],
+  "upstreamSchemaNormalization": {
+    "decimalStringPattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+    "reason": "Ignore known upstream Decimal regex emission and explicit additionalProperties=true default; canonicalize equivalent singleton enum/const across supported Pydantic versions."
+  }
+}

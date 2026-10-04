@@ -1,5 +1,26 @@
 # FinchX Release Notes
 
+## 2.0.3 — 2026-10-04
+
+- Split Client namespace implementations into `finchx.api` and Collector execution,
+  routes, policies, and results into focused modules. Existing imports, public
+  signatures, Dataset schemas, and model module paths remain compatible.
+- Move trading-calendar orchestration into `finchx.query.trading_calendar`, with
+  compatibility imports at the previous paths. Separate deviation source-input
+  validation and Decimal rounding helpers without changing calculation behavior.
+- Retain financial-summary period labels and source field mappings in the existing
+  provenance adjustment envelope. Mark unspecified period basis, net-profit
+  attribution and EPS basis explicitly; business payloads and warnings are unchanged.
+- Document repository maintenance, source-data semantics, storage compatibility,
+  and application upgrade checks. Correct the construction documentation: article
+  details use an in-memory cache; construction does not create files or make requests.
+- Add regressions for the 2.0.2 public contract, historical storage, and the provider
+  extension surface used by StockX. No earnings-forecast endpoint is introduced.
+
+- Add branch/pull-request CI that tests Python 3.10–3.13, builds wheel/sdist,
+  checks both artifacts and smoke-tests isolated installs. Publishing remains
+  restricted to the separately authorized GitHub Release workflow.
+
 ## 2.0.2 — 2026-10-02
 
 FinchX 2.0.2 introduces scenario-based deviation results and improves source fidelity, pagination reporting, and safe diagnostics across market providers.

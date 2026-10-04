@@ -1,4 +1,6 @@
 from __future__ import annotations
+
+from schema_compat import canonical_schema
 import json
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -284,7 +286,7 @@ def test_hotlist_schemas_match_model_and_standard_decimal_wire_values():
         else:
             assert schema["oneOf"]==expected["oneOf"]
             assert schema["discriminator"]==expected["discriminator"]
-            assert schema["$defs"]==expected["$defs"]
+            assert canonical_schema(schema["$defs"])==canonical_schema(expected["$defs"])
         Draft202012Validator.check_schema(schema)
     fx,_=client()
     record=fx.hotlist.stocks().data[0]

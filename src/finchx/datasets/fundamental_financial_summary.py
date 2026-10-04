@@ -8,6 +8,7 @@ from typing import Literal
 from pydantic import Field
 
 from finchx.contracts import (
+    Adjustment,
     Amount,
     DataStatus,
     Percentage,
@@ -96,9 +97,11 @@ def normalize_financial_summary(
         raise ValueError("provider returned financial summary for a different instrument")
     _aware(row.captured_at)
     periods: list[FinancialSummaryPeriod] = []
+    source_periods: list[_FinancialPeriod] = []
     if row.current_financial is not None:
-        periods.append(_period_model(row.current_financial))
-    periods.extend(_period_model(item) for item in row.historical_financial)
+        source_periods.append(row.current_financial)
+    source_periods.extend(row.historical_financial)
+    periods.extend(_period_model(item) for item in source_periods)
     data = FinancialSummaryData(
         symbol=canonical_symbol(request.instrument_id),
         periods=periods,
@@ -118,12 +121,32 @@ def normalize_financial_summary(
         quality=Quality(),
         provenance=Provenance(
             recordClass=ProvenanceClass.STANDARDIZED,
-            transformationVersion="tencent-jiankuang-financial-summary-normalizer/1",
+            transformationVersion="tencent-jiankuang-financial-summary-normalizer/2",
             sourceReferences=[
                 SourceReference(
                     providerId=source.provider_id,
                     sourceRecordId=row.source_record_id,
                     sourceUrl=row.source_url or source.source_url,
+                )
+            ],
+            adjustments=[
+                Adjustment(
+                    name="source_financial_periods",
+                    version="1",
+                    details={
+                        "periods": [
+                            {
+                                "reportedPeriodLabel": item.reported_period_label,
+                                "periodEnd": item.period_end.isoformat() if item.period_end else None,
+                                "periodType": item.period_type,
+                                "sourceFields": dict(item.source_fields),
+                            }
+                            for item in source_periods
+                        ],
+                        "periodBasis": "unspecified",
+                        "netProfitAttribution": "unspecified",
+                        "epsBasis": "unspecified",
+                    },
                 )
             ],
         ),

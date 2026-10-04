@@ -1,3 +1,4 @@
+from schema_compat import canonical_schema
 import json
 from decimal import Decimal
 
@@ -215,7 +216,7 @@ def test_model_fields_required_fields_aliases_and_enums_match_schema():
     abnormal_records = schemas["market-abnormal-records.schema.json"]
     generated_records = AbnormalRecordData.model_json_schema(by_alias=True)
     assert abnormal_records["anyOf"] == generated_records["anyOf"]
-    assert abnormal_records["$defs"] == generated_records["$defs"]
+    assert canonical_schema(abnormal_records["$defs"]) == canonical_schema(generated_records["$defs"])
 
     for schema_name, model_type in (
         ("market-equity-intraday.schema.json", EquityIntradayData),

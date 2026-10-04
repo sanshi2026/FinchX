@@ -547,7 +547,8 @@ class TencentF10Provider:
             "gross_margin": None,
         }
         source_fields = {key: f"zyzb.detail.{field}" for key, field in {
-            "eps": "mgsy", "revenue": ("yyzsr" if detail.get("yyzsr") is not None else "yysr"), "revenue_growth": "zsrzzl",
+            "eps": "mgsy", "revenue": ("yyzsr" if "yyzsr" in detail else "yysr"),
+            "revenue_growth": ("zsrzzl" if "zsrzzl" in detail else "srzzl"),
             "net_profit": "jlr", "net_profit_growth": "jlrzzl", "book_value_per_share": "mgjzc",
             "net_assets": "jzc", "goodwill": "sy", "goodwill_to_net_assets": "sy_jzc",
             "roe": "jzcsyl", "debt_ratio": "zcfzl",

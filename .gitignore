@@ -26,6 +26,16 @@ dist/
 *.db-*
 .firecrawl/
 docs/tasks/
+/data/
+/cache/
+/logs/
+# Local credentials/configuration; keep project release workflows tracked.
+/.aws/
+/credentials/
+*.pem
+*.key
+*.p12
+*.pfx
 
 # IDE and editor state
 .idea/
