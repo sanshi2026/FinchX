@@ -1,26 +1,19 @@
-include README.md
-include CHANGELOG.md
-include pyproject.toml
-include LICENSE
-recursive-include src/finchx *.py *.json
+include README.md LICENSE
+include docs/API.md
+recursive-include tests *.py
+graft tests/fixtures
 
-# Tests and repository-only material stay in the repository, not in the source package.
-prune tests
-prune docs
-prune examples
-prune .firecrawl
-prune .codex
+prune .git
 prune .agents
-prune data
-prune cache
-prune logs
-exclude AGENTS.md
-
-global-exclude .DS_Store
-global-exclude *.py[cod]
-global-exclude *.sqlite
-global-exclude *.sqlite3
-global-exclude *.db
-global-exclude *.db-*
-global-exclude .env
-global-exclude *.env
+prune .codex
+prune .aws
+prune .venv
+prune venv
+prune build
+prune dist
+prune .pytest_cache
+prune .mypy_cache
+prune .ruff_cache
+prune htmlcov
+prune docs/tasks
+global-exclude AGENTS.md .env .env.* .pypirc .DS_Store *.py[cod]

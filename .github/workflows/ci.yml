@@ -1,6 +1,6 @@
 name: CI
 
-on:
+"on":
   push:
     branches: [main]
   pull_request:
@@ -9,18 +9,23 @@ on:
 permissions:
   contents: read
 
+defaults:
+  run:
+    shell: bash
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   test:
-    name: Test Python ${{ matrix.python-version }}
-    runs-on: ubuntu-latest
+    name: Test Python ${{ matrix.python-version }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
     steps:
       - name: Check out source
         uses: actions/checkout@v4
@@ -29,14 +34,18 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install test dependencies
-        run: python -m pip install -e ".[dev,calendar]"
+        run: python -m pip install -e ".[dev,calendar,pdf,jygs]"
       - name: Run regression tests
         run: python -m pytest
 
   build:
-    name: Build and smoke-test artifacts
+    name: Build and smoke-test artifacts on ${{ matrix.os }}
     needs: test
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
     steps:
       - name: Check out source
         uses: actions/checkout@v4
@@ -49,34 +58,71 @@ jobs:
       - name: Build wheel and source distribution
         run: python -m build
       - name: Validate artifacts
+        id: artifacts
         run: |
           set -euo pipefail
-          python -m twine check dist/*
-          test "$(find dist -maxdepth 1 -type f | wc -l | tr -d ' ')" -eq 2
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          import tomllib
+
+          project = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))["project"]
+          if project["name"] != "finchx":
+              raise SystemExit("project.name must be finchx")
+          version = project["version"]
+          expected = {
+              f"finchx-{version}-py3-none-any.whl",
+              f"finchx-{version}.tar.gz",
+          }
+          paths = list(Path("dist").iterdir())
+          actual = {path.name for path in paths}
+          if actual != expected or not all(path.is_file() for path in paths):
+              raise SystemExit(f"unexpected build artifacts: {sorted(actual)}")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"version={version}\n")
+          print("Validated exact wheel and sdist artifact set")
+          PY
+          python -m twine check --strict dist/*
       - name: Smoke-test isolated wheel and sdist installs
+        env:
+          PACKAGE_VERSION: ${{ steps.artifacts.outputs.version }}
         run: |
           set -euo pipefail
           for artifact in dist/*.whl dist/*.tar.gz; do
             smoke_dir="$(mktemp -d)"
+            trap 'rm -rf "$smoke_dir"' EXIT
             python -m venv "$smoke_dir"
-            "$smoke_dir/bin/python" -m pip install "$artifact"
-            "$smoke_dir/bin/python" - <<'PY'
+            if [[ "$RUNNER_OS" == "Windows" ]]; then
+              smoke_python="$smoke_dir/Scripts/python.exe"
+            else
+              smoke_python="$smoke_dir/bin/python"
+            fi
+            "$smoke_python" -m pip install --no-cache-dir "$artifact"
+            "$smoke_python" -I -B - <<'PY'
           from importlib.metadata import version
+          import os
+          import sys
+
           import finchx
           from finchx import FinchX
-          from finchx.schemas import iter_schema_resources, read_schema
 
-          assert version("finchx") == finchx.__version__
-          assert list(iter_schema_resources()), "no schema resources installed"
-          assert read_schema("market-quote.schema.json")["type"] == "object"
-          FinchX()
+          assert version("finchx") == finchx.__version__ == os.environ["PACKAGE_VERSION"]
+          fx = FinchX()
+          assert callable(fx.reference.pdf_text)
+          assert callable(fx.market.ranking)
+          assert callable(fx.regulation.deviation)
+          for optional in ("pypdfium2", "playwright", "pandas_market_calendars"):
+              assert not any(name == optional or name.startswith(optional + ".") for name in sys.modules)
+          print(f"Verified installed FinchX {finchx.__version__}: {finchx.__file__}")
           PY
+            "$smoke_python" -m pip check
             rm -rf "$smoke_dir"
+            trap - EXIT
           done
       - name: Save tested artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: finchx-ci-${{ github.sha }}-dist
+          name: finchx-ci-${{ github.sha }}-${{ runner.os }}-dist
           path: dist/*
           if-no-files-found: error
           retention-days: 7

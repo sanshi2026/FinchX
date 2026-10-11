@@ -1,0 +1,166 @@
+{
+  "status_code": 0,
+  "status_msg": "Success",
+  "data": [
+    {
+      "stockCode": "120:931743",
+      "etfMarket": "36",
+      "etfCode": "159327",
+      "etfName": "半导体设备ETF万家",
+      "thsName": "半导体设备ETF",
+      "data": "100%"
+    },
+    {
+      "stockCode": "32:399975",
+      "etfMarket": "20",
+      "etfCode": "512570",
+      "etfName": "证券ETF易方达",
+      "thsName": "证券ETF",
+      "data": "100%"
+    },
+    {
+      "stockCode": "120:950125",
+      "etfMarket": "20",
+      "etfCode": "588710",
+      "etfName": "科创半导体设备ETF华泰柏瑞",
+      "thsName": "科创半导体设备ETF",
+      "data": "100%"
+    },
+    {
+      "stockCode": "32:399441",
+      "etfMarket": "36",
+      "etfCode": "159839",
+      "etfName": "生物医药ETF汇添富",
+      "thsName": "生物医药ETF",
+      "data": "100%"
+    },
+    {
+      "stockCode": "120:H30184",
+      "etfMarket": "36",
+      "etfCode": "159801",
+      "etfName": "芯片ETF广发",
+      "thsName": "芯片ETF",
+      "data": null
+    },
+    {
+      "stockCode": "120:931160",
+      "etfMarket": "20",
+      "etfCode": "515880",
+      "etfName": "通信ETF国泰",
+      "thsName": "通信ETF",
+      "data": "100%"
+    },
+    {
+      "stockCode": "120:931152",
+      "etfMarket": "20",
+      "etfCode": "516080",
+      "etfName": "创新药ETF易方达",
+      "thsName": "创新药ETF",
+      "data": "100%"
+    },
+    {
+      "stockCode": "32:399989",
+      "etfMarket": "20",
+      "etfCode": "560260",
+      "etfName": "医疗ETF广发",
+      "thsName": "医疗ETF",
+      "data": "100%"
+    },
+    {
+      "stockCode": "32:980017",
+      "etfMarket": "36",
+      "etfCode": "159801",
+      "etfName": "芯片ETF广发",
+      "thsName": "芯片ETF",
+      "data": "100%"
+    },
+    {
+      "stockCode": "120:000813",
+      "etfMarket": "20",
+      "etfCode": "516220",
+      "etfName": "化工ETF国泰",
+      "thsName": "化工ETF",
+      "data": "100%"
+    },
+    {
+      "stockCode": "32:399998",
+      "etfMarket": "20",
+      "etfCode": "515220",
+      "etfName": "煤炭ETF国泰",
+      "thsName": "煤炭ETF",
+      "data": "100%"
+    },
+    {
+      "stockCode": "32:399986",
+      "etfMarket": "20",
+      "etfCode": "512820",
+      "etfName": "银行ETF汇添富",
+      "thsName": "银行ETF",
+      "data": "100%"
+    },
+    {
+      "stockCode": "120:931238",
+      "etfMarket": "36",
+      "etfCode": "159562",
+      "etfName": "黄金股ETF华夏",
+      "thsName": "黄金股ETF",
+      "data": "100%"
+    },
+    {
+      "stockCode": "120:931775",
+      "etfMarket": "20",
+      "etfCode": "515060",
+      "etfName": "房地产ETF华夏",
+      "thsName": "房地产ETF",
+      "data": "100%"
+    },
+    {
+      "stockCode": "120:950161",
+      "etfMarket": "20",
+      "etfCode": "589120",
+      "etfName": "科创创新药ETF汇添富",
+      "thsName": "科创创新药ETF",
+      "data": "100%"
+    },
+    {
+      "stockCode": "120:931719",
+      "etfMarket": "36",
+      "etfCode": "159796",
+      "etfName": "电池ETF汇添富",
+      "thsName": "电池ETF",
+      "data": "100%"
+    },
+    {
+      "stockCode": "120:930986",
+      "etfMarket": "36",
+      "etfCode": "159086",
+      "etfName": "金融科技ETF广发",
+      "thsName": "金融科技ETF",
+      "data": "100%"
+    },
+    {
+      "stockCode": "120:930901",
+      "etfMarket": "20",
+      "etfCode": "516770",
+      "etfName": "游戏ETF华泰柏瑞",
+      "thsName": "游戏ETF",
+      "data": "100%"
+    },
+    {
+      "stockCode": "120:000941",
+      "etfMarket": "20",
+      "etfCode": "588960",
+      "etfName": "科创新能源ETF富国",
+      "thsName": "科创新能源ETF",
+      "data": null
+    },
+    {
+      "stockCode": "120:H30590",
+      "etfMarket": "36",
+      "etfCode": "159213",
+      "etfName": "机器人ETF汇添富",
+      "thsName": "机器人ETF",
+      "data": "100%"
+    }
+  ]
+}

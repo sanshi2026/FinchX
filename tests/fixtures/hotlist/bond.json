@@ -1,0 +1,806 @@
+{
+  "status_code": 0,
+  "data": [
+    {
+      "market": "35",
+      "code": "123268",
+      "rise_and_fall": 7.6939,
+      "name": "本川转债",
+      "hot": 109634.5,
+      "order": 1
+    },
+    {
+      "market": "19",
+      "code": "111024",
+      "rise_and_fall": 3.2465,
+      "name": "澳弘转债",
+      "hot": 88033.5,
+      "order": 2
+    },
+    {
+      "market": "35",
+      "code": "123273",
+      "rise_and_fall": -4.1768,
+      "name": "三江转债",
+      "hot": 58045.5,
+      "order": 3
+    },
+    {
+      "market": "35",
+      "code": "123283",
+      "rise_and_fall": -2.6965,
+      "name": "丰茂转债",
+      "hot": 41003.5,
+      "order": 4
+    },
+    {
+      "market": "35",
+      "code": "123243",
+      "rise_and_fall": -1.5136,
+      "name": "严牌转债",
+      "hot": 37345.0,
+      "order": 5
+    },
+    {
+      "market": "19",
+      "code": "113610",
+      "rise_and_fall": 3.2505,
+      "name": "灵康转债",
+      "hot": 32133.5,
+      "order": 6
+    },
+    {
+      "market": "35",
+      "code": "123285",
+      "rise_and_fall": -1.4382,
+      "name": "润禾转02",
+      "hot": 28490.5,
+      "order": 7
+    },
+    {
+      "market": "35",
+      "code": "127096",
+      "rise_and_fall": -6.1388,
+      "name": "泰坦转债",
+      "hot": 26429.0,
+      "order": 8
+    },
+    {
+      "market": "19",
+      "code": "118058",
+      "rise_and_fall": -3.3099,
+      "name": "微导转债",
+      "hot": 23046.0,
+      "order": 9
+    },
+    {
+      "market": "19",
+      "code": "118064",
+      "rise_and_fall": -4.3973,
+      "name": "联瑞转债",
+      "hot": 20621.0,
+      "order": 10
+    },
+    {
+      "market": "35",
+      "code": "123235",
+      "rise_and_fall": -3.4455,
+      "name": "亿田转债",
+      "hot": 18945.5,
+      "order": 11
+    },
+    {
+      "market": "35",
+      "code": "123241",
+      "rise_and_fall": -4.3951,
+      "name": "欧通转债",
+      "hot": 15434.5,
+      "order": 12
+    },
+    {
+      "market": "19",
+      "code": "111015",
+      "rise_and_fall": -0.4114,
+      "name": "东亚转债",
+      "hot": 15084.0,
+      "order": 13
+    },
+    {
+      "market": "19",
+      "code": "118027",
+      "rise_and_fall": -2.065,
+      "name": "宏图转债",
+      "hot": 14970.5,
+      "order": 14
+    },
+    {
+      "market": "19",
+      "code": "113709",
+      "rise_and_fall": -2.0069,
+      "name": "振26转债",
+      "hot": 13126.0,
+      "order": 15
+    },
+    {
+      "market": "35",
+      "code": "123284",
+      "rise_and_fall": -2.6961,
+      "name": "强达转债",
+      "hot": 13036.0,
+      "order": 16
+    },
+    {
+      "market": "19",
+      "code": "118044",
+      "rise_and_fall": -1.6748,
+      "name": "赛特转债",
+      "hot": 13009.5,
+      "order": 17
+    },
+    {
+      "market": "35",
+      "code": "123255",
+      "rise_and_fall": 0.2451,
+      "name": "鼎龙转债",
+      "hot": 12398.0,
+      "order": 18
+    },
+    {
+      "market": "35",
+      "code": "123118",
+      "rise_and_fall": -2.5751,
+      "name": "惠城转债",
+      "hot": 12361.0,
+      "order": 19
+    },
+    {
+      "market": "35",
+      "code": "123245",
+      "rise_and_fall": -5.4315,
+      "name": "集智转债",
+      "hot": 11696.5,
+      "order": 20
+    },
+    {
+      "market": "19",
+      "code": "113708",
+      "rise_and_fall": -0.6208,
+      "name": "曙26转债",
+      "hot": 10727.0,
+      "order": 21
+    },
+    {
+      "market": "19",
+      "code": "113710",
+      "rise_and_fall": -2.3622,
+      "name": "四方转债",
+      "hot": 10616.5,
+      "order": 22
+    },
+    {
+      "market": "35",
+      "code": "127070",
+      "rise_and_fall": 0.1144,
+      "name": "大中转债",
+      "hot": 10287.0,
+      "order": 23
+    },
+    {
+      "market": "19",
+      "code": "118071",
+      "rise_and_fall": -4.2301,
+      "name": "华峰转债",
+      "hot": 10089.0,
+      "order": 24
+    },
+    {
+      "market": "19",
+      "code": "113701",
+      "rise_and_fall": -2.3466,
+      "name": "祥和转债",
+      "hot": 8888.0,
+      "order": 25
+    },
+    {
+      "market": "35",
+      "code": "127117",
+      "rise_and_fall": null,
+      "name": "奥士转债",
+      "hot": 7817.0,
+      "order": 26
+    },
+    {
+      "market": "35",
+      "code": "123270",
+      "rise_and_fall": -3.18,
+      "name": "盛德转债",
+      "hot": 7451.5,
+      "order": 27
+    },
+    {
+      "market": "19",
+      "code": "118075",
+      "rise_and_fall": -3.3171,
+      "name": "奥普转债",
+      "hot": 7296.5,
+      "order": 28
+    },
+    {
+      "market": "35",
+      "code": "127053",
+      "rise_and_fall": -7.1293,
+      "name": "豪美转债",
+      "hot": 7277.0,
+      "order": 29
+    },
+    {
+      "market": "35",
+      "code": "123176",
+      "rise_and_fall": -4.9463,
+      "name": "精测转2",
+      "hot": 6858.5,
+      "order": 30
+    },
+    {
+      "market": "19",
+      "code": "118062",
+      "rise_and_fall": -1.7547,
+      "name": "天准转债",
+      "hot": 6458.5,
+      "order": 31
+    },
+    {
+      "market": "19",
+      "code": "113046",
+      "rise_and_fall": -3.0374,
+      "name": "金田转债",
+      "hot": 6453.5,
+      "order": 32
+    },
+    {
+      "market": "19",
+      "code": "118074",
+      "rise_and_fall": -0.6553,
+      "name": "特宝转债",
+      "hot": 6402.5,
+      "order": 33
+    },
+    {
+      "market": "19",
+      "code": "118061",
+      "rise_and_fall": -2.4825,
+      "name": "茂莱转债",
+      "hot": 6060.0,
+      "order": 34
+    },
+    {
+      "market": "35",
+      "code": "123213",
+      "rise_and_fall": -1.3511,
+      "name": "天源转债",
+      "hot": 6025.5,
+      "order": 35
+    },
+    {
+      "market": "35",
+      "code": "123267",
+      "rise_and_fall": -3.1011,
+      "name": "珂玛转债",
+      "hot": 5728.5,
+      "order": 36
+    },
+    {
+      "market": "19",
+      "code": "111012",
+      "rise_and_fall": -4.0691,
+      "name": "福新转债",
+      "hot": 5695.5,
+      "order": 37
+    },
+    {
+      "market": "35",
+      "code": "127080",
+      "rise_and_fall": -3.1331,
+      "name": "声迅转债",
+      "hot": 5666.0,
+      "order": 38
+    },
+    {
+      "market": "35",
+      "code": "127116",
+      "rise_and_fall": null,
+      "name": "瑞鹄转02",
+      "hot": 5281.5,
+      "order": 39
+    },
+    {
+      "market": "19",
+      "code": "113677",
+      "rise_and_fall": -3.4985,
+      "name": "华懋转债",
+      "hot": 5164.0,
+      "order": 40
+    },
+    {
+      "market": "35",
+      "code": "123131",
+      "rise_and_fall": -0.4783,
+      "name": "奥飞转债",
+      "hot": 5083.5,
+      "order": 41
+    },
+    {
+      "market": "19",
+      "code": "113702",
+      "rise_and_fall": -2.311,
+      "name": "斯达转债",
+      "hot": 4981.0,
+      "order": 42
+    },
+    {
+      "market": "35",
+      "code": "123225",
+      "rise_and_fall": -0.5951,
+      "name": "翔丰转债",
+      "hot": 4975.5,
+      "order": 43
+    },
+    {
+      "market": "19",
+      "code": "113706",
+      "rise_and_fall": -3.4563,
+      "name": "金帝转债",
+      "hot": 4948.5,
+      "order": 44
+    },
+    {
+      "market": "35",
+      "code": "123223",
+      "rise_and_fall": 0.4065,
+      "name": "九典转02",
+      "hot": 4907.5,
+      "order": 45
+    },
+    {
+      "market": "19",
+      "code": "118005",
+      "rise_and_fall": 1.1614,
+      "name": "天奈转债",
+      "hot": 4738.5,
+      "order": 46
+    },
+    {
+      "market": "35",
+      "code": "123158",
+      "rise_and_fall": -4.5749,
+      "name": "宙邦转债",
+      "hot": 4702.0,
+      "order": 47
+    },
+    {
+      "market": "35",
+      "code": "123280",
+      "rise_and_fall": -0.59,
+      "name": "三鑫转债",
+      "hot": 4601.5,
+      "order": 48
+    },
+    {
+      "market": "35",
+      "code": "123265",
+      "rise_and_fall": -0.4007,
+      "name": "耐普转02",
+      "hot": 4526.0,
+      "order": 49
+    },
+    {
+      "market": "35",
+      "code": "127037",
+      "rise_and_fall": -3.8112,
+      "name": "银轮转债",
+      "hot": 4473.5,
+      "order": 50
+    },
+    {
+      "market": "35",
+      "code": "123282",
+      "rise_and_fall": -3.259,
+      "name": "震裕转02",
+      "hot": 4428.0,
+      "order": 51
+    },
+    {
+      "market": "19",
+      "code": "118076",
+      "rise_and_fall": -2.098,
+      "name": "先锋转债",
+      "hot": 4418.5,
+      "order": 52
+    },
+    {
+      "market": "35",
+      "code": "127055",
+      "rise_and_fall": -1.8398,
+      "name": "精装转债",
+      "hot": 4401.0,
+      "order": 53
+    },
+    {
+      "market": "19",
+      "code": "118051",
+      "rise_and_fall": -4.2282,
+      "name": "皓元转债",
+      "hot": 4380.0,
+      "order": 54
+    },
+    {
+      "market": "19",
+      "code": "113615",
+      "rise_and_fall": -0.8456,
+      "name": "金诚转债",
+      "hot": 4160.0,
+      "order": 55
+    },
+    {
+      "market": "35",
+      "code": "123278",
+      "rise_and_fall": -2.4409,
+      "name": "合金转债",
+      "hot": 4150.5,
+      "order": 56
+    },
+    {
+      "market": "35",
+      "code": "123091",
+      "rise_and_fall": -2.8602,
+      "name": "长海转债",
+      "hot": 4145.0,
+      "order": 57
+    },
+    {
+      "market": "19",
+      "code": "111025",
+      "rise_and_fall": -1.6101,
+      "name": "圣泉转债",
+      "hot": 4065.5,
+      "order": 58
+    },
+    {
+      "market": "35",
+      "code": "127069",
+      "rise_and_fall": -0.2453,
+      "name": "小熊转债",
+      "hot": 3953.0,
+      "order": 59
+    },
+    {
+      "market": "19",
+      "code": "118050",
+      "rise_and_fall": -5.9382,
+      "name": "航宇转债",
+      "hot": 3836.0,
+      "order": 60
+    },
+    {
+      "market": "19",
+      "code": "118059",
+      "rise_and_fall": -2.4586,
+      "name": "颀中转债",
+      "hot": 3776.0,
+      "order": 61
+    },
+    {
+      "market": "35",
+      "code": "123261",
+      "rise_and_fall": -1.0605,
+      "name": "普联转债",
+      "hot": 3736.5,
+      "order": 62
+    },
+    {
+      "market": "35",
+      "code": "123276",
+      "rise_and_fall": -1.691,
+      "name": "久吾转02",
+      "hot": 3420.0,
+      "order": 63
+    },
+    {
+      "market": "19",
+      "code": "118056",
+      "rise_and_fall": -5.5396,
+      "name": "路维转债",
+      "hot": 3267.0,
+      "order": 64
+    },
+    {
+      "market": "35",
+      "code": "123187",
+      "rise_and_fall": -1.3363,
+      "name": "超达转债",
+      "hot": 3254.0,
+      "order": 65
+    },
+    {
+      "market": "35",
+      "code": "123247",
+      "rise_and_fall": -1.4034,
+      "name": "万凯转债",
+      "hot": 3179.5,
+      "order": 66
+    },
+    {
+      "market": "35",
+      "code": "127092",
+      "rise_and_fall": -2.4331,
+      "name": "运机转债",
+      "hot": 3158.5,
+      "order": 67
+    },
+    {
+      "market": "35",
+      "code": "123279",
+      "rise_and_fall": -2.9433,
+      "name": "天脉转债",
+      "hot": 3158.5,
+      "order": 68
+    },
+    {
+      "market": "35",
+      "code": "123260",
+      "rise_and_fall": -2.7733,
+      "name": "卓镁转债",
+      "hot": 3004.0,
+      "order": 69
+    },
+    {
+      "market": "19",
+      "code": "118016",
+      "rise_and_fall": -2.4613,
+      "name": "京源转债",
+      "hot": 2912.5,
+      "order": 70
+    },
+    {
+      "market": "19",
+      "code": "113673",
+      "rise_and_fall": -1.8922,
+      "name": "岱美转债",
+      "hot": 2888.0,
+      "order": 71
+    },
+    {
+      "market": "19",
+      "code": "118072",
+      "rise_and_fall": -3.1353,
+      "name": "鼎通转债",
+      "hot": 2862.0,
+      "order": 72
+    },
+    {
+      "market": "19",
+      "code": "118070",
+      "rise_and_fall": 0.0697,
+      "name": "南芯转债",
+      "hot": 2810.0,
+      "order": 73
+    },
+    {
+      "market": "35",
+      "code": "123281",
+      "rise_and_fall": -0.1861,
+      "name": "中仑转债",
+      "hot": 2655.0,
+      "order": 74
+    },
+    {
+      "market": "19",
+      "code": "110081",
+      "rise_and_fall": -0.4016,
+      "name": "闻泰转债",
+      "hot": 2619.0,
+      "order": 75
+    },
+    {
+      "market": "35",
+      "code": "123207",
+      "rise_and_fall": -2.8291,
+      "name": "冠中转债",
+      "hot": 2515.5,
+      "order": 76
+    },
+    {
+      "market": "19",
+      "code": "118030",
+      "rise_and_fall": -2.1762,
+      "name": "睿创转债",
+      "hot": 2490.0,
+      "order": 77
+    },
+    {
+      "market": "19",
+      "code": "110076",
+      "rise_and_fall": 0.1248,
+      "name": "华海转债",
+      "hot": 2453.5,
+      "order": 78
+    },
+    {
+      "market": "35",
+      "code": "123195",
+      "rise_and_fall": 1.399,
+      "name": "蓝晓转02",
+      "hot": 2431.5,
+      "order": 79
+    },
+    {
+      "market": "19",
+      "code": "113646",
+      "rise_and_fall": -1.0339,
+      "name": "永吉转债",
+      "hot": 2385.0,
+      "order": 80
+    },
+    {
+      "market": "35",
+      "code": "123269",
+      "rise_and_fall": -1.1276,
+      "name": "金杨转债",
+      "hot": 2385.0,
+      "order": 81
+    },
+    {
+      "market": "19",
+      "code": "113707",
+      "rise_and_fall": -1.5884,
+      "name": "科博转债",
+      "hot": 2383.0,
+      "order": 82
+    },
+    {
+      "market": "19",
+      "code": "113704",
+      "rise_and_fall": -2.2506,
+      "name": "春风转债",
+      "hot": 2372.0,
+      "order": 83
+    },
+    {
+      "market": "19",
+      "code": "113680",
+      "rise_and_fall": -0.2565,
+      "name": "丽岛转债",
+      "hot": 2317.5,
+      "order": 84
+    },
+    {
+      "market": "19",
+      "code": "110092",
+      "rise_and_fall": -1.3141,
+      "name": "三房转债",
+      "hot": 2244.5,
+      "order": 85
+    },
+    {
+      "market": "19",
+      "code": "111000",
+      "rise_and_fall": -1.0691,
+      "name": "起帆转债",
+      "hot": 2125.0,
+      "order": 86
+    },
+    {
+      "market": "19",
+      "code": "110086",
+      "rise_and_fall": -0.5533,
+      "name": "精工转债",
+      "hot": 2120.0,
+      "order": 87
+    },
+    {
+      "market": "35",
+      "code": "123160",
+      "rise_and_fall": -1.9706,
+      "name": "泰福转债",
+      "hot": 2006.5,
+      "order": 88
+    },
+    {
+      "market": "19",
+      "code": "113678",
+      "rise_and_fall": -1.5655,
+      "name": "中贝转债",
+      "hot": 1941.0,
+      "order": 89
+    },
+    {
+      "market": "35",
+      "code": "123271",
+      "rise_and_fall": -3.5954,
+      "name": "通合转债",
+      "hot": 1916.5,
+      "order": 90
+    },
+    {
+      "market": "35",
+      "code": "123122",
+      "rise_and_fall": 0.5168,
+      "name": "富瀚转债",
+      "hot": 1902.5,
+      "order": 91
+    },
+    {
+      "market": "19",
+      "code": "110077",
+      "rise_and_fall": 1.3028,
+      "name": "洪城转债",
+      "hot": 1867.0,
+      "order": 92
+    },
+    {
+      "market": "35",
+      "code": "123277",
+      "rise_and_fall": -0.1257,
+      "name": "玉禾转债",
+      "hot": 1842.5,
+      "order": 93
+    },
+    {
+      "market": "19",
+      "code": "110102",
+      "rise_and_fall": -0.5589,
+      "name": "江农转债",
+      "hot": 1737.0,
+      "order": 94
+    },
+    {
+      "market": "35",
+      "code": "123263",
+      "rise_and_fall": -1.4176,
+      "name": "鼎捷转债",
+      "hot": 1719.5,
+      "order": 95
+    },
+    {
+      "market": "35",
+      "code": "123275",
+      "rise_and_fall": -1.6498,
+      "name": "肇民转债",
+      "hot": 1691.0,
+      "order": 96
+    },
+    {
+      "market": "19",
+      "code": "111022",
+      "rise_and_fall": -1.1925,
+      "name": "锡振转债",
+      "hot": 1678.5,
+      "order": 97
+    },
+    {
+      "market": "35",
+      "code": "123274",
+      "rise_and_fall": -1.7587,
+      "name": "维科转债",
+      "hot": 1660.0,
+      "order": 98
+    },
+    {
+      "market": "19",
+      "code": "110103",
+      "rise_and_fall": -0.2333,
+      "name": "申能转债",
+      "hot": 1659.0,
+      "order": 99
+    },
+    {
+      "market": "19",
+      "code": "113686",
+      "rise_and_fall": -1.3194,
+      "name": "泰瑞转债",
+      "hot": 1616.5,
+      "order": 100
+    }
+  ],
+  "status_msg": "success"
+}

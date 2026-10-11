@@ -1,40 +1,30 @@
 [build-system]
-requires = ["setuptools>=64"]
+requires = ["setuptools>=77.0.3"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "finchx"
-dynamic = ["version"]
-description = "An independent Python package for A-share market data"
+version = "3.0.0"
+description = "保留来源原始信息的金融数据接口"
 readme = "README.md"
-license = { file = "LICENSE" }
 requires-python = ">=3.10"
-dependencies = ["pydantic>=2.9,<3"]
-classifiers = [
-  "License :: OSI Approved :: Apache Software License",
-  "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.10",
-  "Programming Language :: Python :: 3.11",
-  "Programming Language :: Python :: 3.12",
-  "Programming Language :: Python :: 3.13",
-]
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+
+[project.urls]
+Source = "https://github.com/sanshi2026/FinchX"
+Documentation = "https://github.com/sanshi2026/FinchX/blob/main/docs/API.md"
+Issues = "https://github.com/sanshi2026/FinchX/issues"
 
 [project.optional-dependencies]
 calendar = ["pandas_market_calendars>=5.4,<6"]
-dev = ["pytest>=7", "jsonschema>=4.21", "tomli>=2; python_version < '3.11'"]
-jygs = ["playwright>=1.40,<2"]
-
-[tool.setuptools.dynamic]
-version = {attr = "finchx.__version__"}
-
-[tool.setuptools]
-license-files = ["LICENSE"]
+jygs = ["playwright>=1.50,<2"]
+pdf = ["pypdfium2>=5.14,<6"]
+dev = ["pytest>=7", "build>=1.2", "twine>=6"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
-[tool.setuptools.package-data]
-"finchx.schemas" = ["v1/*.schema.json", "v1/examples/*.json"]
-
 [tool.pytest.ini_options]
+pythonpath = ["src"]
 testpaths = ["tests"]

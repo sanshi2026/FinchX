@@ -1,0 +1,107 @@
+[
+  {
+    "MARKET": "B",
+    "STKNAME": "*ST康乐",
+    "VALIDATESTARTDATE": "2026-10-08",
+    "VALIDATEENDDATE": "2026-10-09",
+    "STKCODE": "920575"
+  },
+  {
+    "MARKET": "B",
+    "STKNAME": "*ST同辉",
+    "VALIDATESTARTDATE": "2026-10-08",
+    "VALIDATEENDDATE": "2026-10-09",
+    "STKCODE": "920090"
+  },
+  {
+    "MARKET": "B",
+    "STKNAME": "*ST田野",
+    "VALIDATESTARTDATE": "2026-10-08",
+    "VALIDATEENDDATE": "2026-10-09",
+    "STKCODE": "920023"
+  },
+  {
+    "MARKET": "0",
+    "STKNAME": "*ST元道",
+    "VALIDATESTARTDATE": "2026-09-30",
+    "VALIDATEENDDATE": "2026-10-27",
+    "STKCODE": "301139"
+  },
+  {
+    "MARKET": "0",
+    "STKNAME": "纳指科技",
+    "VALIDATESTARTDATE": "2026-09-30",
+    "VALIDATEENDDATE": "2026-10-20",
+    "STKCODE": "159509",
+    "LINK_URL": "https://wap.18.cn/app/detail/818/3349"
+  },
+  {
+    "MARKET": "1",
+    "STKNAME": "天普股份",
+    "VALIDATESTARTDATE": "2026-09-24",
+    "VALIDATEENDDATE": "2026-10-15",
+    "STKCODE": "605255",
+    "LINK_URL": "https://wap.18.cn/app/detail/818/3265"
+  },
+  {
+    "MARKET": "1",
+    "STKNAME": "标普500",
+    "VALIDATESTARTDATE": "2026-09-23",
+    "VALIDATEENDDATE": "2026-10-14",
+    "STKCODE": "513500",
+    "LINK_URL": "https://wap.18.cn/app/detail/818/2483"
+  },
+  {
+    "MARKET": "1",
+    "STKNAME": "纳指ETF",
+    "VALIDATESTARTDATE": "2026-09-23",
+    "VALIDATEENDDATE": "2026-10-14",
+    "STKCODE": "513100",
+    "LINK_URL": "https://wap.18.cn/app/detail/818/3503"
+  },
+  {
+    "MARKET": "0",
+    "STKNAME": "五洲医疗",
+    "VALIDATESTARTDATE": "2026-09-23",
+    "VALIDATEENDDATE": "2026-10-14",
+    "STKCODE": "301234",
+    "LINK_URL": "https://wap.18.cn/app/detail/818/3467"
+  },
+  {
+    "MARKET": "0",
+    "STKNAME": "闽东电力",
+    "VALIDATESTARTDATE": "2026-09-23",
+    "VALIDATEENDDATE": "2026-10-14",
+    "STKCODE": "000993"
+  },
+  {
+    "MARKET": "1",
+    "STKNAME": "*ST卓然",
+    "VALIDATESTARTDATE": "2026-09-22",
+    "VALIDATEENDDATE": "2026-10-13",
+    "STKCODE": "688121",
+    "LINK_URL": "https://wap.18.cn/app/detail/818/3491"
+  },
+  {
+    "MARKET": "1",
+    "STKNAME": "纳指基金",
+    "VALIDATESTARTDATE": "2026-09-22",
+    "VALIDATEENDDATE": "2026-10-13",
+    "STKCODE": "513390",
+    "LINK_URL": "https://wap.18.cn/app/detail/818/2527"
+  },
+  {
+    "MARKET": "1",
+    "STKNAME": "纳指指数",
+    "VALIDATESTARTDATE": "2026-09-21",
+    "VALIDATEENDDATE": "2026-10-12",
+    "STKCODE": "513870"
+  },
+  {
+    "MARKET": "1",
+    "STKNAME": "纳指100",
+    "VALIDATESTARTDATE": "2026-09-21",
+    "VALIDATEENDDATE": "2026-10-12",
+    "STKCODE": "513110"
+  }
+]

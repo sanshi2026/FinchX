@@ -1,0 +1,254 @@
+{
+  "errorCode": 0,
+  "errorMsg": "",
+  "result": {
+    "shortView": {},
+    "tags": [],
+    "dislike": [
+      {
+        "name": "来源",
+        "selected": false
+      },
+      {
+        "name": "质量太差",
+        "selected": false
+      }
+    ],
+    "tagObj": {
+      "_id": {
+        "$oid": "6ac78f6a18484d5e12181b29"
+      },
+      "id": 701116596,
+      "type": 3,
+      "userid": 506153816,
+      "tags": "",
+      "code": [
+        "688778",
+        "301662",
+        "603663",
+        "603200",
+        "002882",
+        "300073"
+      ],
+      "concept": [],
+      "fieldcodes": [],
+      "ctime": 1791463274,
+      "class": [
+        "002053006002"
+      ],
+      "hkcodes": [],
+      "import": 1,
+      "reason": [],
+      "uscodes": []
+    },
+    "prohibitCommentObj": {
+      "showComment": 1,
+      "isProhibit": 0,
+      "tip": "此内容暂不支持评论"
+    },
+    "showRiskTip": 1,
+    "isAdviser": 1,
+    "modules": [
+      {
+        "name": "navigation",
+        "data": {},
+        "api": "",
+        "params": {}
+      },
+      {
+        "name": "creative",
+        "data": {
+          "frontType": 0,
+          "subType": 1,
+          "subId": 214299,
+          "name": "联储证券周德升",
+          "avatar": "https://u.thsi.cn/avatarsrc/3f701e9119cc52e6042f0f9677856014",
+          "url": "https://t.10jqka.com.cn/m/channel/middlepage/?fid=214299&tab=&relative=",
+          "askLink": "https://t.10jqka.com.cn/m/adviserchat/adviserchatLoginPage/?adviserUid=506153816",
+          "desc": "联储证券投资顾问",
+          "mtime": 1791463274,
+          "isOwner": false,
+          "isFollow": null,
+          "hotKey": "sns_post_701116596",
+          "token": null,
+          "isV": 1,
+          "channelShareUrl": "https://t.10jqka.com.cn/m/channel/homePageShare/homepageshare.html?fid=214299",
+          "entry": null
+        },
+        "api": "",
+        "params": {}
+      },
+      {
+        "name": "disclaimer",
+        "data": {
+          "disclaimer": "该内容由联储证券投资顾问提供，证书编号：S1320619120004。该观点为投顾个人看法，仅供参考，不代表同花顺平台建议。"
+        },
+        "api": "",
+        "params": {}
+      },
+      {
+        "name": "comment",
+        "data": {},
+        "api": "https://comment.10jqka.com.cn/hotcommentv3/hotsort/701/701116596.202610090957.txt",
+        "params": {
+          "pid": 701116596
+        }
+      },
+      {
+        "name": "bottom_bar",
+        "data": [
+          {
+            "type": "input"
+          },
+          {
+            "type": "comment"
+          },
+          {
+            "type": "like"
+          },
+          {
+            "type": "share"
+          }
+        ],
+        "api": "",
+        "params": {}
+      },
+      {
+        "name": "theme_tag",
+        "data": []
+      },
+      {
+        "name": "recommend_read",
+        "data": []
+      },
+      {
+        "name": "share",
+        "data": [],
+        "api": "",
+        "params": ""
+      }
+    ],
+    "dataPack": {
+      "contentInfo": {
+        "title": "",
+        "pid": 701116596,
+        "abstract": "<p>固态电池“十五五”规划落地</p><p></p><p>工信部等七部门联合印发《新型电池产业发展“十五五”规划》，明确到2030年我国全固态电池初步实现规模化应用，标志国家层面重视度未变。产业正从电芯测试、中试线向示范应用推进，2027年有望开启装车示范运行。海外也在共振：三星SDI计划2027年H2量产、首个场景聚焦人形机器人；LG新能源计划2030年推出无负极固态电池用于机器人。全球产业化时间锚定2027年。投资建议优先聚焦两个环节：电解质（上海洗霸百吨级硫化锂产线已调试完成、价格仍200万/吨）和设备（海外干法产线落地、国内量产线后续落地）。</p><p>股票池：电解质——上海洗霸、厦钨新能、当升科技、金龙羽、三祥新材；设备——宏工科技、纳科诺尔、灵鸽科技、先惠技术等。</p><p></p><p>【右上角点击关注，解锁更多内容】   以上数据来源于同花顺、大智慧公开信息。</p><p>【风险提醒】以上由周德升S132****120004、胡响斌S132****050003提供，观点仅作投教交流，不构成投资建议。对所提及股票不承诺盈利可能性，对使用本观点所引致的任何损失不承担任何责任。股市有风险，投资需谨慎！】</p><p></p><span class=\"chat-selection-data\" data-chat-type=\"1\" data-chat-id=\"8477\"></span>",
+        "postType": 46,
+        "isCharge": 0,
+        "mtime": 1791463274,
+        "hotKey": "sns_post_701116596"
+      },
+      "shareInfo": {
+        "title": "固态电池“十五五”规划落地工信部等七部门联合印发《新型电池产...",
+        "shareKeys": {
+          "wx": "sns_share_wxp_701116596",
+          "wxq": "sns_share_wxqp_701116596",
+          "weibo": "sns_share_weibo_701116596",
+          "qq": "sns_share_qq_701116596",
+          "qqzone": "sns_share_qqzone_701116596",
+          "all": "sns_share_all_701116596"
+        },
+        "shareUrl": "https://t.10jqka.com.cn/m/post/shortViewShare/shortviewshare.html?pid=701116596",
+        "content": "来自同花顺联储证券周德升频道",
+        "thumbImageUrl": "",
+        "logoImageUrl": "",
+        "addPostLikeUrl": "https://t.10jqka.com.cn/m/api/newcircle/addPostLike/",
+        "cancelPostLikeUrl": "https://t.10jqka.com.cn/m/api/newcircle/cancelPostLike/"
+      }
+    },
+    "groupBaseObj": {},
+    "contentData": {
+      "postTitle": "固态电池“十五五”规划落地工信",
+      "time": "10-08 20:41",
+      "postTimestamp": 1791463274,
+      "readNum": 0,
+      "hotKey": "sns_post_701116596",
+      "imgs": [],
+      "content": "<p><a class=\"_dollar_\" target=\"_blank\" data-code=\"886032\" data-marketid=\"48\" href=\"https://t.10jqka.com.cn/m/guba/886032/48\">固态电池</a>“十五五”规划落地</p><p></p><p>工信部等七部门联合印发《新型电池产业发展“十五五”规划》，明确到2030年我国全固态电池初步实现规模化应用，标志国家层面重视度未变。产业正从电芯测试、中试线向示范应用推进，2027年有望开启装车示范运行。海外也在共振：<a class=\"_dollar_\" target=\"_blank\" data-type=\"kuaicha\" href=\"https://kuaicha.10jqka.com.cn/yuqingwebapp/yuqingapp/#/companyDetail?id=Q1222A7B92&pointFrom=tshqy&scFrom=noTitle\">三星SDI</a>计划2027年H2量产、首个场景聚焦<a class=\"_dollar_\" target=\"_blank\" data-code=\"886069\" data-marketid=\"48\" href=\"https://t.10jqka.com.cn/m/guba/886069/48\">人形机器人</a>；LG新<a class=\"_dollar_\" target=\"_blank\" data-code=\"850101\" data-marketid=\"64\" href=\"https://t.10jqka.com.cn/m/guba/850101/64\">能源</a>计划2030年推出无负极固态电池用于机器人。全球产业化时间锚定2027年。投资建议优先聚焦两个环节：电解质（<a class=\"_dollar_\" target=\"_blank\" data-code=\"603200\" data-marketid=\"17\" href=\"https://t.10jqka.com.cn/m/guba/603200/17\">上海洗霸</a>百吨级硫化锂产线已调试完成、价格仍200万/吨）和设备（海外干法产线落地、国内量产线后续落地）。</p><p>股票池：电解质——上海洗霸、<a class=\"_dollar_\" target=\"_blank\" data-code=\"688778\" data-marketid=\"17\" href=\"https://t.10jqka.com.cn/m/guba/688778/17\">厦钨新能</a>、<a class=\"_dollar_\" target=\"_blank\" data-code=\"300073\" data-marketid=\"33\" href=\"https://t.10jqka.com.cn/m/guba/300073/33\">当升科技</a>、<a class=\"_dollar_\" target=\"_blank\" data-code=\"002882\" data-marketid=\"33\" href=\"https://t.10jqka.com.cn/m/guba/002882/33\">金龙羽</a>、<a class=\"_dollar_\" target=\"_blank\" data-code=\"603663\" data-marketid=\"17\" href=\"https://t.10jqka.com.cn/m/guba/603663/17\">三祥新材</a>；设备——<a class=\"_dollar_\" target=\"_blank\" data-code=\"301662\" data-marketid=\"33\" href=\"https://t.10jqka.com.cn/m/guba/301662/33\">宏工科技</a>、<a class=\"_dollar_\" target=\"_blank\" data-code=\"920522\" data-marketid=\"151\" href=\"https://t.10jqka.com.cn/m/guba/920522/151\">纳科诺尔</a>、<a class=\"_dollar_\" target=\"_blank\" data-code=\"920284\" data-marketid=\"151\" href=\"https://t.10jqka.com.cn/m/guba/920284/151\">灵鸽科技</a>、<a class=\"_dollar_\" target=\"_blank\" data-code=\"688155\" data-marketid=\"17\" href=\"https://t.10jqka.com.cn/m/guba/688155/17\">先惠技术</a>等。</p><p></p><p>【右上角点击关注，解锁更多内容】   以上数据来源于<a class=\"_dollar_\" target=\"_blank\" data-code=\"300033\" data-marketid=\"33\" href=\"https://t.10jqka.com.cn/m/guba/300033/33\">同花顺</a>、<a class=\"_dollar_\" target=\"_blank\" data-code=\"601519\" data-marketid=\"17\" href=\"https://t.10jqka.com.cn/m/guba/601519/17\">大智慧</a>公开信息。</p><p>【风险提醒】以上由周德升S132****120004、胡响斌S132****050003提供，观点仅作投教交流，不构成投资建议。对所提及股票不承诺盈利可能性，对使用本观点所引致的任何损失不承担任何责任。股市有风险，投资需谨慎！】</p><p></p><span class=\"chat-selection-data\" data-chat-type=\"1\" data-chat-id=\"8477\"></span>",
+      "isHasVideo": 0,
+      "videoCover": "",
+      "videoSrc": "",
+      "fromname": null,
+      "fromlink": "https://t.10jqka.com.cn/m/live/liveHome/livehome.html?sid=0&fid=0",
+      "aiMark": 0,
+      "zxData": {
+        "url": "",
+        "title": ""
+      }
+    },
+    "replyNum": 0,
+    "floor": 0,
+    "shareKeys": {
+      "wx": "sns_share_wxp_701116596",
+      "wxq": "sns_share_wxqp_701116596",
+      "all": "sns_share_all_701116596"
+    },
+    "shareData": {
+      "url": "https://t.10jqka.com.cn/m/post/shortViewShare/shortviewshare.html?pid=701116596",
+      "title": "固态电池“十五五”规划落地工信部等七部门联合印发《新型电池产...",
+      "content": "来自同花顺联储证券周德升频道",
+      "thumbImageUrl": "",
+      "logoImageUrl": ""
+    },
+    "statIds": {
+      "ask": {
+        "askenter": "sns_live_view_701116596.tiwen"
+      },
+      "show": {
+        "liveavatar": "sns_live_p_701116596.liveavatar",
+        "bglive": "sns_live_p_701116596.bglive",
+        "clicklive": "sns_live_p_701116596.clicklive",
+        "toRid": ""
+      },
+      "zixun": {
+        "kxlink": "sns_live_view_701116596.kxlink",
+        "toRid": ""
+      },
+      "zanFid": "sns_author_506153816_like"
+    },
+    "advConf": {
+      "type": 0,
+      "url": "//t.10jqka.com.cn/modulecache/get?ids=0,1&userid=506153816&loginUid=0&fid=0&needAcl=false"
+    },
+    "title": "正文",
+    "globalData": {
+      "pid": 701116596,
+      "fid": 214299,
+      "hotKey": "sns_post_701116596",
+      "GPagestat": "sns_live_view_701116596",
+      "userid": 506153816,
+      "authorName": "联储证券周德升",
+      "showRiskTip": "1",
+      "ignoreUid": [
+        "415392367",
+        "70558"
+      ],
+      "statid": "sns_live_channel_214299",
+      "statids": {
+        "ask": {
+          "askenter": "sns_live_view_701116596.tiwen"
+        },
+        "show": {
+          "liveavatar": "sns_live_p_701116596.liveavatar",
+          "bglive": "sns_live_p_701116596.bglive",
+          "clicklive": "sns_live_p_701116596.clicklive",
+          "toRid": ""
+        },
+        "zixun": {
+          "kxlink": "sns_live_view_701116596.kxlink",
+          "toRid": ""
+        },
+        "zanFid": "sns_author_506153816_like"
+      },
+      "shareUrl": "https://t.10jqka.com.cn/m/post/shortViewShare/shortviewshare.html?pid=701116596",
+      "shareObj": {
+        "url": "https://t.10jqka.com.cn/m/post/shortViewShare/shortviewshare.html?pid=701116596",
+        "title": "固态电池“十五五”规划落地工信部等七部门联合印发《新型电池产...",
+        "content": "来自同花顺联储证券周德升频道",
+        "thumbImageUrl": "",
+        "logoImageUrl": ""
+      },
+      "author": "sns_author_506153816"
+    }
+  }
+}

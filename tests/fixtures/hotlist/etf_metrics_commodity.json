@@ -1,0 +1,246 @@
+{
+  "status_code": 0,
+  "status_msg": "success",
+  "data": {
+    "indexes": [
+      {
+        "value_type": "BIG_DECIMAL",
+        "index_id": "price_change_ratio_pct",
+        "timestamp": "1791511797",
+        "time_type": "SNAPSHOT",
+        "attribute": {}
+      },
+      {
+        "value_type": "BIG_DECIMAL",
+        "index_id": "ths-hot-data-day-attention-rate",
+        "timestamp": "0",
+        "time_type": "SNAPSHOT",
+        "attribute": {}
+      }
+    ],
+    "data": [
+      {
+        "code": "20:518850",
+        "values": [
+          {
+            "idx": 0,
+            "value": 1.062339
+          },
+          {
+            "idx": 1,
+            "value": 4389735.8
+          }
+        ]
+      },
+      {
+        "code": "20:518680",
+        "values": [
+          {
+            "idx": 0,
+            "value": 1.11499
+          },
+          {
+            "idx": 1,
+            "value": 3626703.4
+          }
+        ]
+      },
+      {
+        "code": "20:518600",
+        "values": [
+          {
+            "idx": 0,
+            "value": 1.087203
+          },
+          {
+            "idx": 1,
+            "value": 1424577.2
+          }
+        ]
+      },
+      {
+        "code": "36:159985",
+        "values": [
+          {
+            "idx": 0,
+            "value": 0.837004
+          },
+          {
+            "idx": 1,
+            "value": 993350.4
+          }
+        ]
+      },
+      {
+        "code": "36:159981",
+        "values": [
+          {
+            "idx": 0,
+            "value": 0.671141
+          },
+          {
+            "idx": 1,
+            "value": 957601.7
+          }
+        ]
+      },
+      {
+        "code": "36:159830",
+        "values": [
+          {
+            "idx": 0,
+            "value": 1.164236
+          },
+          {
+            "idx": 1,
+            "value": 709526.5
+          }
+        ]
+      },
+      {
+        "code": "36:159831",
+        "values": [
+          {
+            "idx": 0,
+            "value": 1.016236
+          },
+          {
+            "idx": 1,
+            "value": 642638.2
+          }
+        ]
+      },
+      {
+        "code": "36:159834",
+        "values": [
+          {
+            "idx": 0,
+            "value": 1.11776
+          },
+          {
+            "idx": 1,
+            "value": 534278.9
+          }
+        ]
+      },
+      {
+        "code": "36:159937",
+        "values": [
+          {
+            "idx": 0,
+            "value": 1.100071
+          },
+          {
+            "idx": 1,
+            "value": 314413.7
+          }
+        ]
+      },
+      {
+        "code": "36:159980",
+        "values": [
+          {
+            "idx": 0,
+            "value": -0.32695
+          },
+          {
+            "idx": 1,
+            "value": 285085.1
+          }
+        ]
+      },
+      {
+        "code": "20:518880",
+        "values": [
+          {
+            "idx": 0,
+            "value": 1.109275
+          },
+          {
+            "idx": 1,
+            "value": 259160.4
+          }
+        ]
+      },
+      {
+        "code": "20:518800",
+        "values": [
+          {
+            "idx": 0,
+            "value": 1.080594
+          },
+          {
+            "idx": 1,
+            "value": 221727.0
+          }
+        ]
+      },
+      {
+        "code": "20:518660",
+        "values": [
+          {
+            "idx": 0,
+            "value": 1.093732
+          },
+          {
+            "idx": 1,
+            "value": 192268.2
+          }
+        ]
+      },
+      {
+        "code": "36:159934",
+        "values": [
+          {
+            "idx": 0,
+            "value": 1.095674
+          },
+          {
+            "idx": 1,
+            "value": 29384.9
+          }
+        ]
+      },
+      {
+        "code": "20:518860",
+        "values": [
+          {
+            "idx": 0,
+            "value": 1.143598
+          },
+          {
+            "idx": 1,
+            "value": 26500.1
+          }
+        ]
+      },
+      {
+        "code": "20:518890",
+        "values": [
+          {
+            "idx": 0,
+            "value": 1.118832
+          },
+          {
+            "idx": 1,
+            "value": 17340.1
+          }
+        ]
+      },
+      {
+        "code": "36:159812",
+        "values": [
+          {
+            "idx": 0,
+            "value": 1.090306
+          },
+          {
+            "idx": 1,
+            "value": 16354.2
+          }
+        ]
+      }
+    ],
+    "total": 17
+  }
+}

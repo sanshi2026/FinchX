@@ -1,13 +1,7 @@
-"""FinchX: an independent Python package for A-share market data."""
+"""FinchX：取数与必要转换，直接返回所需业务数据。"""
 
-__version__ = "2.0.3"
+from finchx.client import FinchX
+from finchx._common.errors import FinchXError, SourceError
 
-from finchx.collector import Collector
-from finchx.client import CLIENT_ENDPOINTS, FinchX
-from finchx.query.articles import ArticleDetailService
-from finchx.query import (
-    DisclosureService, FinancialStatementService, ForumService, MarketNewsService,
-    NewsService, disclosure, financial_statements, forum, market_news, news,
-)
-
-__all__ = ["ArticleDetailService", "Collector", "FinchX", "CLIENT_ENDPOINTS", "DisclosureService", "FinancialStatementService", "ForumService", "MarketNewsService", "NewsService", "disclosure", "financial_statements", "forum", "market_news", "news", "__version__"]
+__version__ = "3.0.0"
+__all__ = ["FinchX", "FinchXError", "SourceError"]

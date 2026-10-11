@@ -1,1445 +1,719 @@
+"""偏离计算的业务契约及故障边界；人工序列仅用于明确模拟的数学测试。"""
+
+from copy import deepcopy
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
-import json
-from pathlib import Path
+import inspect
+import warnings
 
 import pytest
 
-from finchx import FinchX
-from finchx.collectors import FetchResult
-from finchx.collectors.errors import InvalidRequest, NoData
-from finchx.computed import (
-    COMPUTED_DEVIATION_DATASET,
-    DEVIATION_RULE_VERSION,
-    BenchmarkSpec,
-    DeviationCoverageError,
-    DeviationService,
-    PricePoint,
-    calculate_deviation,
-    resolve_deviation_benchmark,
-)
-from finchx.computed.deviation import (
-    _bridge_qfq_stock_history,
-    _calculate_after_inferred_halt,
-)
-from finchx.contracts import (
-    DataStatus,
-    Provenance,
-    ProvenanceClass,
-    Quality,
-    Source,
-    StandardRecord,
-)
-from finchx.datasets import (
-    KlineAdjustment,
-    KlinesRequest,
-    MARKET_KLINES_DATASET,
-    TRADING_CALENDAR_DATASET,
-    MARKET_QUOTE_SNAPSHOT_DATASET,
-    TradingCalendarRequest,
-)
-from finchx.datasets.market_klines import MarketKlineData
-from finchx.datasets.market_quote_snapshot import MarketQuoteSnapshotData
-from finchx.entities import Exchange, InstrumentId, InstrumentKind, Market
-from finchx.observability import ObservabilityMonitor
-from finchx.quality import QualityMonitor
-from finchx.health import HealthMonitor
+from finchx import FinchX, SourceError
+from finchx._common.deviation import calculate_window
+
+TOP = {'code', 'exchange', 'board', 'end_date', 'benchmark', 'price_basis', 'coverage_status', 'inferred_halt_dates', 'windows'}
+SCENE = {'window_days', 'scenario', 'price_date', 'target_date', 'available_trading_days', 'window_status', 'coverage_status', 'stock_price', 'benchmark_level', 'stock_price_type', 'benchmark_value_type', 'stock_time', 'benchmark_time', 'start_date', 'stock_baseline_date', 'benchmark_baseline_date', 'inferred_halt_dates', 'trading_days', 'stock_baseline_price', 'window_start_price', 'benchmark_baseline_level', 'stock_change_percent', 'benchmark_change_percent', 'deviation_percent', 'threshold_percent', 'theoretical_trigger_price', 'trigger_price', 'remaining_change_percent'}
 
 
-FIXTURES = Path(__file__).parent / "fixtures" / "deviation"
+def math_window(stock_values, index_values, *, scenario='current', window=10, scale='1', terminal=None):
+    sessions = [date(2026, 1, 1) + timedelta(days=i) for i in range(len(stock_values))]
+    stock = dict(zip(sessions, map(Decimal, map(str, stock_values))))
+    index = dict(zip(sessions, map(Decimal, map(str, index_values))))
+    return calculate_window(stock, index, sessions, window_days=window, scenario=scenario,
+        target_date=sessions[-1] + timedelta(days=scenario == 'next_session'),
+        stock_price=Decimal(str(terminal)) if terminal is not None else stock[sessions[-1]] * Decimal(scale),
+        benchmark_level=index[sessions[-1]], scale=Decimal(scale), coverage_status='complete',
+        stock_time=None, benchmark_time=None)
 
 
-CAPTURED_AT = datetime(2026, 9, 21, 1, 0, tzinfo=timezone.utc)
+@pytest.mark.parametrize('scenario', ['current', 'next_session'])
+def test_trigger_uses_maximum_baseline_instead_of_lowest_candidate_price(scenario):
+    result = math_window([10, 100, 50, 30], [10, 100, 50, 100], scenario=scenario)
+    assert result['stock_baseline_date'] == '2026-01-02'
+    assert result['start_date'] == '2026-01-03'
+    assert result['stock_baseline_price'] == 100
+    assert result['window_start_price'] == 50
+    assert result['deviation_percent'] == pytest.approx(-70)
+    # 最早候选可得到110，但其偏离更小；不能借用它的低触发价。
+    assert result['theoretical_trigger_price'] == 200
+    assert result['trigger_price'] == 200
+    assert result['remaining_change_percent'] == pytest.approx((200 / 30 - 1) * 100)
 
 
-def equity(code: str, exchange: Exchange) -> InstrumentId:
-    return InstrumentId(
-        code=code,
-        market=Market.CN_A,
-        kind=InstrumentKind.EQUITY,
-        exchange=exchange,
-    )
+@pytest.mark.parametrize('scenario', ['current', 'next_session'])
+@pytest.mark.parametrize('window,trigger,remaining', [(10, 40, -20), (30, 50, 0)])
+def test_trigger_formula_uses_selected_stock_and_index_baselines(scenario, window, trigger, remaining):
+    result = math_window([100, 10, 30, 50], [100, 50, 80, 150], scenario=scenario, window=window)
+    assert result['stock_baseline_date'] == '2026-01-02'
+    assert result['stock_baseline_price'] == 10
+    assert result['window_start_price'] == 30
+    assert result['benchmark_baseline_level'] == 50
+    assert result['deviation_percent'] == 200
+    assert result['threshold_percent'] == (100 if window == 10 else 200)
+    assert result['theoretical_trigger_price'] == trigger
+    assert result['trigger_price'] == trigger
+    assert result['remaining_change_percent'] == remaining
 
 
-def test_benchmark_resolver_freezes_audited_mappings_and_rejects_bse():
-    cases = json.loads((FIXTURES / "benchmark-mapping.json").read_text(encoding="utf-8"))
-    exchange_by_name = {exchange.value: exchange for exchange in Exchange}
-    for case in cases:
-        instrument = equity(case["code"], exchange_by_name[case["exchange"]])
-        resolved = resolve_deviation_benchmark(instrument)
-        assert resolved.instrument.code == case["benchmark"]
-        assert resolved.board == case["board"]
-
-    with pytest.raises(InvalidRequest, match="does not support BSE"):
-        resolve_deviation_benchmark(equity("920298", Exchange.BSE))
-
-
-def test_pure_calculator_selects_max_deviation_not_max_stock_return():
-    fixture = json.loads((FIXTURES / "max-deviation.json").read_text(encoding="utf-8"))
-    dates = tuple(date.fromisoformat(value) for value in fixture["dates"])
-    stock_values = [Decimal(value) for value in fixture["stock"]]
-    benchmark_values = [Decimal(value) for value in fixture["benchmark"]]
-    instrument = equity("600519", Exchange.SSE)
-    benchmark = resolve_deviation_benchmark(instrument)
-
-    result = calculate_deviation(
-        tuple(PricePoint(day, Decimal(str(value))) for day, value in zip(dates, stock_values)),
-        tuple(PricePoint(day, Decimal(str(value))) for day, value in zip(dates, benchmark_values)),
-        instrument=instrument,
-        benchmark=benchmark,
-        window_days=10,
-        end_date=dates[-1],
-    )
-
-    assert result.start_date == date.fromisoformat(fixture["expectedStartDate"])
-    assert result.deviation == pytest.approx(
-        Decimal(fixture["expectedDeviation"]), abs=Decimal("0.0000000001")
-    )
-    assert result.stock_return < Decimal("0.80")
-    assert result.benchmark_return < Decimal("0.06")
+def test_candidate_boundary_excludes_one_day_current_but_keeps_next_session():
+    prices = [100] * 10 + [1000]
+    current = math_window(prices, [100] * 11)
+    assert current['trading_days'] == 10
+    # next_session has a shifted boundary and N points, so maximum may use one day.
+    next_row = math_window([100] * 8 + [10, 1000], [100] * 10, scenario='next_session')
+    assert next_row['trading_days'] == 1
+    assert current['available_trading_days'] == 10
+    assert next_row['available_trading_days'] == 9
+    assert current['window_status'] == next_row['window_status'] == 'complete'
 
 
-def test_pure_calculator_uses_close_formula_and_trigger_price():
-    dates = tuple(date(2026, 8, 1) + timedelta(days=index) for index in range(11))
-    stock = tuple(PricePoint(day, Decimal("100") if index == 0 else Decimal("180")) for index, day in enumerate(dates))
-    index = tuple(PricePoint(day, Decimal("100") if index == 0 else Decimal("120")) for index, day in enumerate(dates))
-    instrument = equity("600519", Exchange.SSE)
-    result = calculate_deviation(
-        stock,
-        index,
-        instrument=instrument,
-        benchmark=resolve_deviation_benchmark(instrument),
-        window_days=10,
-        end_date=dates[-1],
-    )
-
-    assert result.stock_return == Decimal("0.8")
-    assert result.benchmark_return == Decimal("0.2")
-    assert result.deviation == Decimal("0.6")
-    assert result.upper_threshold == Decimal("1.00")
-    assert result.upper_trigger_price == Decimal("220.0")
-    expected_remaining = result.upper_trigger_price / result.current_price - Decimal("1")
-    assert result.remaining_to_upper == expected_remaining
+def test_ties_choose_earliest_candidate_and_preserve_zero():
+    result = math_window([10] * 11, [100] * 11)
+    assert result['start_date'] == '2026-01-02'
+    assert result['deviation_percent'] == 0
+    assert result['stock_change_percent'] == 0
+    assert result['threshold_percent'] == 100
+    assert math_window([10] * 31, [100] * 31, window=30)['threshold_percent'] == 200
 
 
-def test_pure_calculator_rounds_final_trigger_up_to_cent_and_uses_rounded_value_for_distance():
-    dates = tuple(date(2026, 8, 1) + timedelta(days=index) for index in range(4))
-    instrument = equity("600519", Exchange.SSE)
-    result = calculate_deviation(
-        tuple(PricePoint(day, Decimal(value)) for day, value in zip(dates, ("2.66135", "1.7742", "4.9", "5"))),
-        tuple(PricePoint(day, Decimal(value)) for day, value in zip(dates, ("100", "50", "100", "100"))),
-        instrument=instrument,
-        benchmark=resolve_deviation_benchmark(instrument),
-        window_days=10,
-        end_date=dates[-1],
-    )
-
-    assert result.deviation == Decimal("5") / Decimal("2.66135") - Decimal("1")
-    assert result.stock_baseline_price == Decimal("2.66135")
-    assert result._upper_trigger_basis["stock_baseline_price"] == "1.7742"
-    assert Decimal(result._upper_trigger_basis["unrounded_trigger_price"]) == Decimal("5.3226")
-    assert result.upper_trigger_price_original == Decimal("5.3226")
-    assert result.upper_trigger_price == Decimal("5.33")
-    expected_remaining = Decimal("5.33") / Decimal("5") - Decimal("1")
-    assert result.remaining_to_upper == expected_remaining
+@pytest.mark.parametrize('baseline,theoretical,rounded,remaining', [
+    ('1', 2, 2, 100),
+    ('1.0001', 2.0002, 2.01, 101),
+    ('1.005', 2.01, 2.01, 101),
+])
+def test_round_up_after_selection_and_remaining_uses_rounded_price(baseline, theoretical, rounded, remaining):
+    result = math_window([baseline, '1.5', '1'], [100, 100, 100])
+    assert result['theoretical_trigger_price'] == theoretical
+    assert result['trigger_price'] == rounded
+    assert result['remaining_change_percent'] == remaining
 
 
-def test_pure_calculator_selects_max_deviation_and_min_trigger_independently():
-    dates = tuple(date(2026, 8, 1) + timedelta(days=index) for index in range(4))
-    stock = tuple(
-        PricePoint(day, value)
-        for day, value in zip(
-            dates,
-            (Decimal("10"), Decimal("8"), Decimal("12"), Decimal("18")),
-        )
-    )
-    index = tuple(
-        PricePoint(day, value)
-        for day, value in zip(
-            dates,
-            (Decimal("148"), Decimal("100"), Decimal("120"), Decimal("148")),
-        )
-    )
-    instrument = equity("600519", Exchange.SSE)
-    result = calculate_deviation(
-        stock,
-        index,
-        instrument=instrument,
-        benchmark=resolve_deviation_benchmark(instrument),
-        window_days=10,
-        end_date=dates[-1],
-    )
-
-    assert result.deviation == Decimal("0.8")
-    assert result.stock_baseline_price == Decimal("10")
-    assert result.upper_trigger_price == Decimal("19.84")
-    assert result.upper_trigger_price_original == Decimal("19.84")
-    assert result._upper_trigger_basis["stock_baseline_price"] == "8"
-    assert result._upper_trigger_basis["unrounded_trigger_price"] == "19.84"
-    trigger_deviations = (
-        result.upper_trigger_price_original / Decimal("10") - Decimal("1"),
-        result.upper_trigger_price_original / Decimal("8") - Decimal("1") - Decimal("0.48"),
-    )
-    assert max(trigger_deviations) == result.upper_threshold
+@pytest.mark.parametrize('scenario', ['current', 'next_session'])
+def test_tied_deviation_keeps_earliest_baseline_even_when_later_trigger_is_lower(scenario):
+    result = math_window([12, 6, 999, 12], [60, 40, 1, 120], scenario=scenario)
+    assert result['deviation_percent'] == -100
+    assert result['stock_baseline_date'] == '2026-01-01'
+    assert result['start_date'] == '2026-01-02'
+    assert result['theoretical_trigger_price'] == result['trigger_price'] == 36
 
 
-def test_scenario_service_returns_rounded_and_original_trigger_prices():
-    observation_date = date(2026, 9, 28)
-    sessions = _weekday_sessions_ending(observation_date, 31)
-    stock = equity("600519", Exchange.SSE)
-    benchmark = resolve_deviation_benchmark(stock).instrument
-    shared_history = {
-        sessions[-3]: Decimal("2.6613"),
-        sessions[-2]: Decimal("2.6613"),
-        sessions[-1]: Decimal("2.6613"),
-    }
-    quote_time = datetime(2026, 9, 28, 14, 0, tzinfo=timezone(timedelta(hours=8)))
-    collector = FixtureCollector(
-        sessions,
-        stock,
-        benchmark,
-        missing_stock_dates=sessions[:-3],
-        stock_close_overrides=shared_history,
-        benchmark_close_overrides={day: Decimal("100") for day in sessions[-3:]},
-        stock_quote_price=Decimal("5"),
-        benchmark_quote_price=Decimal("100"),
-        stock_quote_previous_close=Decimal("2.6613"),
-        quote_timestamp=quote_time,
-    )
-
-    result = DeviationService(collector, clock=lambda: quote_time).calculate(
-        stock,
-        windows=(10,),
-        as_of=observation_date,
-    )
-    current = next(window for window in result.data.windows if window.scenario == "current")
-
-    assert current.upper_trigger_price_original == Decimal("5.3226")
-    assert current.upper_trigger_price == Decimal("5.33")
-    assert current.remaining_to_upper == Decimal("5.33") / Decimal("5") - Decimal("1")
-    serialized_current = next(
-        window for window in result.to_dicts()[0]["windows"] if window["scenario"] == "current"
-    )
-    assert Decimal(serialized_current["upperTriggerPrice_original"]) == Decimal("5.3226")
-    assert serialized_current["upperTriggerPrice"] == "5.33"
+def test_non_one_price_anchor_preserves_returns_and_scales_all_stock_prices():
+    base = math_window([10, 100, 50, 30], [10, 100, 50, 100])
+    scaled = math_window([10, 100, 50, 30], [10, 100, 50, 100], scale='2')
+    assert scaled['deviation_percent'] == base['deviation_percent']
+    assert scaled['stock_price'] == 60
+    assert scaled['stock_baseline_price'] == 200
+    assert scaled['window_start_price'] == 100
+    assert scaled['trigger_price'] == 400
 
 
-def test_next_session_rolls_start_boundary_and_allows_d10_one_day_candidate():
-    dates = tuple(date(2026, 8, 1) + timedelta(days=index) for index in range(11))
-    stock_values = [Decimal("20")] * 9 + [Decimal("10"), Decimal("30")]
-    benchmark_values = [Decimal("100")] * len(dates)
-    instrument = equity("600519", Exchange.SSE)
-    benchmark = resolve_deviation_benchmark(instrument)
-    stock = tuple(PricePoint(day, value) for day, value in zip(dates, stock_values))
-    index = tuple(PricePoint(day, value) for day, value in zip(dates, benchmark_values))
-
-    current = calculate_deviation(
-        stock,
-        index,
-        instrument=instrument,
-        benchmark=benchmark,
-        window_days=10,
-        end_date=dates[-1],
-        scenario="current",
-    )
-    next_session = calculate_deviation(
-        stock[1:],
-        index[1:],
-        instrument=instrument,
-        benchmark=benchmark,
-        window_days=10,
-        end_date=dates[-1],
-        scenario="next_session",
-        target_date=dates[-1] + timedelta(days=1),
-    )
-
-    assert current.deviation == Decimal("0.5")
-    assert next_session.deviation == Decimal("2")
-    assert next_session.start_date == dates[-1]
-    assert next_session.stock_baseline_date == dates[-2]
-    assert next_session.trading_sessions == 1
-    assert next_session.available_trading_sessions == 9
-    assert next_session.remaining_to_upper == next_session.upper_trigger_price / next_session.current_price - Decimal("1")
-    assert next_session.remaining_to_upper < 0
+def test_two_point_short_history_special_case():
+    result = math_window([10, 20], [100, 100])
+    assert result['trading_days'] == 1
+    assert result['window_status'] == 'partial_short_history'
+    assert result['deviation_percent'] == 100
 
 
-def test_all_negative_candidates_remain_negative():
-    dates = tuple(date(2026, 8, 1) + timedelta(days=index) for index in range(4))
-    instrument = equity("600519", Exchange.SSE)
-    result = calculate_deviation(
-        tuple(PricePoint(day, Decimal(value)) for day, value in zip(dates, ("10", "9", "8", "7"))),
-        tuple(PricePoint(day, Decimal(value)) for day, value in zip(dates, ("100", "101", "102", "103"))),
-        instrument=instrument,
-        benchmark=resolve_deviation_benchmark(instrument),
-        window_days=10,
-        end_date=dates[-1],
-    )
-
-    assert result.deviation < 0
-    assert result.remaining_to_upper == result.upper_trigger_price / result.current_price - Decimal("1")
-    assert result.remaining_to_upper > 0
+def test_latest_single_day_winner_start_price_is_quote_not_stale_daily_bar():
+    result = math_window([100] * 8 + [10, 999], [100] * 10,
+                         scenario='next_session', terminal=1000)
+    assert result['start_date'] == result['price_date']
+    assert result['trading_days'] == 1
+    assert result['window_start_price'] == result['stock_price'] == 1000
 
 
-def test_quote_bridge_uses_last_observed_stock_bar_when_prior_session_bar_is_missing():
-    stock = equity("600825", Exchange.SSE)
-    observation_date = date(2026, 9, 28)
-    bridge_date = date(2026, 9, 24)
-    points = {
-        bridge_date: PricePoint(bridge_date, Decimal("5")),
-        observation_date: PricePoint(observation_date, Decimal("6")),
-    }
-    quote_time = datetime(2026, 9, 28, 16, 14, 52, tzinfo=timezone(timedelta(hours=8)))
-    quote = MarketQuoteSnapshotData(
-        instrumentId=stock,
-        price=Decimal("12"),
-        previousClose=Decimal("10"),
-        sourceTimestamp=quote_time,
-    )
-
-    bridged, ratio, actual_bridge_date = _bridge_qfq_stock_history(
-        points, quote, observation_date
-    )
-
-    assert actual_bridge_date == bridge_date
-    assert ratio == Decimal("2")
-    assert bridged[bridge_date].close == Decimal("10")
-    assert bridged[observation_date].close == Decimal("12")
-
-
-def test_first_resumed_session_remains_eligible_when_next_boundary_precedes_it():
-    stock = equity("600825", Exchange.SSE)
-    benchmark = resolve_deviation_benchmark(stock)
-    baseline_date = date(2026, 9, 4)
-    benchmark_baseline_date = date(2026, 9, 25)
-    resumed_date = date(2026, 9, 28)
-    stock_points = {
-        baseline_date: PricePoint(baseline_date, Decimal("10")),
-        resumed_date: PricePoint(resumed_date, Decimal("12")),
-    }
-    benchmark_points = {
-        benchmark_baseline_date: PricePoint(benchmark_baseline_date, Decimal("100")),
-        resumed_date: PricePoint(resumed_date, Decimal("110")),
-    }
-
-    result = _calculate_after_inferred_halt(
-        stock_points=stock_points,
-        benchmark_points=benchmark_points,
-        resume_sessions=(resumed_date,),
-        stock_baseline_date=baseline_date,
-        benchmark_baseline_date=benchmark_baseline_date,
-        instrument=stock,
-        benchmark=benchmark,
-        window_days=10,
-        end_date=resumed_date,
-        scenario="next_session",
-        target_date=date(2026, 9, 29),
-        candidate_start_boundary=date(2026, 9, 2),
-        stock_source_timestamp=None,
-        benchmark_source_timestamp=None,
-        coverage_status="halt_inferred_from_missing_kline",
-        window_status="partial_after_inferred_halt",
-        inferred_halt_dates=(date(2026, 9, 7),),
-    )
-
-    assert result.start_date == resumed_date
-    assert result.stock_baseline_date == baseline_date
-    assert result.benchmark_baseline_date == benchmark_baseline_date
-    assert result.trading_sessions == result.available_trading_sessions == 1
+def serve(monkeypatch):
+    """明确模拟连续交易日与来源业务输出，不作为文档真实示例。"""
+    from finchx.sources.tencent import deviation as source
+    from finchx.api.reference import ReferenceAPI
+    days = [date(2026, 8, 1) + timedelta(days=i) for i in range(69)]
+    state = {'calls': [], 'qfq': [{'date': day.isoformat(), 'close': 10 + i} for i, day in enumerate(days)],
+        'index': [{'date': day.isoformat(), 'close': 100} for day in days],
+        'stock_quote': {'code': '600519', 'exchange': 'sh', 'time': '2026-10-08T16:14:57+08:00', 'price': 160, 'previous_close': 154},
+        'index_quote': {'code': '000002', 'exchange': 'sh', 'time': '2026-10-08T16:15:00+08:00', 'price': 100},
+        'listing': date(1980, 1, 1), 'calendar_change': None}
+    monkeypatch.setattr(source, '_now', lambda: datetime(2026, 10, 8, 16, 30, tzinfo=timezone(timedelta(hours=8))))
+    def quotes(code, *, kind='stock', timeout):
+        state['calls'].append(('quote', code, kind, timeout))
+        return deepcopy(state['index_quote'] if kind == 'index' else state['stock_quote'])
+    def klines(code, start_date, end_date, adjust=None, *, kind='stock', timeout):
+        state['calls'].append(('daily', code, kind, adjust, timeout))
+        rows = state['index'] if kind == 'index' else state['qfq']
+        result = [deepcopy(row) for row in rows if start_date.isoformat() <= row['date'] <= end_date.isoformat()]
+        if kind == 'stock' and adjust is None:
+            for row in result:
+                row['close'] *= 2
+        return result
+    def calendar(self, start, end, *, source='auto'):
+        state['calls'].append(('calendar', start, end, self._timeout))
+        rows = [{'date': (start + timedelta(days=i)).isoformat(), 'is_trading_day': True} for i in range((end-start).days+1)]
+        if state['calendar_change']:
+            state['calendar_change'](rows)
+        return rows
+    def listing(code, *, timeout):
+        state['calls'].append(('listing', code, timeout))
+        return state['listing']
+    monkeypatch.setattr(source.quote, 'quote_snapshot', quotes)
+    monkeypatch.setattr(source.klines, 'ohlcv', klines)
+    monkeypatch.setattr(source, '_listing_date', listing)
+    monkeypatch.setattr(ReferenceAPI, 'trading_calendar', calendar)
+    return state
 
 
-class FixtureCollector:
-    def __init__(
-        self,
-        sessions: tuple[date, ...],
-        stock: InstrumentId,
-        benchmark: InstrumentId,
-        *,
-        missing_stock_dates: tuple[date, ...] = (),
-        missing_benchmark_dates: tuple[date, ...] = (),
-        closed_dates: tuple[date, ...] = (),
-        stock_close_overrides: dict[date, Decimal] | None = None,
-        benchmark_close_overrides: dict[date, Decimal] | None = None,
-        stock_quote_price: Decimal | None = None,
-        benchmark_quote_price: Decimal | None = None,
-        stock_quote_previous_close: Decimal | None = None,
-        quote_timestamp: datetime | None = None,
-        quote_status: DataStatus = DataStatus.LIVE,
-        quote_entity_id: InstrumentId | str | None = None,
-        stock_adjustment: KlineAdjustment = KlineAdjustment.QFQ,
-    ):
-        self.sessions = sessions
-        self.stock = stock
-        self.benchmark = benchmark
-        self.missing_stock_dates = set(missing_stock_dates)
-        self.missing_benchmark_dates = set(missing_benchmark_dates)
-        self.closed_dates = closed_dates
-        self.stock_close_overrides = stock_close_overrides or {}
-        self.benchmark_close_overrides = benchmark_close_overrides or {}
-        self.stock_quote_price = stock_quote_price
-        self.benchmark_quote_price = benchmark_quote_price
-        self.stock_quote_previous_close = stock_quote_previous_close
-        self.quote_timestamp = quote_timestamp
-        self.quote_status = quote_status
-        self.quote_entity_id = quote_entity_id
-        self.stock_adjustment = stock_adjustment
-        self.calls: list[tuple[object, object, str | None]] = []
-        self.health = HealthMonitor()
-        self.quality = QualityMonitor(clock=lambda: CAPTURED_AT)
-        self.observability = ObservabilityMonitor()
-        self._source = Source(providerId="fixture.deviation")
-        self._quote_source = Source(providerId="fixture.quote")
+def assert_shape(result):
+    assert set(result) == TOP
+    assert set(result['benchmark']) == {'code', 'exchange', 'name'}
+    assert result['inferred_halt_dates'] == []
+    for row in result['windows']:
+        assert set(row) == SCENE
+        assert len(row) == 28
+        assert row['stock_baseline_date'] == row['benchmark_baseline_date']
+        assert row['inferred_halt_dates'] == []
 
-    def fetch(self, dataset, provider=None, *, use_cache=None, **kwargs):
-        request = kwargs["request"]
-        self.calls.append((dataset, request, provider))
-        if dataset is TRADING_CALENDAR_DATASET:
-            future_day = self.sessions[-1] + timedelta(days=1)
-            while future_day.weekday() >= 5 or future_day in self.closed_dates:
-                future_day += timedelta(days=1)
-            calendar_rows = tuple((day, True) for day in self.sessions) + (
-                (future_day, True),
-            ) + tuple((day, False) for day in self.closed_dates)
-            data = tuple(
-                _record(
-                    TRADING_CALENDAR_DATASET.name,
-                    f"calendar:{day.isoformat()}:{is_trading_day}",
-                    "CN_A:" + day.isoformat(),
-                    {"date": day.isoformat(), "isTradingDay": is_trading_day},
-                )
-                for day, is_trading_day in calendar_rows
-            )
-            return FetchResult(
-                data=data,
-                dataset=TRADING_CALENDAR_DATASET,
-                provider="fixture.calendar",
-                captured_at=CAPTURED_AT,
-                provenance=(self._source,),
-            )
-        if dataset is MARKET_QUOTE_SNAPSHOT_DATASET:
-            identity = request.instrument_id
-            if identity == self.stock:
-                closes = [
-                    self.stock_close_overrides.get(day, Decimal(100 + index))
-                    for index, day in enumerate(self.sessions)
-                ]
-                unavailable_dates = self.missing_stock_dates
-                quote_price = (
-                    self.stock_quote_price
-                    if self.stock_quote_price is not None
-                    else closes[-1]
-                )
-                previous_override = self.stock_quote_previous_close
-            else:
-                assert identity == self.benchmark
-                closes = [
-                    self.benchmark_close_overrides.get(day, Decimal(1000 + 2 * index))
-                    for index, day in enumerate(self.sessions)
-                ]
-                unavailable_dates = self.missing_benchmark_dates
-                quote_price = (
-                    self.benchmark_quote_price
-                    if self.benchmark_quote_price is not None
-                    else closes[-1]
-                )
-                previous_override = None
-            quote_index = len(self.sessions) - 1
-            prior_available_indices = [
-                index
-                for index in range(quote_index)
-                if self.sessions[index] not in unavailable_dates
-            ]
-            previous = (
-                previous_override
-                if previous_override is not None
-                else closes[prior_available_indices[-1]]
-                if prior_available_indices
-                else None
-            )
-            quote_time = self.quote_timestamp or datetime.combine(
-                self.sessions[quote_index],
-                datetime.min.time().replace(hour=15),
-                tzinfo=timezone(timedelta(hours=8)),
-            )
-            quote_entity = self.quote_entity_id or identity
-            data = _record(
-                MARKET_QUOTE_SNAPSHOT_DATASET.name,
-                f"quote:{identity.code}:{quote_time.isoformat()}",
-                quote_entity,
-                {
-                    "instrumentId": identity.model_dump(mode="json"),
-                    "price": str(quote_price),
-                    "previousClose": str(previous) if previous is not None else None,
-                    "sourceTimestamp": quote_time.isoformat(),
-                },
-                captured_at=quote_time,
-                status=self.quote_status,
-            )
-            return FetchResult(
-                data=data,
-                dataset=MARKET_QUOTE_SNAPSHOT_DATASET,
-                provider="fixture.quote",
-                captured_at=quote_time,
-                provenance=(self._quote_source,),
-            )
-        assert dataset is MARKET_KLINES_DATASET
-        identity = request.instrument_id
-        assert isinstance(request, KlinesRequest)
-        if identity == self.stock:
-            closes = [
-                self.stock_close_overrides.get(day, Decimal(100 + index))
-                for index, day in enumerate(self.sessions)
-            ]
-            missing_dates = self.missing_stock_dates
-            assert request.adjustment is KlineAdjustment.QFQ
+
+def test_public_default_shape_order_real_named_fields_and_no_preopen(monkeypatch):
+    state = serve(monkeypatch)
+    api = FinchX(timeout=2.5).regulation
+    result = api.deviation('600519')
+    assert_shape(result)
+    assert [(row['window_days'], row['scenario']) for row in result['windows']] == [(10, 'current'), (10, 'next_session'), (30, 'current'), (30, 'next_session')]
+    assert result['end_date'] == '2026-10-08'
+    assert result['price_basis'] == 'qfq_stock_anchored_to_price_date__raw_index'
+    assert result['benchmark'] == {'code': '000002', 'exchange': 'sh', 'name': '上证A指'}
+    assert all(row['stock_price_type'] == row['benchmark_value_type'] == 'quote' for row in result['windows'])
+    assert all(row['stock_time'] == '2026-10-08T16:14:57+08:00' for row in result['windows'])
+    assert all(row['benchmark_time'] == '2026-10-08T16:15:00+08:00' for row in result['windows'])
+    assert all(row['stock_price'] == 160 for row in result['windows'])
+    assert len([call for call in state['calls'] if call[0] == 'daily']) == 2
+    assert all(call[-1] == 2.5 for call in state['calls'])
+    assert not hasattr(FinchX().market, 'deviation')
+    assert list(inspect.signature(api.deviation).parameters) == ['code', 'windows', 'end_date']
+
+
+def test_historical_raw_anchor_and_input_window_order_share_source_calls(monkeypatch):
+    state = serve(monkeypatch)
+    result = FinchX().regulation.deviation('600519', windows=[30, 10], end_date='2026-09-30')
+    assert_shape(result)
+    assert [(row['window_days'], row['scenario']) for row in result['windows']] == [(30, 'current'), (30, 'next_session'), (10, 'current'), (10, 'next_session')]
+    assert len([call for call in state['calls'] if call[0] == 'daily']) == 3
+    assert len([call for call in state['calls'] if call[0] == 'calendar']) == 1
+    row = result['windows'][0]
+    assert row['stock_price_type'] == 'daily_close'
+    assert row['stock_time'] is row['benchmark_time'] is None
+    qfq = {item['date']: item['close'] for item in state['qfq']}
+    assert row['stock_baseline_price'] == qfq[row['stock_baseline_date']] * 2
+    assert row['window_start_price'] == qfq[row['start_date']] * 2
+    expected = (qfq['2026-09-30'] / qfq[row['stock_baseline_date']] - 1) * 100
+    assert row['stock_change_percent'] == pytest.approx(expected)
+
+
+def test_latest_quote_wins_over_daily_and_non_one_previous_close_bridge(monkeypatch):
+    state = serve(monkeypatch)
+    for row in state['qfq']:
+        if row['date'] == '2026-10-07': row['close'] = 10
+        if row['date'] == '2026-10-08': row['close'] = 999
+    state['stock_quote'].update(price=1000, previous_close=20)
+    result = FinchX().regulation.deviation('600519', windows=(10,))
+    row = result['windows'][1]
+    assert row['trading_days'] == 1
+    assert row['stock_baseline_price'] == 20
+    assert row['window_start_price'] == row['stock_price'] == 1000
+    assert row['stock_change_percent'] == 4900
+
+
+def test_latest_no_daily_today_bar_still_uses_verified_quotes(monkeypatch):
+    state = serve(monkeypatch)
+    state['qfq'] = [row for row in state['qfq'] if row['date'] != '2026-10-08']
+    state['index'] = [row for row in state['index'] if row['date'] != '2026-10-08']
+    result = FinchX().regulation.deviation('600519')
+    assert all(row['window_status'] == 'complete' for row in result['windows'])
+    assert all(row['stock_price'] == 160 for row in result['windows'])
+
+
+@pytest.mark.parametrize('code', [600519, True, None, '６００５１９', 'sh600519', '60051', '830001', '510300', '000002 '])
+def test_invalid_code_fails_before_requests(monkeypatch, code):
+    state = serve(monkeypatch)
+    with pytest.raises(ValueError): FinchX().regulation.deviation(code)
+    assert not state['calls']
+
+
+@pytest.mark.parametrize('windows', [None, True, [], (), [True], [10, 10], [30, 30], [5], [10.0], {10}, '10'])
+def test_invalid_windows_fail_before_requests(monkeypatch, windows):
+    state = serve(monkeypatch)
+    with pytest.raises(ValueError): FinchX().regulation.deviation('600519', windows=windows)
+    assert not state['calls']
+
+
+@pytest.mark.parametrize('end', ['', '2026-02-30', True, date(2026, 9, 30), '2026-09-30T00:00:00'])
+def test_invalid_date_fails_before_requests(monkeypatch, end):
+    state = serve(monkeypatch)
+    with pytest.raises(ValueError): FinchX().regulation.deviation('600519', end_date=end)
+    assert not state['calls']
+
+
+def test_future_observation_is_value_error_and_calendar_closed_day_rolls_back(monkeypatch):
+    state = serve(monkeypatch)
+    with pytest.raises(ValueError): FinchX().regulation.deviation('600519', end_date='2026-10-09')
+    def closed(rows):
+        for row in rows:
+            if row['date'] in {'2026-10-09', '2026-10-10'}: row['is_trading_day'] = False
+    state['calendar_change'] = closed
+    result = FinchX().regulation.deviation('600519', end_date='2026-10-10')
+    assert result['end_date'] == '2026-10-08'
+    assert result['windows'][1]['target_date'] == '2026-10-11'
+
+
+@pytest.mark.parametrize('field,value', [('price', 0), ('price', -1), ('price', True), ('price', float('nan')), ('price', float('inf')), ('price', None), ('previous_close', 0), ('previous_close', None), ('time', None), ('time', '2026-10-08T08:00:00+08:00'), ('time', '2026-10-08T16:15:00'), ('time', '2026-10-08T18:00:00+08:00'), ('code', '600000'), ('exchange', 'sz')])
+def test_known_quote_corruption_fails_whole_request(monkeypatch, field, value):
+    state = serve(monkeypatch)
+    state['stock_quote'][field] = value
+    with pytest.raises(SourceError): FinchX().regulation.deviation('600519')
+
+
+@pytest.mark.parametrize('value', [0, -1, True, None, float('nan'), float('inf')])
+def test_required_daily_nonpositive_and_nonfinite_close_fail(monkeypatch, value):
+    state = serve(monkeypatch)
+    state['qfq'][-5]['close'] = value
+    with pytest.raises(SourceError): FinchX().regulation.deviation('600519')
+
+
+@pytest.mark.parametrize('stream', ['qfq', 'index'])
+def test_duplicate_daily_fails_and_only_stock_interior_gap_is_inferred(monkeypatch, stream):
+    state = serve(monkeypatch)
+    state[stream].append(deepcopy(state[stream][-4]))
+    with pytest.raises(SourceError): FinchX().regulation.deviation('600519')
+    state[stream] = [row for row in state[stream] if row['date'] != '2026-10-05']
+    if stream == 'index':
+        with pytest.raises(SourceError): FinchX().regulation.deviation('600519')
+    else:
+        with pytest.warns(UserWarning, match='未核对交易所停牌公告'):
+            result = FinchX().regulation.deviation('600519')
+        assert result['inferred_halt_dates'] == ['2026-10-05']
+
+
+def test_short_listing_requires_true_boundary_and_preserves_row_coverage(monkeypatch):
+    state = serve(monkeypatch)
+    state['qfq'] = state['qfq'][-3:]
+    state['listing'] = date(2026, 10, 6)
+    result = FinchX().regulation.deviation('600519')
+    assert result['coverage_status'] == 'short_history'
+    assert all(row['coverage_status'] == 'short_history' and row['window_status'] == 'partial_short_history' for row in result['windows'])
+    state['listing'] = date(2026, 10, 5)
+    with pytest.raises(SourceError): FinchX().regulation.deviation('600519')
+
+
+def test_short_history_two_points_allowed_one_point_fails_whole_result(monkeypatch):
+    state = serve(monkeypatch)
+    state['qfq'] = state['qfq'][-2:]
+    state['listing'] = date(2026, 10, 7)
+    result = FinchX().regulation.deviation('600519')
+    assert all(row['trading_days'] == 1 for row in result['windows'])
+    state['qfq'] = state['qfq'][-1:]
+    state['listing'] = date(2026, 10, 8)
+    with pytest.raises(SourceError): FinchX().regulation.deviation('600519')
+
+
+def test_calendar_corruption_never_guesses_weekdays(monkeypatch):
+    state = serve(monkeypatch)
+    for change in [lambda rows: rows.pop(), lambda rows: rows.append(deepcopy(rows[0])), lambda rows: rows[0].update(is_trading_day=1), lambda rows: [row.update(is_trading_day=False) for row in rows]]:
+        state['calendar_change'] = change
+        with pytest.raises(SourceError): FinchX().regulation.deviation('600519')
+
+
+def test_each_call_fetches_again_and_preserves_unknown_extra_fields(monkeypatch):
+    state = serve(monkeypatch)
+    state['stock_quote']['unknown'] = {'malformed': True}
+    result = FinchX().regulation.deviation('600519')
+    count = len(state['calls'])
+    assert FinchX().regulation.deviation('600519') == result
+    assert len(state['calls']) == count * 2
+
+
+def test_cross_date_quotes_fail_after_bounded_pair_retry(monkeypatch):
+    state = serve(monkeypatch)
+    state['stock_quote']['time'] = '2026-10-07T16:14:57+08:00'
+    with pytest.raises(SourceError): FinchX().regulation.deviation('600519')
+    assert len([call for call in state['calls'] if call[0] == 'quote']) == 5
+    assert not any(call[0] == 'daily' for call in state['calls'])
+
+
+def test_old_source_date_cannot_define_latest_when_calendar_has_new_started_session(monkeypatch):
+    state = serve(monkeypatch)
+    state['stock_quote']['time'] = '2026-10-07T16:14:57+08:00'
+    state['index_quote']['time'] = '2026-10-07T16:15:00+08:00'
+    with pytest.raises(SourceError): FinchX().regulation.deviation('600519')
+
+
+def test_latest_closed_session_requires_late_session_quote(monkeypatch):
+    state = serve(monkeypatch)
+    state['stock_quote']['time'] = '2026-10-08T12:15:00+08:00'
+    state['index_quote']['time'] = '2026-10-08T12:15:00+08:00'
+    with pytest.raises(SourceError): FinchX().regulation.deviation('600519')
+
+
+@pytest.mark.parametrize('clock,stamp', [('10:30','09:45'),('12:00','11:10')])
+def test_intraday_and_lunch_quote_freshness(monkeypatch, clock, stamp):
+    from finchx.sources.tencent import deviation as source
+    state = serve(monkeypatch)
+    monkeypatch.setattr(source, '_now', lambda: datetime.fromisoformat('2026-10-08T'+clock+':00+08:00'))
+    state['stock_quote']['time'] = state['index_quote']['time'] = '2026-10-08T'+stamp+':00+08:00'
+    with pytest.raises(SourceError): FinchX().regulation.deviation('600519')
+
+
+def test_daily_bar_on_explicit_calendar_closed_day_is_source_error(monkeypatch):
+    state = serve(monkeypatch)
+    def closed(rows):
+        for row in rows:
+            if row['date'] == '2026-09-30': row['is_trading_day'] = False
+    state['calendar_change'] = closed
+    with pytest.raises(SourceError): FinchX().regulation.deviation('600519')
+
+
+def test_before_open_keeps_prior_confirmed_closed_session(monkeypatch):
+    from finchx.sources.tencent import deviation as source
+    state = serve(monkeypatch)
+    monkeypatch.setattr(source, '_now', lambda: datetime.fromisoformat('2026-10-09T09:00:00+08:00'))
+    result = FinchX().regulation.deviation('600519')
+    assert result['end_date'] == '2026-10-08'
+    assert result['windows'][1]['target_date'] == '2026-10-09'
+    assert result['windows'][0]['stock_time'] == state['stock_quote']['time']
+
+
+def test_closed_days_keep_prior_source_session_only_with_confirmed_calendar(monkeypatch):
+    from finchx.sources.tencent import deviation as source
+    state = serve(monkeypatch)
+    monkeypatch.setattr(source, '_now', lambda: datetime.fromisoformat('2026-10-10T16:00:00+08:00'))
+    def closed(rows):
+        for row in rows:
+            if row['date'] in {'2026-10-09', '2026-10-10'}: row['is_trading_day'] = False
+    state['calendar_change'] = closed
+    result = FinchX().regulation.deviation('600519')
+    assert result['end_date'] == '2026-10-08'
+    assert result['windows'][1]['target_date'] == '2026-10-11'
+    state['stock_quote']['time'] = '2026-10-08T14:00:00+08:00'
+    with pytest.raises(SourceError): FinchX().regulation.deviation('600519')
+
+
+def test_listing_boundary_reads_real_profile_without_unrelated_financial_parse(monkeypatch):
+    import json
+    from pathlib import Path
+    from finchx.sources.tencent import deviation as source
+    payload = json.loads((Path(__file__).parent / 'fixtures' / 'company_sh600519_f10.txt').read_text(encoding="utf-8"))
+    payload['data']['zyzb'] = False  # 明确模拟无关业务块损坏，不影响必要上市边界。
+    calls = []
+    def request(url, **kwargs):
+        calls.append((url, kwargs))
+        return json.dumps(payload)
+    monkeypatch.setattr(source, 'get_text', request)
+    assert source._listing_date('600519', timeout=2.5) == date(2001, 8, 27)
+    assert calls[0][1]['timeout'] == 2.5
+    assert 'code=sh600519' in calls[0][0]
+    for invalid in [None, '2001/08/27', '2001-02-30', True]:
+        payload['data']['gsjj']['riqi'] = invalid
+        with pytest.raises(SourceError): source._listing_date('600519', timeout=2.5)
+
+
+def test_trigger_remaining_zero_and_negative_are_business_values():
+    zero = math_window([10] * 10 + [20], [100] * 11)
+    negative = math_window([10] * 10 + [100], [100] * 11)
+    assert zero['remaining_change_percent'] == 0
+    assert negative['remaining_change_percent'] == -80
+
+
+@pytest.mark.parametrize("value", ['2026-09-30', '20260930', '2026/09/30', '2026-09-30 15:30:00', '20260930 15:30:00', '2026/09/30 15:30:00'])
+def test_all_date_string_formats_select_same_observation_day(monkeypatch, value):
+    serve(monkeypatch)
+    result = FinchX().regulation.deviation("600519", end_date=value)
+    assert result["end_date"] == "2026-09-30"
+
+
+def remove_stock(state, *dates):
+    state['qfq'] = [row for row in state['qfq'] if row['date'] not in dates]
+
+
+def test_halt_replay_600825_uses_two_baselines_and_same_maximum_trigger():
+    """2.0.3价格离线重放；9/25..27显式不在fixture交易日里，不验证官方日历。"""
+    base = date(2026, 9, 4)
+    index_base = date(2026, 9, 18)
+    resumed = [date(2026, 9, day) for day in (21, 22, 23, 24, 28)]
+    stock = dict(zip([base] + resumed, map(Decimal, ['5.31', '5.84', '6.42', '7.06', '7.77', '8.55'])))
+    index = {index_base: Decimal('4101.66'), **{day: Decimal('4101.66') for day in resumed}}
+    index[resumed[-1]] = Decimal('4008.96')
+    result = calculate_window(stock, index, [index_base] + resumed,
+        window_days=10, scenario='current', target_date=resumed[-1],
+        stock_price=stock[resumed[-1]], benchmark_level=index[resumed[-1]], scale=Decimal(1),
+        coverage_status='halt_inferred_from_missing_kline', stock_time=None, benchmark_time=None,
+        first_baselines=(base, index_base), inferred_halt_dates=(index_base,))
+    assert result['stock_baseline_date'] == '2026-09-04'
+    assert result['benchmark_baseline_date'] == '2026-09-18'
+    assert result['start_date'] == '2026-09-21'
+    assert result['window_start_price'] == 5.84
+    assert result['deviation_percent'] == pytest.approx(63.2770097134)
+    assert result['trigger_price'] == 10.50
+    assert result['available_trading_days'] == result['trading_days'] == 5
+
+
+def test_live_first_resume_day_bridges_last_actual_stock_not_previous_market_day(monkeypatch):
+    state = serve(monkeypatch)
+    dates = [date(2026, 9, 30) + timedelta(days=i) for i in range(8)]
+    remove_stock(state, *(day.isoformat() for day in dates))
+    with pytest.warns(UserWarning) as caught:
+        result = FinchX().regulation.deviation('600519', windows=(10,))
+    assert len(caught) == 1
+    message = str(caught[0].message)
+    assert '股票日线缺口推定为停牌' in message and '未核对交易所停牌公告' in message
+    assert '2026-09-30' in message and '2026-10-07' in message
+    assert '10日窗口/当前场景' in message and '次一交易日场景' in message and '可用统计日1天' in message
+    for row in result['windows']:
+        assert row['stock_baseline_date'] == '2026-09-29'
+        assert row['benchmark_baseline_date'] == '2026-10-07'
+        assert row['stock_baseline_price'] == 154
+        assert row['window_start_price'] == row['stock_price'] == 160
+        assert row['available_trading_days'] == row['trading_days'] == 1
+        assert row['window_status'] == 'partial_after_inferred_halt'
+        assert row['stock_change_percent'] == pytest.approx((160 / 154 - 1) * 100)
+
+
+def test_multiple_gaps_are_reported_but_only_last_resume_segment_is_scanned(monkeypatch):
+    state = serve(monkeypatch)
+    remove_stock(state, '2026-09-20', '2026-10-03', '2026-10-04', '2026-10-05')
+    with pytest.warns(UserWarning) as caught:
+        result = FinchX().regulation.deviation('600519')
+    assert len(caught) == 1
+    assert result['inferred_halt_dates'] == ['2026-09-20', '2026-10-03', '2026-10-04', '2026-10-05']
+    for row in result['windows']:
+        assert row['start_date'] == '2026-10-06'
+        assert row['stock_baseline_date'] == '2026-10-02'
+        assert row['benchmark_baseline_date'] == '2026-10-05'
+        assert row['available_trading_days'] == 3
+        assert row['inferred_halt_dates'] == (result['inferred_halt_dates'] if row['window_days'] == 30 else result['inferred_halt_dates'][1:])
+
+
+def test_only_thirty_day_rows_affected_and_normal_ten_day_rows_preserved(monkeypatch):
+    state = serve(monkeypatch)
+    original = FinchX().regulation.deviation('600519')
+    remove_stock(state, '2026-09-15')
+    with pytest.warns(UserWarning) as caught:
+        result = FinchX().regulation.deviation('600519')
+    assert result['windows'][:2] == original['windows'][:2]
+    assert all(row['inferred_halt_dates'] == ['2026-09-15'] for row in result['windows'][2:])
+    assert '10日窗口' not in str(caught[0].message)
+    assert result['coverage_status'] == 'halt_inferred_from_missing_kline'
+
+
+def test_gap_crossing_requested_history_boundary_uses_one_bounded_full_qfq_refetch(monkeypatch):
+    state = serve(monkeypatch)
+    dates = [date(2026, 9, 15) + timedelta(days=i) for i in range(18)]
+    remove_stock(state, *(day.isoformat() for day in dates))
+    with pytest.warns(UserWarning):
+        result = FinchX().regulation.deviation('600519', windows=(10,))
+    assert len([call for call in state['calls'] if call[0] == 'daily' and call[3] == 'qfq']) == 2
+    assert not any(call[0] == 'listing' for call in state['calls'])
+    row = result['windows'][0]
+    assert row['stock_baseline_date'] == '2026-09-14'
+    assert row['benchmark_baseline_date'] == '2026-10-02'
+    assert row['start_date'] == '2026-10-03'
+    assert row['inferred_halt_dates'] == ['2026-09-28', '2026-09-29', '2026-09-30', '2026-10-01', '2026-10-02']
+    assert result['windows'][1]['inferred_halt_dates'] == row['inferred_halt_dates'][1:]
+
+
+def test_listing_short_history_and_internal_halts_remain_independent(monkeypatch):
+    state = serve(monkeypatch)
+    state['listing'] = date(2026, 9, 20)
+    state['qfq'] = [row for row in state['qfq'] if row['date'] >= '2026-09-20']
+    remove_stock(state, '2026-09-25', '2026-10-05')
+    with pytest.warns(UserWarning):
+        result = FinchX().regulation.deviation('600519')
+    assert result['coverage_status'] == 'short_history_and_halt_inferred_from_missing_kline'
+    for row in result['windows']:
+        assert row['available_trading_days'] == 3
+        if row['window_days'] == 30:
+            assert row['coverage_status'] == 'short_history_and_halt_inferred_from_missing_kline'
+            assert row['window_status'] == 'partial_short_history_and_inferred_halt'
         else:
-            assert identity == self.benchmark
-            closes = [
-                self.benchmark_close_overrides.get(day, Decimal(1000 + 2 * index))
-                for index, day in enumerate(self.sessions)
-            ]
-            missing_dates = self.missing_benchmark_dates
-            assert request.adjustment is None
-        data = tuple(
-            _record(
-                MARKET_KLINES_DATASET.name,
-                f"{identity.code}:{day.isoformat()}",
-                identity,
-                MarketKlineData(
-                    instrumentId=identity,
-                    barDate=day,
-                    open=close,
-                    high=close,
-                    low=close,
-                    close=close,
-                    volume=100,
-                    adjustment=(
-                        self.stock_adjustment
-                        if identity == self.stock
-                        else KlineAdjustment.NOT_APPLICABLE
-                    ),
-                ).model_dump(mode="json", by_alias=True),
-            )
-            for day, close in zip(self.sessions, closes)
-            if day not in missing_dates
-            and request.start_date <= day <= request.end_date
-        )
-        adjustment_warning = None
-        warnings = ()
-        metadata = {}
-        if identity == self.stock and self.stock_adjustment is KlineAdjustment.NONE:
-            adjustment_warning = (
-                "market.deviation stock Klines use unadjusted day prices; "
-                "the result is not forward-adjusted."
-            )
-            warnings = (adjustment_warning,)
-            metadata = {
-                "requested_adjustment": "qfq",
-                "actual_adjustment": "none",
-                "source_series": "day",
-                "adjustment_fallback": True,
-                "adjustment_warning": adjustment_warning,
-            }
-        return FetchResult(
-            data=data,
-            dataset=MARKET_KLINES_DATASET,
-            provider=provider or "fixture.klines",
-            captured_at=CAPTURED_AT,
-            warnings=warnings,
-            provenance=(self._source,),
-            metadata=metadata,
-        )
-
-
-def _record(
-    dataset,
-    record_id,
-    entity_id,
-    data,
-    *,
-    captured_at=CAPTURED_AT,
-    status=DataStatus.LIVE,
-):
-    return StandardRecord(
-        dataset=dataset,
-        schemaVersion="1.0",
-        recordId=record_id,
-        entityId=entity_id,
-        capturedAt=captured_at,
-        source=Source(providerId="fixture.deviation"),
-        status=status,
-        quality=Quality(),
-        provenance=Provenance(
-            recordClass=ProvenanceClass.STANDARDIZED,
-            transformationVersion="fixture/1",
-        ),
-        data=data,
-    )
-
-
-def _weekday_sessions_ending(
-    end_date: date,
-    count: int,
-    *,
-    closed_dates: tuple[date, ...] = (),
-) -> tuple[date, ...]:
-    closed = set(closed_dates)
-    sessions: list[date] = []
-    cursor = end_date
-    while len(sessions) < count:
-        if cursor.weekday() < 5 and cursor not in closed:
-            sessions.append(cursor)
-        cursor -= timedelta(days=1)
-    return tuple(reversed(sessions))
-
-
-def test_client_computed_capability_uses_scenarios_and_shared_qfq_stock_raw_index_history():
-    sessions = tuple(date(2026, 7, 1) + timedelta(days=index) for index in range(31))
-    stock = equity("600519", Exchange.SSE)
-    benchmark = resolve_deviation_benchmark(stock).instrument
-    collector = FixtureCollector(sessions, stock, benchmark)
-    client = FinchX(collector=collector)
-
-    result = client.market.deviation(
-        stock,
-        windows=(10, 30),
-        as_of=sessions[-1],
-    )
-
-    assert result.dataset is COMPUTED_DEVIATION_DATASET
-    assert result.provider is None
-    assert result.data.rule_version == DEVIATION_RULE_VERSION
-    assert [(item.window_days, item.scenario) for item in result.data.windows] == [
-        (10, "pre_open"), (10, "current"), (10, "next_session"),
-        (30, "pre_open"), (30, "current"), (30, "next_session"),
-    ]
-    assert result.data.as_of == result.data.effective_as_of == sessions[-1]
-    assert result.data.calculation_mode == "scenario_based"
-    kline_requests = [request for dataset, request, _ in collector.calls if dataset is MARKET_KLINES_DATASET]
-    assert len(kline_requests) == 2
-    assert kline_requests[0].adjustment is KlineAdjustment.QFQ
-    assert kline_requests[1].adjustment is None
-    assert collector.health.snapshot().dataset("market.deviation").successes == 1
-    assert collector.quality.dataset("market.deviation").latest.has_data is True
-    assert collector.observability.dataset("market.deviation").successes == 1
-
-
-def test_suspension_gap_resets_with_stock_and_index_baselines_on_distinct_dates():
-    effective_as_of = date(2026, 9, 24)
-    sessions = _weekday_sessions_ending(effective_as_of, 31)
-    halt_dates = tuple(
-        day for day in sessions if date(2026, 9, 7) <= day <= date(2026, 9, 18)
-    )
-    assert len(halt_dates) == 10
-    stock = equity("600825", Exchange.SSE)
-    benchmark = resolve_deviation_benchmark(stock).instrument
-    resume_dates = tuple(date(2026, 9, day) for day in (21, 22, 23, 24))
-    stock_closes = {
-        date(2026, 9, 4): Decimal("80"),
-        date(2026, 9, 21): Decimal("100"),
-        date(2026, 9, 22): Decimal("120"),
-        date(2026, 9, 23): Decimal("150"),
-        date(2026, 9, 24): Decimal("200"),
-    }
-    benchmark_closes = {
-        date(2026, 9, 18): Decimal("1000"),
-        date(2026, 9, 21): Decimal("1000"),
-        date(2026, 9, 22): Decimal("1001"),
-        date(2026, 9, 23): Decimal("1002"),
-        date(2026, 9, 24): Decimal("1003"),
-    }
-    collector = FixtureCollector(
-        sessions,
-        stock,
-        benchmark,
-        missing_stock_dates=halt_dates,
-        stock_close_overrides=stock_closes,
-        benchmark_close_overrides=benchmark_closes,
-    )
-
-    result = DeviationService(collector).calculate(
-        stock,
-        windows=(10, 30),
-        as_of=effective_as_of,
-    )
-
-    assert result.data.coverage_status == "halt_inferred_from_missing_kline"
-    assert result.data.inferred_halt_dates == halt_dates
-    assert len(result.data.windows) == 6
-    current_windows = [window for window in result.data.windows if window.scenario == "current"]
-    window_gap_dates = {
-        window.window_days: tuple(day for day in halt_dates if day in sessions[-(window.window_days + 1) :])
-        for window in current_windows
-    }
-    assert len(window_gap_dates[10]) == 7
-    assert len(window_gap_dates[30]) == 10
-    for window in current_windows:
-        assert window.coverage_status == "halt_inferred_from_missing_kline"
-        assert window.window_status == "partial_after_inferred_halt"
-        assert window.window_days in (10, 30)
-        assert window.available_trading_sessions == 4
-        assert window.trading_sessions == 4
-        assert window.start_date == resume_dates[0]
-        assert window.stock_baseline_date == date(2026, 9, 4)
-        assert window.benchmark_baseline_date == date(2026, 9, 18)
-        assert window.inferred_halt_dates == window_gap_dates[window.window_days]
-    assert current_windows[0].stock_return == Decimal("1.5")
-    assert current_windows[0].benchmark_return == Decimal("0.003")
-    assert current_windows[0].deviation == Decimal("1.497")
-    assert result.metadata["coverage_status"] == "halt_inferred_from_missing_kline"
-    assert result.metadata["inferred_halt_dates"] == tuple(day.isoformat() for day in halt_dates)
-    assert any("not verified against an exchange notice" in warning for warning in result.warnings)
-    assert any("4 resumed trading sessions" in warning for warning in result.warnings)
-
-
-def test_multiple_internal_gaps_report_all_dates_and_reset_after_latest_gap():
-    end_date = date(2026, 9, 24)
-    sessions = _weekday_sessions_ending(end_date, 31)
-    gap_dates = (sessions[22], sessions[27], sessions[28])
-    stock = equity("600825", Exchange.SSE)
-    benchmark = resolve_deviation_benchmark(stock).instrument
-    stock_closes = {
-        sessions[21]: Decimal("80"),
-        sessions[26]: Decimal("90"),
-        sessions[29]: Decimal("100"),
-        sessions[30]: Decimal("110"),
-    }
-    collector = FixtureCollector(
-        sessions,
-        stock,
-        benchmark,
-        missing_stock_dates=gap_dates,
-        stock_close_overrides=stock_closes,
-    )
-
-    result = DeviationService(collector).calculate(
-        stock,
-        windows=(10, 30),
-        as_of=end_date,
-    )
-
-    assert result.data.inferred_halt_dates == gap_dates
-    assert result.metadata["inferred_halt_dates"] == tuple(day.isoformat() for day in gap_dates)
-    for window in (item for item in result.data.windows if item.scenario == "current"):
-        expected_gaps = tuple(
-            day for day in gap_dates if day in sessions[-(window.window_days + 1) :]
-        )
-        assert window.inferred_halt_dates == expected_gaps
-        assert window.stock_baseline_date == sessions[26]
-        assert window.benchmark_baseline_date == sessions[28]
-        assert window.start_date == sessions[29]
-        assert window.current_price == Decimal("110")
-    assert any(", ".join(day.isoformat() for day in gap_dates) in warning for warning in result.warnings)
-
-
-def test_gap_outside_ten_session_window_does_not_change_that_window():
-    end_date = date(2026, 9, 24)
-    sessions = _weekday_sessions_ending(end_date, 31)
-    older_gap = (sessions[10],)
-    stock = equity("600825", Exchange.SSE)
-    benchmark = resolve_deviation_benchmark(stock).instrument
-    collector = FixtureCollector(
-        sessions,
-        stock,
-        benchmark,
-        missing_stock_dates=older_gap,
-    )
-
-    result = DeviationService(collector).calculate(
-        stock,
-        windows=(10, 30),
-        as_of=end_date,
-    )
-
-    ten_day, thirty_day = [
-        item for item in result.data.windows if item.scenario == "current"
-    ]
-    assert ten_day.window_days == 10
-    assert ten_day.coverage_status == "complete"
-    assert ten_day.inferred_halt_dates == ()
-    assert ten_day.stock_baseline_date == ten_day.benchmark_baseline_date
-    assert thirty_day.window_days == 30
-    assert thirty_day.coverage_status == "halt_inferred_from_missing_kline"
-    assert thirty_day.inferred_halt_dates == older_gap
-    assert result.data.inferred_halt_dates == older_gap
-
-
-def test_single_internal_stock_kline_gap_is_inferred_but_index_gap_is_no_data():
-    end_date = date(2026, 9, 24)
-    sessions = _weekday_sessions_ending(end_date, 11)
-    internal_gap = (sessions[5],)
-    stock = equity("600825", Exchange.SSE)
-    benchmark = resolve_deviation_benchmark(stock).instrument
-    collector = FixtureCollector(
-        sessions,
-        stock,
-        benchmark,
-        missing_stock_dates=internal_gap,
-    )
-
-    result = DeviationService(collector).calculate(
-        stock,
-        windows=(10,),
-        as_of=end_date,
-    )
-
-    window = next(item for item in result.data.windows if item.scenario == "current")
-    assert window.coverage_status == "halt_inferred_from_missing_kline"
-    assert window.inferred_halt_dates == internal_gap
-    assert window.stock_baseline_date == sessions[4]
-    assert window.benchmark_baseline_date == sessions[5]
-    assert window.start_date == sessions[6]
-
-    short_history_and_gap = FixtureCollector(
-        sessions,
-        stock,
-        benchmark,
-        missing_stock_dates=tuple(sessions[:3]) + internal_gap,
-    )
-    combined = DeviationService(short_history_and_gap).calculate(
-        stock,
-        windows=(10,),
-        as_of=end_date,
-    )
-    combined_window = combined.data.windows[0]
-    assert combined_window.coverage_status == "short_history_and_halt_inferred_from_missing_kline"
-    assert combined_window.window_status == "partial_short_history_and_inferred_halt"
-    assert combined_window.inferred_halt_dates == internal_gap
-    assert any("leading dates" in warning for warning in combined.warnings)
-    assert any("partial after the inferred halt" in warning for warning in combined.warnings)
-
-    missing_index_date = sessions[7]
-    index_collector = FixtureCollector(
-        sessions,
-        stock,
-        benchmark,
-        missing_benchmark_dates=(missing_index_date,),
-    )
-    with pytest.raises(DeviationCoverageError) as captured:
-        DeviationService(index_collector).calculate(
-            stock,
-            windows=(10,),
-            as_of=end_date,
-        )
-    error = captured.value
-    assert isinstance(error, NoData)
-    assert error.reason_code == "missing_benchmark_closes"
-    assert error.requested_as_of == end_date
-    assert error.effective_as_of == date(2026, 9, 23)
-    assert error.required_count == 10
-    assert error.observed_stock_count == 10
-    assert error.observed_benchmark_count == 9
-    assert error.missing_benchmark_dates == (missing_index_date,)
-
-
-def test_short_history_returns_with_two_comparable_closes_and_one_close_fails():
-    end_date = date(2026, 9, 24)
-    sessions = _weekday_sessions_ending(end_date, 31)
-    stock = equity("600825", Exchange.SSE)
-    benchmark = resolve_deviation_benchmark(stock).instrument
-    available_dates = sessions[-5:]
-    missing_prefix = sessions[:-5]
-    collector = FixtureCollector(
-        sessions,
-        stock,
-        benchmark,
-        missing_stock_dates=missing_prefix,
-        stock_adjustment=KlineAdjustment.NONE,
-    )
-
-    result = DeviationService(collector).calculate(
-        stock,
-        windows=(10, 30),
-        as_of=end_date,
-    )
-    assert result.data.coverage_status == "short_history"
-    assert result.data.price_basis == "raw_stock__raw_index"
-    assert result.metadata["actual_adjustment"] == "none"
-    assert not any(dataset is MARKET_QUOTE_SNAPSHOT_DATASET for dataset, _, _ in collector.calls)
-    for window in (item for item in result.data.windows if item.scenario == "current"):
-        assert window.coverage_status == "short_history"
-        assert window.window_status == "partial_short_history"
-        assert window.available_trading_sessions == 4
-        assert window.end_date == end_date
-        assert window.baseline_date in available_dates
-    assert any("short listing history" in warning for warning in result.warnings)
-
-    two_close_stock = {
-        sessions[-3]: Decimal("10"),
-        sessions[-2]: Decimal("10"),
-        sessions[-1]: Decimal("12"),
-    }
-    two_close_index = {
-        sessions[-3]: Decimal("100"),
-        sessions[-2]: Decimal("100"),
-        sessions[-1]: Decimal("110"),
-    }
-    two_close_collector = FixtureCollector(
-        sessions,
-        stock,
-        benchmark,
-        missing_stock_dates=sessions[:-3],
-        stock_close_overrides=two_close_stock,
-        benchmark_close_overrides=two_close_index,
-    )
-    two_close = DeviationService(two_close_collector).calculate(
-        stock,
-        windows=(10,),
-        as_of=end_date,
-    )
-    two_close = next(item for item in two_close.data.windows if item.scenario == "current")
-    assert two_close.window_status == "partial_short_history"
-    assert two_close.trading_sessions == 2
-    assert two_close.available_trading_sessions == 2
-    assert two_close.stock_baseline_date == sessions[-3]
-    assert two_close.stock_return == Decimal("0.2")
-    assert two_close.benchmark_return == Decimal("0.1")
-    assert two_close.deviation == Decimal("0.1")
-
-    one_close_collector = FixtureCollector(
-        sessions,
-        stock,
-        benchmark,
-        missing_stock_dates=sessions[:-1],
-        stock_adjustment=KlineAdjustment.NONE,
-    )
-    with pytest.raises(DeviationCoverageError) as captured:
-        DeviationService(one_close_collector).calculate(
-            stock,
-            windows=(10,),
-            as_of=end_date,
-        )
-    assert captured.value.reason_code == "missing_effective_asof_stock_close"
-    assert captured.value.effective_as_of == sessions[-2]
-    assert captured.value.missing_stock_dates == sessions[-12:-1]
-
-
-def test_same_day_as_of_uses_daily_bars_after_close_and_next_session_calendar_boundary():
-    end_date = date(2026, 9, 28)
-    closures = tuple(date(2026, 9, day) for day in (25, 26, 27))
-    sessions = _weekday_sessions_ending(end_date, 31, closed_dates=closures)
-    stock = equity("600825", Exchange.SSE)
-    benchmark = resolve_deviation_benchmark(stock).instrument
-    halt_dates = tuple(
-        day for day in sessions if date(2026, 9, 7) <= day <= date(2026, 9, 18)
-    )
-
-    same_day_collector = FixtureCollector(
-        sessions,
-        stock,
-        benchmark,
-        missing_stock_dates=halt_dates,
-        closed_dates=closures,
-    )
-    same_day_service = DeviationService(
-        same_day_collector,
-        clock=lambda: datetime(2026, 9, 28, 15, 59, tzinfo=timezone(timedelta(hours=8))),
-    )
-    same_day = same_day_service.calculate(
-        stock,
-        windows=(10,),
-        as_of=date(2026, 9, 28),
-    )
-    assert same_day.data.as_of == same_day.data.effective_as_of == end_date
-    pre_open, current, next_session = same_day.data.windows
-    assert pre_open.scenario == "pre_open"
-    assert pre_open.end_date == pre_open.target_date == date(2026, 9, 24)
-    assert pre_open.available_trading_sessions == 4
-    assert current.scenario == "current"
-    assert current.end_date == current.target_date == end_date
-    assert current.available_trading_sessions == 5
-    assert current.stock_source_timestamp is None
-    assert current.benchmark_source_timestamp is None
-    assert next_session.scenario == "next_session"
-    assert next_session.end_date == end_date
-    assert next_session.target_date == date(2026, 9, 29)
-    assert next_session.available_trading_sessions == 5
-    assert next_session.current_price == current.current_price
-    same_day_quote_calls = [
-        (dataset, request)
-        for dataset, request, _ in same_day_collector.calls
-        if dataset is MARKET_QUOTE_SNAPSHOT_DATASET
-    ]
-    assert same_day_quote_calls == []
-    assert same_day.metadata["price_inputs"] == "same_day_daily_bars"
-    assert same_day.metadata["stock_terminal_source"] == "same_day_daily_bar"
-    assert same_day.metadata["benchmark_terminal_source"] == "same_day_daily_bar"
-
-    after_close_collector = FixtureCollector(
-        sessions,
-        stock,
-        benchmark,
-        missing_stock_dates=halt_dates,
-        closed_dates=closures,
-    )
-    after_close = DeviationService(
-        after_close_collector,
-        clock=lambda: datetime(2026, 9, 28, 16, 0, tzinfo=timezone(timedelta(hours=8))),
-    ).calculate(
-        stock,
-        windows=(10,),
-        as_of=date(2026, 9, 28),
-    )
-    assert after_close.data.as_of == after_close.data.effective_as_of == date(2026, 9, 28)
-    assert after_close.data.windows[1].end_date == date(2026, 9, 28)
-    assert after_close.data.windows[1].stock_source_timestamp is None
-    assert after_close.data.windows[1].available_trading_sessions == 5
-    assert after_close.metadata["price_inputs"] == "same_day_daily_bars"
-    assert after_close.data.windows[0].stock_source_timestamp is None
-    assert not any(dataset is MARKET_QUOTE_SNAPSHOT_DATASET for dataset, _, _ in after_close_collector.calls)
-
-    postclose_time = datetime(
-        2026, 9, 28, 16, 14, 52, tzinfo=timezone(timedelta(hours=8))
-    )
-    postclose_collector = FixtureCollector(
-        sessions,
-        stock,
-        benchmark,
-        missing_stock_dates=halt_dates,
-        closed_dates=closures,
-        quote_timestamp=postclose_time,
-    )
-    postclose = DeviationService(
-        postclose_collector,
-        clock=lambda: datetime(2026, 9, 28, 16, 20, tzinfo=timezone(timedelta(hours=8))),
-    ).calculate(stock, windows=(10,), as_of=date(2026, 9, 28))
-    assert postclose.data.windows[1].stock_source_timestamp is None
-    assert not any(dataset is MARKET_QUOTE_SNAPSHOT_DATASET for dataset, _, _ in postclose_collector.calls)
-
-    last_preclose_quote = datetime(
-        2026, 9, 28, 14, 59, tzinfo=timezone(timedelta(hours=8))
-    )
-    preclose_quote_collector = FixtureCollector(
-        sessions,
-        stock,
-        benchmark,
-        missing_stock_dates=halt_dates,
-        closed_dates=closures,
-        stock_quote_price=Decimal("999"),
-        quote_timestamp=last_preclose_quote,
-    )
-    preclose_quote = DeviationService(
-        preclose_quote_collector,
-        clock=lambda: datetime(2026, 9, 28, 16, 0, tzinfo=timezone(timedelta(hours=8))),
-    ).calculate(stock, windows=(10,), as_of=date(2026, 9, 28))
-    assert preclose_quote.data.windows[1].stock_source_timestamp is None
-    assert preclose_quote.metadata["stock_terminal_source"] == "same_day_daily_bar"
-    assert not any(dataset is MARKET_QUOTE_SNAPSHOT_DATASET for dataset, _, _ in preclose_quote_collector.calls)
-
-    mismatched_stock_bar_collector = FixtureCollector(
-        sessions,
-        stock,
-        benchmark,
-        missing_stock_dates=halt_dates,
-        closed_dates=closures,
-        stock_quote_price=Decimal("999"),
-        quote_timestamp=datetime(
-            2026, 9, 28, 15, 1, tzinfo=timezone(timedelta(hours=8))
-        ),
-    )
-    mismatched_stock_bar = DeviationService(
-        mismatched_stock_bar_collector,
-        clock=lambda: datetime(2026, 9, 28, 16, 0, tzinfo=timezone(timedelta(hours=8))),
-    ).calculate(stock, windows=(10,), as_of=date(2026, 9, 28))
-    assert mismatched_stock_bar.data.windows[1].stock_source_timestamp is None
-    assert mismatched_stock_bar.metadata["stock_terminal_source"] == "same_day_daily_bar"
-    assert not any(dataset is MARKET_QUOTE_SNAPSHOT_DATASET for dataset, _, _ in mismatched_stock_bar_collector.calls)
-
-    stale_quote_collector = FixtureCollector(
-        sessions,
-        stock,
-        benchmark,
-        closed_dates=closures,
-        quote_timestamp=datetime(
-            2026, 9, 28, 9, 20, tzinfo=timezone(timedelta(hours=8))
-        ),
-    )
-    with pytest.raises(NoData, match="stale for the current session"):
-        DeviationService(
-            stale_quote_collector,
-            clock=lambda: datetime(2026, 9, 28, 10, 0, tzinfo=timezone(timedelta(hours=8))),
-        ).calculate(stock, windows=(10,), as_of=date(2026, 9, 28))
-
-    failed_quote_collector = FixtureCollector(
-        sessions,
-        stock,
-        benchmark,
-        closed_dates=closures,
-        quote_timestamp=datetime(
-            2026, 9, 28, 9, 55, tzinfo=timezone(timedelta(hours=8))
-        ),
-        quote_status=DataStatus.FAILED,
-    )
-    with pytest.raises(NoData, match="status is not live"):
-        DeviationService(
-            failed_quote_collector,
-            clock=lambda: datetime(2026, 9, 28, 10, 0, tzinfo=timezone(timedelta(hours=8))),
-        ).calculate(stock, windows=(10,), as_of=date(2026, 9, 28))
-
-    prior_day_quote_collector = FixtureCollector(
-        sessions,
-        stock,
-        benchmark,
-        missing_stock_dates=(date(2026, 9, 28),),
-        closed_dates=closures,
-        quote_timestamp=datetime(
-            2026, 9, 24, 15, 0, tzinfo=timezone(timedelta(hours=8))
-        ),
-    )
-    with pytest.raises(NoData, match="stale: expected 2026-09-28, received 2026-09-24"):
-        DeviationService(
-            prior_day_quote_collector,
-            clock=lambda: datetime(2026, 9, 28, 16, 0, tzinfo=timezone(timedelta(hours=8))),
-        ).calculate(stock, windows=(10,), as_of=date(2026, 9, 28))
-
-    missing_current_close_collector = FixtureCollector(
-        sessions,
-        stock,
-        benchmark,
-        missing_stock_dates=halt_dates + (date(2026, 9, 28),),
-        closed_dates=closures,
-    )
-    with pytest.raises(NoData, match="sourceTimestamp is in the future"):
-        DeviationService(
-            missing_current_close_collector,
-            clock=lambda: datetime(2026, 9, 28, 8, 0, tzinfo=timezone(timedelta(hours=8))),
-        ).calculate(
-            stock,
-            windows=(10,),
-            as_of=date(2026, 9, 28),
-        )
-
-    next_day_collector = FixtureCollector(
-        sessions,
-        stock,
-        benchmark,
-        missing_stock_dates=halt_dates,
-        closed_dates=closures,
-    )
-    next_day_service = DeviationService(
-        next_day_collector,
-        clock=lambda: datetime(2026, 9, 29, 8, 0, tzinfo=timezone(timedelta(hours=8))),
-    )
-    next_day = next_day_service.calculate(
-        stock,
-        windows=(10,),
-        as_of=date(2026, 9, 28),
-    )
-    assert next_day.data.as_of == next_day.data.effective_as_of == date(2026, 9, 28)
-    assert next_day.data.windows[1].end_date == date(2026, 9, 28)
-    assert next_day.data.windows[1].stock_source_timestamp is None
-    assert next_day.data.windows[2].target_date == date(2026, 9, 29)
-
-
-@pytest.mark.parametrize(
-    ("missing_stock", "missing_index", "stock_quote", "index_quote"),
-    [
-        (True, False, None, None),
-        (False, True, None, None),
-        (True, True, None, None),
-        (False, True, Decimal("999"), None),
-        (True, False, None, Decimal("9999")),
-        (False, False, Decimal("999"), Decimal("9999")),
-    ],
-    ids=("stock-bar-missing", "index-bar-missing", "both-bars-missing", "stock-bar-preferred-over-mismatched-quote", "index-bar-preferred-over-mismatched-quote", "both-bars-present"),
-)
-def test_postclose_prefers_each_available_daily_bar_and_quotes_only_missing_sides(
-    missing_stock, missing_index, stock_quote, index_quote
-):
-    end_date = date(2026, 9, 28)
-    closures = tuple(date(2026, 9, day) for day in (25, 26, 27))
-    sessions = _weekday_sessions_ending(end_date, 31, closed_dates=closures)
-    stock = equity("600825", Exchange.SSE)
-    benchmark = resolve_deviation_benchmark(stock).instrument
-    collector = FixtureCollector(
-        sessions,
-        stock,
-        benchmark,
-        missing_stock_dates=(end_date,) if missing_stock else (),
-        missing_benchmark_dates=(end_date,) if missing_index else (),
-        closed_dates=closures,
-        stock_quote_price=stock_quote,
-        benchmark_quote_price=index_quote,
-        quote_timestamp=datetime(
-            2026, 9, 28, 14, 59, tzinfo=timezone(timedelta(hours=8))
-        ),
-    )
-
-    result = DeviationService(
-        collector,
-        clock=lambda: datetime(2026, 9, 28, 16, 0, tzinfo=timezone(timedelta(hours=8))),
-    ).calculate(stock, windows=(10,), as_of=end_date)
-
-    current = result.data.windows[1]
-    next_session = result.data.windows[2]
-    default_stock_bar = Decimal(100 + len(sessions) - 1)
-    default_index_bar = Decimal(1000 + 2 * (len(sessions) - 1))
-    expected_stock_price = (
-        stock_quote if missing_stock and stock_quote is not None else default_stock_bar
-    )
-    expected_index_price = (
-        index_quote if missing_index and index_quote is not None else default_index_bar
-    )
-    assert current.current_price == next_session.current_price == expected_stock_price
-    assert current.benchmark_current == next_session.benchmark_current == expected_index_price
-    assert current.stock_source_timestamp == next_session.stock_source_timestamp
-    assert current.benchmark_source_timestamp == next_session.benchmark_source_timestamp
-    assert (current.stock_source_timestamp is not None) is missing_stock
-    assert (current.benchmark_source_timestamp is not None) is missing_index
-    expected_quote_codes = {
-        identity.code
-        for identity, missing in ((stock, missing_stock), (benchmark, missing_index))
-        if missing
-    }
-    quote_requests = [
-        request.instrument_id.code
-        for dataset, request, _ in collector.calls
-        if dataset is MARKET_QUOTE_SNAPSHOT_DATASET
-    ]
-    assert set(quote_requests) == expected_quote_codes
-    assert len(quote_requests) == len(expected_quote_codes)
-    provenance_providers = {source.provider_id for source in result.provenance}
-    assert "fixture.deviation" in provenance_providers
-    assert ("fixture.quote" in provenance_providers) is bool(expected_quote_codes)
-    assert current.stock_source_timestamp == (
-        datetime(2026, 9, 28, 14, 59, tzinfo=timezone(timedelta(hours=8)))
-        if missing_stock else None
-    )
-    assert current.benchmark_source_timestamp == (
-        datetime(2026, 9, 28, 14, 59, tzinfo=timezone(timedelta(hours=8)))
-        if missing_index else None
-    )
-    expected_price_inputs = (
-        "same_day_quotes"
-        if len(expected_quote_codes) == 2
-        else "same_day_daily_bars_with_quote_fallback"
-        if len(expected_quote_codes) == 1
-        else "same_day_daily_bars"
-    )
-    assert result.metadata["price_inputs"] == expected_price_inputs
-    assert result.metadata["stock_terminal_source"] == (
-        "same_day_quote" if missing_stock else "same_day_daily_bar"
-    )
-    assert result.metadata["benchmark_terminal_source"] == (
-        "same_day_quote" if missing_index else "same_day_daily_bar"
-    )
-    assert result.metadata["terminal_source_scope"] == ("current", "next_session")
-    assert bool(result.warnings) is bool(expected_quote_codes)
-    if missing_stock:
-        assert "stock" in result.warnings[0]
-    if missing_index:
-        assert "benchmark index" in result.warnings[0]
-    assert result.data.windows[0].stock_source_timestamp is None
-    assert result.data.windows[0].benchmark_source_timestamp is None
-
-
-def test_intraday_quote_before_1500_is_used_with_existing_freshness_check():
-    end_date = date(2026, 9, 28)
-    closures = tuple(date(2026, 9, day) for day in (25, 26, 27))
-    sessions = _weekday_sessions_ending(end_date, 31, closed_dates=closures)
-    stock = equity("600825", Exchange.SSE)
-    benchmark = resolve_deviation_benchmark(stock).instrument
-    quote_time = datetime(2026, 9, 28, 14, 25, tzinfo=timezone(timedelta(hours=8)))
-    collector = FixtureCollector(
-        sessions,
-        stock,
-        benchmark,
-        closed_dates=closures,
-        stock_quote_price=Decimal("999"),
-        quote_timestamp=quote_time,
-    )
-
-    result = DeviationService(
-        collector,
-        clock=lambda: datetime(2026, 9, 28, 14, 30, tzinfo=timezone(timedelta(hours=8))),
-    ).calculate(stock, windows=(10,), as_of=end_date)
-
-    assert result.data.windows[1].current_price == Decimal("999")
-    assert result.data.windows[1].stock_source_timestamp == quote_time
-    assert not result.warnings
-    assert result.metadata["price_inputs"] == "same_day_quotes_with_daily_history"
-    assert result.metadata["stock_terminal_source"] == "same_day_quote"
-    assert result.data.windows[0].end_date == date(2026, 9, 24)
-
-
-def test_historical_as_of_keeps_daily_bar_inputs_and_no_quote_close_warning():
-    end_date = date(2026, 9, 24)
-    sessions = _weekday_sessions_ending(end_date, 31)
-    stock = equity("600825", Exchange.SSE)
-    benchmark = resolve_deviation_benchmark(stock).instrument
-    collector = FixtureCollector(sessions, stock, benchmark)
-
-    result = DeviationService(
-        collector,
-        clock=lambda: datetime(2026, 9, 29, 16, 0, tzinfo=timezone(timedelta(hours=8))),
-    ).calculate(stock, windows=(10,), as_of=end_date)
-
-    assert result.metadata["price_inputs"] == "historical_daily_bars"
-    assert result.metadata["stock_source_timestamp"] is None
-    assert result.metadata["benchmark_source_timestamp"] is None
-    assert not any("quote fallback" in warning for warning in result.warnings)
-    assert [window.stock_source_timestamp for window in result.data.windows] == [None, None, None]
-
-
-def test_captured_tencent_closes_reproduce_sep_28_five_session_deviation():
-    """Keep the captured Tencent 600825/000002 closes as an offline regression."""
-
-    end_date = date(2026, 9, 28)
-    closed_dates = tuple(date(2026, 9, day) for day in (25, 26, 27))
-    sessions = _weekday_sessions_ending(end_date, 31, closed_dates=closed_dates)
-    halt_dates = tuple(
-        day for day in sessions if date(2026, 9, 7) <= day <= date(2026, 9, 18)
-    )
-    stock = equity("600825", Exchange.SSE)
-    benchmark = resolve_deviation_benchmark(stock).instrument
-    stock_closes = {
-        date(2026, 9, 4): Decimal("5.31"),
-        date(2026, 9, 21): Decimal("5.84"),
-        date(2026, 9, 22): Decimal("6.42"),
-        date(2026, 9, 23): Decimal("7.06"),
-        date(2026, 9, 24): Decimal("7.77"),
-        date(2026, 9, 28): Decimal("8.55"),
-    }
-    benchmark_closes = {
-        date(2026, 9, 18): Decimal("4101.66"),
-        date(2026, 9, 21): Decimal("4141.56"),
-        date(2026, 9, 22): Decimal("4143.88"),
-        date(2026, 9, 23): Decimal("4127.45"),
-        date(2026, 9, 24): Decimal("4076.91"),
-        date(2026, 9, 28): Decimal("4008.96"),
-    }
-    collector = FixtureCollector(
-        sessions,
-        stock,
-        benchmark,
-        missing_stock_dates=halt_dates,
-        closed_dates=closed_dates,
-        stock_close_overrides=stock_closes,
-        benchmark_close_overrides=benchmark_closes,
-    )
-    service = DeviationService(
-        collector,
-        clock=lambda: datetime(2026, 9, 28, 16, 0, tzinfo=timezone(timedelta(hours=8))),
-    )
-
-    result = service.calculate(
-        stock,
-        windows=(10,),
-        as_of=end_date,
-    )
-
-    window = result.data.windows[1]
-    assert result.data.effective_as_of == end_date
-    assert window.trading_sessions == 5
-    assert window.available_trading_sessions == 5
-    assert window.coverage_status == "halt_inferred_from_missing_kline"
-    assert window.window_status == "partial_after_inferred_halt"
-    assert window.start_date == date(2026, 9, 21)
-    assert window.stock_baseline_date == date(2026, 9, 4)
-    assert window.benchmark_baseline_date == date(2026, 9, 18)
-    assert window.stock_baseline_price == Decimal("5.31")
-    assert window.window_start_price == Decimal("5.84")
-    assert window.current_price == Decimal("8.55")
-    assert window.benchmark_start == Decimal("4101.66")
-    assert window.benchmark_current == Decimal("4008.96")
-    assert window.deviation == pytest.approx(
-        Decimal("0.6327700971"), abs=Decimal("0.0000000001")
-    )
-    assert any("5 resumed trading sessions" in warning for warning in result.warnings)
-
-    next_window = result.data.windows[2]
-    assert next_window.start_date == date(2026, 9, 21)
-    assert next_window.stock_baseline_date == window.stock_baseline_date
-    assert next_window.deviation == window.deviation
-
-
-def test_d10_quote_updates_do_not_change_pre_open_qfq_results():
-    observation_date = date(2026, 9, 28)
-    closures = tuple(date(2026, 9, day) for day in (25, 26, 27))
-    sessions = _weekday_sessions_ending(observation_date, 31, closed_dates=closures)
-    stock = equity("600519", Exchange.SSE)
-    benchmark = resolve_deviation_benchmark(stock).instrument
-    quote_time = datetime(2026, 9, 28, 13, 55, tzinfo=timezone(timedelta(hours=8)))
-
-    def calculate(quote_price: Decimal):
-        collector = FixtureCollector(
-            sessions,
-            stock,
-            benchmark,
-            closed_dates=closures,
-            stock_quote_price=quote_price,
-            quote_timestamp=quote_time,
-        )
-        return DeviationService(
-            collector,
-            clock=lambda: datetime(2026, 9, 28, 14, 0, tzinfo=timezone(timedelta(hours=8))),
-        ).calculate(stock, windows=(10,), as_of=observation_date)
-
-    first = calculate(Decimal("131"))
-    second = calculate(Decimal("262"))
-    pre_open_first, current_first, _ = first.data.windows
-    pre_open_second, current_second, _ = second.data.windows
-
-    assert pre_open_first.current_price == pre_open_second.current_price
-    assert pre_open_first.deviation == pre_open_second.deviation
-    assert pre_open_first.upper_trigger_price == pre_open_second.upper_trigger_price
-    assert current_first.current_price != current_second.current_price
-    assert current_first.deviation != current_second.deviation
-    assert first.metadata["stock_qfq_quote_bridge_date"] == sessions[-2].isoformat()
-
-
-def test_unadjusted_day_fallback_continues_deviation_without_qfq_quote_bridge():
-    observation_date = date(2026, 9, 28)
-    closures = tuple(date(2026, 9, day) for day in (25, 26, 27))
-    sessions = _weekday_sessions_ending(observation_date, 31, closed_dates=closures)
-    stock = equity("600519", Exchange.SSE)
-    benchmark = resolve_deviation_benchmark(stock).instrument
-    quote_time = datetime(2026, 9, 28, 13, 55, tzinfo=timezone(timedelta(hours=8)))
-    collector = FixtureCollector(
-        sessions,
-        stock,
-        benchmark,
-        stock_adjustment=KlineAdjustment.NONE,
-        stock_quote_price=Decimal("160"),
-        stock_quote_previous_close=Decimal("9999"),
-        quote_timestamp=quote_time,
-    )
-
-    result = DeviationService(
-        collector,
-        clock=lambda: datetime(2026, 9, 28, 14, 0, tzinfo=timezone(timedelta(hours=8))),
-    ).calculate(stock, windows=(10,), as_of=observation_date)
-
-    current = next(item for item in result.data.windows if item.scenario == "current")
-    assert result.data.price_basis == "raw_stock__raw_index"
-    assert result.metadata["requested_adjustment"] == "qfq"
-    assert result.metadata["actual_adjustment"] == "none"
-    assert result.metadata["source_series"] == "day"
-    assert result.metadata["stock_qfq_quote_bridge_ratio"] is None
-    assert result.metadata["stock_qfq_quote_bridge_date"] is None
-    assert current.current_price == Decimal("160")
-    assert current.stock_baseline_price == Decimal(
-        100 + sessions.index(current.stock_baseline_date)
-    )
-    assert any("not forward-adjusted" in warning for warning in result.warnings)
-
-
-def test_computed_result_matches_packaged_json_schema():
-    from finchx.schemas import read_schema
-    from referencing import Registry, Resource
-    from jsonschema import Draft202012Validator, FormatChecker
-
-    result = FinchX(collector=FixtureCollector(
-        tuple(date(2026, 7, 1) + timedelta(days=index) for index in range(31)),
-        equity("600519", Exchange.SSE),
-        resolve_deviation_benchmark(equity("600519", Exchange.SSE)).instrument,
-    )).market.deviation(
-        equity("600519", Exchange.SSE),
-        as_of=date(2026, 7, 31),
-        windows=(10,),
-    )
-    schema = read_schema("market-deviation.schema.json")
-    identity_schema = read_schema("instrument-identity.schema.json")
-    registry = Registry().with_resource(schema["$id"], Resource.from_contents(schema))
-    registry = registry.with_resource(identity_schema["$id"], Resource.from_contents(identity_schema))
-    validator = Draft202012Validator(schema, registry=registry, format_checker=FormatChecker())
-    validator.validate(result.data.model_dump(mode="json", by_alias=True))
+            assert row['coverage_status'] == 'halt_inferred_from_missing_kline'
+            assert row['window_status'] == 'partial_after_inferred_halt'
+
+
+@pytest.mark.parametrize('broken', ['no_stock_anchor', 'bad_expanded_anchor', 'index_gap_before_last_halt', 'index_resume_baseline'])
+def test_halt_cannot_hide_missing_or_corrupt_necessary_inputs_and_never_warns_on_failure(monkeypatch, broken):
+    state = serve(monkeypatch)
+    remove_stock(state, '2026-10-05')
+    if broken == 'no_stock_anchor':
+        state['qfq'] = [row for row in state['qfq'] if row['date'] >= '2026-10-06']
+    elif broken == 'bad_expanded_anchor':
+        remove_stock(state, *[(date(2026, 9, 1) + timedelta(days=i)).isoformat() for i in range(35)])
+        state['qfq'][20]['close'] = 0
+    else:
+        missing = '2026-09-20' if broken == 'index_gap_before_last_halt' else '2026-10-05'
+        state['index'] = [row for row in state['index'] if row['date'] != missing]
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter('always')
+        with pytest.raises(SourceError): FinchX().regulation.deviation('600519')
+    assert not caught
+
+
+def test_later_window_failure_does_not_emit_success_warning(monkeypatch):
+    state = serve(monkeypatch)
+    state['qfq'] = [row for row in state['qfq'] if row['date'] >= '2026-10-06']
+    state['listing'] = date(2026, 10, 6)
+    remove_stock(state, '2026-10-07')
+    from finchx.sources.tencent import deviation as source
+    original = source.calculate_window
+    def calculation(*args, **kwargs):
+        if kwargs['window_days'] == 30:
+            raise SourceError('deviation', '明确模拟后窗口计算失败')
+        return original(*args, **kwargs)
+    monkeypatch.setattr(source, 'calculate_window', calculation)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter('always')
+        with pytest.raises(SourceError): FinchX().regulation.deviation('600519')
+    assert not caught
+
+
+@pytest.mark.parametrize('action', ['ignore', 'error'])
+def test_inferred_halt_warning_obeys_standard_filters(monkeypatch, action):
+    state = serve(monkeypatch)
+    remove_stock(state, '2026-10-05')
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter(action, UserWarning)
+        if action == 'error':
+            with pytest.raises(UserWarning, match='2026-10-05'):
+                FinchX().regulation.deviation('600519')
+        else:
+            result = FinchX().regulation.deviation('600519')
+            assert result['inferred_halt_dates'] == ['2026-10-05']
+        assert not caught
+
+
+def test_historical_missing_observation_is_not_inferred_halt(monkeypatch):
+    state = serve(monkeypatch)
+    remove_stock(state, '2026-09-30')
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter('always')
+        with pytest.raises(SourceError):
+            FinchX().regulation.deviation('600519', end_date='2026-09-30')
+    assert not caught
+
+
+def test_calendar_closed_day_does_not_become_halt(monkeypatch):
+    state = serve(monkeypatch)
+    remove_stock(state, '2026-10-05')
+    state['index'] = [row for row in state['index'] if row['date'] != '2026-10-05']
+    state['calendar_change'] = lambda rows: [row.update(is_trading_day=False) for row in rows if row['date'] == '2026-10-05']
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter('always')
+        result = FinchX().regulation.deviation('600519')
+    assert not caught
+    assert result['coverage_status'] == 'complete'
+    assert result['inferred_halt_dates'] == []
+
+
+def test_halt_on_current_baseline_day_has_full_available_window_and_next_unaffected(monkeypatch):
+    state = serve(monkeypatch)
+    remove_stock(state, '2026-09-28')
+    with pytest.warns(UserWarning) as caught:
+        result = FinchX().regulation.deviation('600519', windows=(10,))
+    current, following = result['windows']
+    assert current['inferred_halt_dates'] == ['2026-09-28']
+    assert current['available_trading_days'] == 10
+    assert current['window_status'] == 'complete'
+    assert current['stock_baseline_date'] == '2026-09-27'
+    assert current['benchmark_baseline_date'] == '2026-09-28'
+    assert following['coverage_status'] == following['window_status'] == 'complete'
+    assert following['inferred_halt_dates'] == []
+    assert '次一交易日' not in str(caught[0].message)
+    assert '窗口不足' not in str(caught[0].message)
+
+
+def test_first_response_calendar_conflict_is_not_hidden_by_clean_expanded_response(monkeypatch):
+    state = serve(monkeypatch)
+    remove_stock(state, '2026-09-27', '2026-09-28')
+    state['calendar_change'] = lambda rows: [row.update(is_trading_day=False) for row in rows if row['date'] == '2026-10-05']
+    state['index'] = [row for row in state['index'] if row['date'] != '2026-10-05']
+    from finchx.sources.tencent import deviation as source
+    original = source.klines.ohlcv
+    qfq_reads = []
+    def klines(code, start_date, end_date, adjust=None, *, kind='stock', timeout):
+        result = original(code, start_date, end_date, adjust, kind=kind, timeout=timeout)
+        if adjust == 'qfq':
+            qfq_reads.append(start_date)
+            if len(qfq_reads) > 1:
+                result = [row for row in result if row['date'] != '2026-10-05']
+        return result
+    monkeypatch.setattr(source.klines, 'ohlcv', klines)
+    with pytest.raises(SourceError, match='非交易标记冲突'):
+        FinchX().regulation.deviation('600519', windows=(10,))
+    assert qfq_reads == [date(2026, 9, 27)]
+    assert not any(row['date'] == '2026-09-27' for row in state['qfq'])
+
+
+def test_expanded_response_is_validated_and_supplies_single_qfq_scale(monkeypatch):
+    state = serve(monkeypatch)
+    remove_stock(state, '2026-09-28')
+    from finchx.sources.tencent import deviation as source
+    original = source.klines.ohlcv
+    reads = []
+    def klines(code, start_date, end_date, adjust=None, *, kind='stock', timeout):
+        result = original(code, start_date, end_date, adjust, kind=kind, timeout=timeout)
+        if adjust == 'qfq':
+            reads.append(start_date)
+            if len(reads) == 1:
+                for row in result:
+                    row['close'] *= 100
+        return result
+    monkeypatch.setattr(source.klines, 'ohlcv', klines)
+    with pytest.warns(UserWarning):
+        result = FinchX().regulation.deviation('600519', windows=(10,))
+    prices = {row['date']: row['close'] for row in state['qfq']}
+    current = result['windows'][0]
+    assert current['stock_baseline_price'] == pytest.approx(prices['2026-09-27'] * 154 / prices['2026-10-07'])
+    assert current['window_start_price'] == pytest.approx(prices['2026-09-29'] * 154 / prices['2026-10-07'])
+    assert len(reads) == 2
+
+
+def test_halt_later_maximum_candidate_uses_common_resumed_baseline_and_its_trigger():
+    base, index_base = date(2026, 1, 1), date(2026, 1, 3)
+    resumed = [date(2026, 1, day) for day in (4, 5, 6)]
+    stock = dict(zip([base] + resumed, map(Decimal, [100, 200, 30, 30])))
+    index = dict(zip([index_base] + resumed, map(Decimal, [50, 100, 100, 100])))
+    result = calculate_window(stock, index, [index_base] + resumed,
+        window_days=10, scenario='current', target_date=resumed[-1],
+        stock_price=stock[resumed[-1]], benchmark_level=index[resumed[-1]], scale=Decimal(1),
+        coverage_status='halt_inferred_from_missing_kline', stock_time=None, benchmark_time=None,
+        first_baselines=(base, index_base), inferred_halt_dates=(index_base,))
+    assert result['stock_baseline_date'] == result['benchmark_baseline_date'] == '2026-01-04'
+    assert result['start_date'] == '2026-01-05'
+    assert result['window_start_price'] == 30
+    assert result['deviation_percent'] == -85
+    # 首复牌候选的触发价300更低，但本次最大偏离候选仍必须使用400。
+    assert result['theoretical_trigger_price'] == result['trigger_price'] == 400
+
+
+def test_historical_halt_still_anchors_every_stock_price_to_raw_terminal_close(monkeypatch):
+    state = serve(monkeypatch)
+    remove_stock(state, '2026-09-26', '2026-09-27')
+    with pytest.warns(UserWarning):
+        result = FinchX().regulation.deviation('600519', windows=(10,), end_date='2026-09-30')
+    row = result['windows'][0]
+    qfq = {item['date']: item['close'] for item in state['qfq']}
+    assert row['stock_price'] == qfq['2026-09-30'] * 2
+    assert row['stock_baseline_date'] == '2026-09-25'
+    assert row['benchmark_baseline_date'] == '2026-09-27'
+    assert row['stock_baseline_price'] == qfq['2026-09-25'] * 2
+    assert row['window_start_price'] == qfq['2026-09-28'] * 2
+    assert row['stock_time'] is row['benchmark_time'] is None
+    assert row['stock_price_type'] == 'daily_close'
+    assert row['stock_change_percent'] == pytest.approx((qfq['2026-09-30'] / qfq['2026-09-25'] - 1) * 100)
+
+
+def test_index_missing_only_before_confirmed_listing_does_not_reject_valid_ipo_and_halt(monkeypatch):
+    state = serve(monkeypatch)
+    state['listing'] = date(2026, 10, 6)
+    state['qfq'] = [row for row in state['qfq'] if row['date'] >= '2026-10-06']
+    state['index'] = [row for row in state['index'] if row['date'] >= '2026-10-06']
+    remove_stock(state, '2026-10-07')
+    with pytest.warns(UserWarning):
+        result = FinchX().regulation.deviation('600519')
+    assert result['coverage_status'] == 'short_history_and_halt_inferred_from_missing_kline'
+    assert all(row['stock_baseline_date'] == '2026-10-06' and row['benchmark_baseline_date'] == '2026-10-07' for row in result['windows'])

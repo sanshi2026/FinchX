@@ -1,0 +1,124 @@
+{
+  "code": 0,
+  "msg": "ok",
+  "data": {
+    "todayFundFlow": {
+      "desc": "逐笔统计当日成交买卖单，把资金划分为主力和散户，其中主力=超大单+大单。计算公式为：成交金额大于等于20万元或者大于等于6万股则被判断为主力资金。",
+      "stockCode": "sh600519",
+      "mainNetIn": "-114334536",
+      "mainIn": "1714388884",
+      "mainInRate": "27",
+      "mainOut": "1828723420",
+      "mainOutRate": "29",
+      "retailIn": "1431652168",
+      "retailInRate": "23",
+      "retailOut": "1317317632",
+      "retailOutRate": "21",
+      "superFlow": "414746",
+      "bigFlow": "-114749281",
+      "normalFlow": "114547338",
+      "smallFlow": "-212802",
+      "rank": "",
+      "summary": {
+        "mcRatio": "0.01",
+        "rank": "5418/5572",
+        "s0": "主力净流入额市场排名5418/5572，占流通市值比例0.01%；今日净流入较近5日净流入的均值减少13894.11万元。"
+      }
+    },
+    "todayFundTrend": {
+      "stockCode": "sh600519",
+      "minList": [
+        {
+          "time": "202610080930",
+          "Price": "1246.95",
+          "MainNetInflow": "-17901230",
+          "RetailNetInflow": "17901230",
+          "SuperNetInflow": "-1422536",
+          "BigNetInflow": "-16478694",
+          "NormalNetInflow": "17908747",
+          "SmallNetInflow": "-7517",
+          "MainInflow": "136637961",
+          "MainOutflow": "154539191"
+        },
+        {
+          "time": "202610080931",
+          "Price": "1244.90",
+          "MainNetInflow": "-19384045",
+          "RetailNetInflow": "19384045",
+          "SuperNetInflow": "1182570",
+          "BigNetInflow": "-20566615",
+          "NormalNetInflow": "19433928",
+          "SmallNetInflow": "-49883",
+          "MainInflow": "186410433",
+          "MainOutflow": "205794479"
+        },
+        {
+          "time": "202610081500",
+          "Price": "1255.79",
+          "MainNetInflow": "-114334536",
+          "RetailNetInflow": "114334536",
+          "SuperNetInflow": "414746",
+          "BigNetInflow": "-114749281",
+          "NormalNetInflow": "114547338",
+          "SmallNetInflow": "-212802",
+          "MainInflow": "1714388884",
+          "MainOutflow": "1828723420"
+        }
+      ]
+    },
+    "historyFundFlow": {
+      "oneDayKlineList": [
+        {
+          "date": "2026-09-22",
+          "mainNetIn": "-82789480",
+          "price": "1253.8",
+          "avgIn": "-8115552"
+        },
+        {
+          "date": "2026-09-23",
+          "mainNetIn": "-55665636",
+          "price": "1251.24",
+          "avgIn": "11031074"
+        },
+        {
+          "date": "2026-09-24",
+          "mainNetIn": "-518627683",
+          "price": "1237",
+          "avgIn": "-55306715"
+        },
+        {
+          "date": "2026-09-28",
+          "mainNetIn": "-176583455",
+          "price": "1243.88",
+          "avgIn": "-21006402"
+        },
+        {
+          "date": "2026-09-29",
+          "mainNetIn": "333562142",
+          "price": "1235.58",
+          "avgIn": "18271557"
+        },
+        {
+          "date": "2026-09-30",
+          "mainNetIn": "540347220",
+          "price": "1258.62",
+          "avgIn": "50619731"
+        },
+        {
+          "date": "2026-10-08",
+          "mainNetIn": "-114334536",
+          "price": "1255.79",
+          "avgIn": "-18303957"
+        }
+      ],
+      "summary": {
+        "v0": "64363688",
+        "v1": "0.00",
+        "v2": "-74091428",
+        "v3": "0.00",
+        "v4": "-74091428",
+        "v5": "0.00"
+      }
+    }
+  }
+}

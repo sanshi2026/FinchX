@@ -1,0 +1,71 @@
+{
+  "status_code": 0,
+  "status_msg": "success",
+  "data": {
+    "stock_list": [
+      {
+        "order": 1,
+        "code": "301660",
+        "name": "粤芯半导体",
+        "time": "202610091000",
+        "rate": "22785.9",
+        "market": "33",
+        "orderDate": "20260924",
+        "tag": {
+          "concept_tag": [
+            "半导体"
+          ],
+          "popularity_tag": "创业板"
+        }
+      },
+      {
+        "order": 2,
+        "code": "301569",
+        "name": "联亚药业",
+        "time": "202610091000",
+        "rate": "7018.7",
+        "market": "33",
+        "pe": "27.99",
+        "orderDate": "20260928",
+        "tag": {
+          "concept_tag": [
+            "化学制药"
+          ],
+          "popularity_tag": "创业板"
+        }
+      },
+      {
+        "order": 3,
+        "code": "920196",
+        "name": "南方乳业",
+        "time": "202610091000",
+        "rate": "203.2",
+        "market": "151",
+        "pe": "11.99",
+        "orderDate": "20260928",
+        "tag": {
+          "concept_tag": [
+            "饮料制造"
+          ],
+          "popularity_tag": "北交所"
+        }
+      },
+      {
+        "order": 4,
+        "code": "920162",
+        "name": "莫森泰克",
+        "time": "202610091000",
+        "rate": "98.2",
+        "market": "151",
+        "pe": "10.0",
+        "orderDate": "20260923",
+        "tag": {
+          "concept_tag": [
+            "汽车零部件"
+          ],
+          "popularity_tag": "北交所"
+        }
+      }
+    ]
+  }
+}

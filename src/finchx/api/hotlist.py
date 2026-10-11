@@ -1,57 +1,29 @@
-"""Client namespace implementation: hotlist."""
+"""同花顺股票、板块、转债与 ETF 热榜。"""
 
-from __future__ import annotations
-
-from finchx.collectors import (
-    FetchResult,
-)
-from finchx.contracts import (
-    StandardRecord,
-)
-from finchx.datasets import (
-    HOT_CONTENT_DATASET,
-    HOT_CONVERTIBLE_BONDS_DATASET,
-    HOT_ETFS_DATASET,
-    HOT_SECTORS_DATASET,
-    HOT_STOCKS_DATASET,
-    HotContentRequest,
-    HotConvertibleBondsRequest,
-    HotEtfsRequest,
-    HotSectorsRequest,
-    HotStocksRequest,
-)
-from finchx.api._base import (
-    _RequestNamespace,
-)
+from finchx.sources.tonghuashun import hotlist as ths_hotlist
 
 
-class HotlistNamespace(_RequestNamespace):
-    """Tonghuashun stock, sector, convertible-bond, ETF and content heat rankings."""
+class HotlistAPI:
+    """读取当前热榜或候选池的来源热度排行。"""
 
-    def stocks(self, category: str = "popular", period: str | None = None, limit: int = 20, *,
-               provider: str | None = None, use_cache: bool | None = None) -> FetchResult[tuple[StandardRecord, ...]]:
-        request = HotStocksRequest(category=category, period=period, limit=limit)
-        return self._fetch_request(HOT_STOCKS_DATASET, request, provider=provider, use_cache=use_cache)
+    def __init__(self, *, timeout: float) -> None:
+        self._timeout = timeout
 
-    def sectors(self, sector_type: str = "concept", limit: int = 20, *,
-                provider: str | None = None, use_cache: bool | None = None) -> FetchResult[tuple[StandardRecord, ...]]:
-        request = HotSectorsRequest(sectorType=sector_type, limit=limit)
-        return self._fetch_request(HOT_SECTORS_DATASET, request, provider=provider, use_cache=use_cache)
+    def stocks(
+        self, category: str = "popular", period: str | None = None,
+        limit: int | None = 20,
+    ) -> list[dict]:
+        """按类别和周期读取股票热榜。"""
+        return ths_hotlist.stocks(category, period, limit, timeout=self._timeout)
 
-    def convertible_bonds(self, limit: int = 20, *, provider: str | None = None,
-                          use_cache: bool | None = None) -> FetchResult[tuple[StandardRecord, ...]]:
-        request = HotConvertibleBondsRequest(limit=limit)
-        return self._fetch_request(HOT_CONVERTIBLE_BONDS_DATASET, request, provider=provider, use_cache=use_cache)
+    def sectors(self, sector_type: str = "concept", limit: int | None = 20) -> list[dict]:
+        """读取概念、行业或指数板块热榜。"""
+        return ths_hotlist.sectors(sector_type, limit, timeout=self._timeout)
 
-    def etfs(self, category: str = "popular", limit: int = 20, *, provider: str | None = None,
-             use_cache: bool | None = None) -> FetchResult[tuple[StandardRecord, ...]]:
-        request = HotEtfsRequest(category=category, limit=limit)
-        return self._fetch_request(HOT_ETFS_DATASET, request, provider=provider, use_cache=use_cache)
+    def convertible_bonds(self, limit: int | None = 20) -> list[dict]:
+        """读取可转债热榜。"""
+        return ths_hotlist.convertible_bonds(limit, timeout=self._timeout)
 
-    def content(self, content_type: str = "topic", limit: int = 20, *, provider: str | None = None,
-                use_cache: bool | None = None) -> FetchResult[tuple[StandardRecord, ...]]:
-        request = HotContentRequest(contentType=content_type, limit=limit)
-        return self._fetch_request(HOT_CONTENT_DATASET, request, provider=provider, use_cache=use_cache)
-
-# Preserve historical public type identities as implementation moves.
-HotlistNamespace.__module__ = "finchx.client"
+    def etfs(self, category: str = "popular", limit: int | None = 20) -> list[dict]:
+        """按候选池读取 ETF 热度排行。"""
+        return ths_hotlist.etfs(category, limit, timeout=self._timeout)

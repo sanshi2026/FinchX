@@ -1,42 +1,24 @@
-# macOS
-.DS_Store
-/AGENTS.md
-/.codex/
-/.agents/
-
-# Python
+AGENTS.md
+.agents/
+.codex/
+.aws/
+.env
+.env.*
+!.env.example
+.pypirc
 .venv/
 venv/
+.DS_Store
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 .coverage
-coverage.xml
 htmlcov/
 build/
 dist/
 *.egg-info/
-
-# Local configuration and data
-.env
-*.env
-*.sqlite
-*.sqlite3
 *.db
-*.db-*
-.firecrawl/
+*.sqlite*
 docs/tasks/
-/data/
-/cache/
-/logs/
-# Local credentials/configuration; keep project release workflows tracked.
-/.aws/
-/credentials/
-*.pem
-*.key
-*.p12
-*.pfx
-
-# IDE and editor state
-.idea/
-.vscode/

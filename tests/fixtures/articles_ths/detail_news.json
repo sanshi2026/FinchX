@@ -1,0 +1,88 @@
+{
+  "status_code": 0,
+  "status_msg": "",
+  "data": {
+    "article": {
+      "seq": "680459704",
+      "encodedSeq": "a0e38678246048836a5",
+      "title": "固态电池概念盘中持续走高，多股收获涨停，力王股份30cm涨停",
+      "author": null,
+      "content": "<p>10月8日，<a data-code=\"886032\" data-position=\"stock.4\" data-marketid=\"48\" data-type=\"stock\" href=\"#*f:886032:sc*#\">固态电池</a>概念盘中持续走高，力王股份(920627.BJ)30cm涨停，此前<a data-code=\"300619\" data-position=\"stock.12\" data-marketid=\"33\" data-type=\"stock\" href=\"#*f:300619:sc*#\">金银河</a>(<a data-code=\"300619\" data-position=\"stock.11\" data-marketid=\"33\" data-type=\"stock\" href=\"#*f:300619:sc*#\">300619</a>.SZ)、<a data-code=\"002058\" data-position=\"stock.2\" data-marketid=\"33\" data-type=\"stock\" href=\"#*f:002058:sc*#\">紫竹高科</a>(<a data-code=\"002058\" data-position=\"stock.1\" data-marketid=\"33\" data-type=\"stock\" href=\"#*f:002058:sc*#\">002058</a>.SZ)、<a data-code=\"002805\" data-position=\"stock.6\" data-marketid=\"33\" data-type=\"stock\" href=\"#*f:002805:sc*#\">丰元股份</a>(<a data-code=\"002805\" data-position=\"stock.5\" data-marketid=\"33\" data-type=\"stock\" href=\"#*f:002805:sc*#\">002805</a>.SZ)、<a data-code=\"002733\" data-position=\"stock.8\" data-marketid=\"33\" data-type=\"stock\" href=\"#*f:002733:sc*#\">雄韬股份</a>(<a data-code=\"002733\" data-position=\"stock.7\" data-marketid=\"33\" data-type=\"stock\" href=\"#*f:002733:sc*#\">002733</a>.SZ)、<a data-code=\"002866\" data-position=\"stock.10\" data-marketid=\"33\" data-type=\"stock\" href=\"#*f:002866:sc*#\">传艺科技</a>(<a data-code=\"002866\" data-position=\"stock.9\" data-marketid=\"33\" data-type=\"stock\" href=\"#*f:002866:sc*#\">002866</a>.SZ)等多股涨停，武汉蓝电(920779.BJ)涨超20%，纳科诺尔(920522.BJ)、灵鸽科技(920284.BJ)双双涨超10%。</p><p>消息面上，工信部等七部门联合印发的《新型电池产业发展“十五五”规划》，规划提出到2030年全<a data-code=\"886032\" data-position=\"stock.4\" data-marketid=\"48\" data-type=\"stock\" href=\"#*f:886032:sc*#\">固态电池</a>初步实现规模化应用、长寿命<a data-code=\"884309\" data-position=\"stock.14\" data-marketid=\"49\" data-type=\"stock\" href=\"#*f:884309:sc*#\">锂电池</a>循环寿命达1.5万次等目标，并持续开展<a data-code=\"884309\" data-position=\"stock.14\" data-marketid=\"49\" data-type=\"stock\" href=\"#*f:884309:sc*#\">锂电池</a>标准体系建设、推进全<a data-code=\"886032\" data-position=\"stock.4\" data-marketid=\"48\" data-type=\"stock\" href=\"#*f:886032:sc*#\">固态电池</a>与钠电池等重点领域标准研制。</p>",
+      "sourceUrl": "https://www.caiwennews.com/article/1639346.shtml",
+      "media": {
+        "id": null,
+        "name": "财闻"
+      },
+      "ctime": 1791426040
+    },
+    "statusInfo": {
+      "outcome": 0
+    },
+    "relatedModules": {
+      "associatedStocks": [
+        {
+          "stockName": "紫竹高科",
+          "stockCode": "002058",
+          "marketId": "33"
+        },
+        {
+          "stockName": "力王股份",
+          "stockCode": "920627",
+          "marketId": "151"
+        },
+        {
+          "stockName": "武汉蓝电",
+          "stockCode": "920779",
+          "marketId": "151"
+        },
+        {
+          "stockName": "固态电池",
+          "stockCode": "886032",
+          "marketId": "48"
+        },
+        {
+          "stockName": "丰元股份",
+          "stockCode": "002805",
+          "marketId": "33"
+        },
+        {
+          "stockName": "雄韬股份",
+          "stockCode": "002733",
+          "marketId": "33"
+        },
+        {
+          "stockName": "灵鸽科技",
+          "stockCode": "920284",
+          "marketId": "151"
+        },
+        {
+          "stockName": "传艺科技",
+          "stockCode": "002866",
+          "marketId": "33"
+        },
+        {
+          "stockName": "纳科诺尔",
+          "stockCode": "920522",
+          "marketId": "151"
+        },
+        {
+          "stockName": "金银河",
+          "stockCode": "300619",
+          "marketId": "33"
+        },
+        {
+          "stockName": "锂电池",
+          "stockCode": "884309",
+          "marketId": "49"
+        }
+      ]
+    },
+    "pageSettings": {
+      "featureFlags": null,
+      "enableMourningTheme": null,
+      "redirectUrl": null,
+      "showAds": null,
+      "disclaimer": "风险提示：本文内容仅供参考，不代表同花顺观点。同花顺各类信息服务基于人工智能算法，如有出入请以证监会指定上市公司信息披露平台为准。如有投资者据此操作，风险自担，同花顺对此不承担任何责任。"
+    }
+  }
+}

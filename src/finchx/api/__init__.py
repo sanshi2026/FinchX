@@ -1,1 +1,1 @@
-"""Internal namespace implementations; use finchx.FinchX as the entry point."""
+"""公开接口分类。"""

@@ -1,85 +1,52 @@
 # FinchX
 
-English | [简体中文](https://github.com/sanshi2026/FinchX/blob/main/README.zh-CN.md)
+FinchX 是面向 A 股的 Python 数据接口，提供行情、资金流、公司与财务资料，以及新闻、公告、研报等数据。完整接口、参数和业务字段见 [API 文档](https://github.com/sanshi2026/FinchX/blob/main/docs/API.md)。
 
-[PyPI](https://pypi.org/project/finchx/) · [Source code](https://github.com/sanshi2026/FinchX) · [Release notes](https://github.com/sanshi2026/FinchX/blob/main/CHANGELOG.md) · [License](https://github.com/sanshi2026/FinchX/blob/main/LICENSE)
+接口直接返回原生 `dict` 或 `list`，便于查询、分析和接入自己的交易研究流程。
 
-FinchX is an independent Python library for accessing and normalizing A-share market data from registered third-party providers. Its typed client groups common requests for quotes, financial and company data, news, documents, and market rankings.
+## FinchX 3.0
 
-## Install
+FinchX 3.0 相对旧版有重大更新：重构接口架构与业务分类，统一参数规范，重新核对数据字段、单位和来源语义，并加强完整性校验与错误处理。**强烈推荐旧版用户升级到 3.0。**
+
+**3.0 的接口、参数和返回结构与 2.x 不兼容。** 请保留旧环境，在独立环境按 API 文档逐项迁移调用和字段读取。
+
+## 安装
+
+安装：
 
 ```bash
 python -m pip install finchx
 ```
+需要 Python 3.10 或更新版本。建议使用独立虚拟环境。
 
-Requires Python 3.10 or newer. The base install includes FinchX's required runtime dependencies.
+已有用户升级到 3.0：
 
-Optional integrations:
+```bash
+python -m pip install --upgrade 'finchx==3.0.0'
+```
 
-- `calendar` adds the `pandas_market_calendars` trading-calendar provider: `python -m pip install "finchx[calendar]"`.
-- `jygs` enables the authenticated Jiuyangongshe daily-replay provider: `python -m pip install "finchx[jygs]"`. It also needs Chromium: `python -m playwright install chromium`.
+按需安装可选依赖：`calendar` 用于离线交易日历及自动日历回退，`pdf` 用于 PDF 文字层和原生书签提取，`jygs` 用于韭研复盘。可组合安装，只保留需要的项：
 
-## Quickstart
+```bash
+python -m pip install --upgrade 'finchx[calendar,pdf,jygs]==3.0.0'
+```
+
+使用韭研复盘还须在同一 Python 环境安装 Chromium，并在调用时传入自己的 `SESSION`：
+
+```bash
+python -m playwright install chromium
+```
+
+## 快速开始
+
+查询当前涨幅排名前五的股票：
 
 ```python
 from finchx import FinchX
 
-fx = FinchX()
-result = fx.market.quote_snapshot(
-    instrument="600519",  # Six-digit A-share code.
-)
-
-# result.data contains StandardRecord values; each record.data is its business payload.
-if result.data:
-    record = result.data[0]
-    print(record.data["price"])
-
-# to_dicts() exports business payloads as a list of dictionaries.
-rows = result.to_dicts()
-print(rows[:1])
-print(result.warnings)
+fx = FinchX(timeout=15.0)
+rows = fx.market.ranking(limit=5)
+print(rows)
 ```
 
-For daily history, `fx.market.ohlcv(...)` accepts inclusive start and end dates:
-
-```python
-from finchx import FinchX
-
-fx = FinchX()
-bars = fx.market.ohlcv(
-    instrument="600519",  # Six-digit A-share code.
-    start_date="2026-09-01",  # Inclusive start date.
-    end_date="2026-09-23",  # Inclusive end date.
-    adjustment="qfq",  # Forward-adjust stock prices.
-)
-print(bars.to_dicts()[:1])
-```
-
-Use `adjustment="qfq"` for forward-adjusted prices, `"hfq"` for backward-adjusted prices, or `None` for unadjusted equities. Index OHLCV requires `None`.
-
-## Find an API by use case
-
-- **Quotes and history:** `fx.market.quote(...)`, `fx.market.quote_snapshot(...)`, `fx.market.ohlcv(...)`, `fx.market.deviation(...)`.
-- **Reference and company data:** `fx.reference.trading_calendar(...)`, `fx.fundamental.financial_summary(...)`, `fx.financial.statements(...)`, plus `fx.ownership`, `fx.company`, and `fx.corporate_action`.
-- **News and documents:** `fx.news.search(...)`, `fx.disclosure.search(...)`, `fx.market_news.search(...)`, and `fx.articles.get(...)`.
-- **Rankings and discovery:** `fx.hotlist.stocks(...)`, `fx.hotlist.sectors(...)`, and `fx.iwencai.select(...)`.
-
-These are starting points, not a complete endpoint list. The API reference has full signatures, data fields, return shapes, and provider details.
-
-## Inputs and source access
-
-Single-instrument endpoints accept six-digit codes; the endpoint determines whether a code such as `000001` means a stock or an index. Date-only parameters accept `datetime.date` or `YYYY-MM-DD`, `YYYYMMDD`, and `YYYY/MM/DD` strings; ambiguous formats such as `09/01/2026` are rejected. News, disclosure, all-market news, and forum time bounds also accept timezone-aware `datetime` values.
-
-Some source features require caller-provided credentials, including a login Cookie for `fx.iwencai.select(...)`, an API key for `fx.iwencai.search(...)`, and a session Cookie for `fx.forum.replies(...)` or `fx.market.daily_replay(...)`. Keep credentials out of source control.
-
-FinchX normalizes responses from third-party providers but does not redistribute their datasets. Data availability, fields, freshness, and terms depend on each provider.
-
-## Full API reference
-
-- [English API reference](https://github.com/sanshi2026/FinchX/blob/main/docs/DATA_API_REFERENCE.md)
-- [简体中文 API 参考](https://github.com/sanshi2026/FinchX/blob/main/docs/DATA_API_REFERENCE.zh-CN.md)
-- [Source data semantics](https://github.com/sanshi2026/FinchX/blob/main/docs/DATA_SEMANTICS.md)
-- [Repository maintenance](https://github.com/sanshi2026/FinchX/blob/main/docs/MAINTENANCE.md)
-- [2.0.3 compatibility notes](https://github.com/sanshi2026/FinchX/blob/main/docs/COMPATIBILITY_2_0_3.md)
-
-FinchX is licensed under Apache-2.0. Third-party provider data remains subject to its provider's terms.
+每次调用重新取数，不提供结果缓存或文件保存。字段、单位、缺失值和认证要求请按各接口文档处理。

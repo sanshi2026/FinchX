@@ -1,0 +1,270 @@
+{
+  "status_code": 0,
+  "status_msg": "成功",
+  "data": {
+    "total": 19,
+    "indexes": [
+      {
+        "idx": 0,
+        "index_id": "security_name",
+        "ext_index_id": "security_name"
+      },
+      {
+        "idx": 1,
+        "index_id": "price_change_ratio_pct",
+        "ext_index_id": "price_change_ratio_pct"
+      }
+    ],
+    "data": [
+      {
+        "code": "36:159327",
+        "values": [
+          {
+            "idx": 0,
+            "value": "半导体设备ETF万家"
+          },
+          {
+            "idx": 1,
+            "value": -4.191617
+          }
+        ]
+      },
+      {
+        "code": "20:512570",
+        "values": [
+          {
+            "idx": 0,
+            "value": "证券ETF易方达"
+          },
+          {
+            "idx": 1,
+            "value": 0.098232
+          }
+        ]
+      },
+      {
+        "code": "20:588710",
+        "values": [
+          {
+            "idx": 0,
+            "value": "科创半导体设备ETF华泰柏瑞"
+          },
+          {
+            "idx": 1,
+            "value": -4.314159
+          }
+        ]
+      },
+      {
+        "code": "36:159839",
+        "values": [
+          {
+            "idx": 0,
+            "value": "生物医药ETF汇添富"
+          },
+          {
+            "idx": 1,
+            "value": -1.358696
+          }
+        ]
+      },
+      {
+        "code": "36:159801",
+        "values": [
+          {
+            "idx": 0,
+            "value": "芯片ETF广发"
+          },
+          {
+            "idx": 1,
+            "value": -3.417085
+          }
+        ]
+      },
+      {
+        "code": "20:515880",
+        "values": [
+          {
+            "idx": 0,
+            "value": "通信ETF国泰"
+          },
+          {
+            "idx": 1,
+            "value": -2.525253
+          }
+        ]
+      },
+      {
+        "code": "20:516080",
+        "values": [
+          {
+            "idx": 0,
+            "value": "创新药ETF易方达"
+          },
+          {
+            "idx": 1,
+            "value": -1.634473
+          }
+        ]
+      },
+      {
+        "code": "20:560260",
+        "values": [
+          {
+            "idx": 0,
+            "value": "医疗ETF广发"
+          },
+          {
+            "idx": 1,
+            "value": -1.508121
+          }
+        ]
+      },
+      {
+        "code": "20:516220",
+        "values": [
+          {
+            "idx": 0,
+            "value": "化工ETF国泰"
+          },
+          {
+            "idx": 1,
+            "value": -0.714286
+          }
+        ]
+      },
+      {
+        "code": "20:515220",
+        "values": [
+          {
+            "idx": 0,
+            "value": "煤炭ETF国泰"
+          },
+          {
+            "idx": 1,
+            "value": 1.094605
+          }
+        ]
+      },
+      {
+        "code": "20:512820",
+        "values": [
+          {
+            "idx": 0,
+            "value": "银行ETF汇添富"
+          },
+          {
+            "idx": 1,
+            "value": 0
+          }
+        ]
+      },
+      {
+        "code": "36:159562",
+        "values": [
+          {
+            "idx": 0,
+            "value": "黄金股ETF华夏"
+          },
+          {
+            "idx": 1,
+            "value": 1.611279
+          }
+        ]
+      },
+      {
+        "code": "20:515060",
+        "values": [
+          {
+            "idx": 0,
+            "value": "房地产ETF华夏"
+          },
+          {
+            "idx": 1,
+            "value": -1.771337
+          }
+        ]
+      },
+      {
+        "code": "20:589120",
+        "values": [
+          {
+            "idx": 0,
+            "value": "科创创新药ETF汇添富"
+          },
+          {
+            "idx": 1,
+            "value": -3.282828
+          }
+        ]
+      },
+      {
+        "code": "36:159796",
+        "values": [
+          {
+            "idx": 0,
+            "value": "电池ETF汇添富"
+          },
+          {
+            "idx": 1,
+            "value": -1.948052
+          }
+        ]
+      },
+      {
+        "code": "36:159086",
+        "values": [
+          {
+            "idx": 0,
+            "value": "金融科技ETF广发"
+          },
+          {
+            "idx": 1,
+            "value": -1.664932
+          }
+        ]
+      },
+      {
+        "code": "20:516770",
+        "values": [
+          {
+            "idx": 0,
+            "value": "游戏ETF华泰柏瑞"
+          },
+          {
+            "idx": 1,
+            "value": -1.123596
+          }
+        ]
+      },
+      {
+        "code": "20:588960",
+        "values": [
+          {
+            "idx": 0,
+            "value": "科创新能源ETF富国"
+          },
+          {
+            "idx": 1,
+            "value": -2.12766
+          }
+        ]
+      },
+      {
+        "code": "36:159213",
+        "values": [
+          {
+            "idx": 0,
+            "value": "机器人ETF汇添富"
+          },
+          {
+            "idx": 1,
+            "value": -2.692308
+          }
+        ]
+      }
+    ],
+    "part_order_code_list": null
+  },
+  "success": true
+}

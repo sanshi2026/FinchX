@@ -1,0 +1,192 @@
+{
+  "code": 1,
+  "message": "success",
+  "data": {
+    "page_index": 5,
+    "totle_hits": 5000,
+    "list": [
+      {
+        "Art_ShowTime": "2026-09-28 21:08:00",
+        "Art_Code": "202609283885442123",
+        "Np_dst": "CMS",
+        "Art_Title": "中际旭创：2026年半年度A股权益分派实施公告",
+        "Art_SortStart": "1790600880042123",
+        "Art_OriginUrl": "http://stock.eastmoney.com/news/11215,202609283885442123.html",
+        "Art_Url": "http://finance.eastmoney.com/a/202609283885442123.html"
+      },
+      {
+        "Art_ShowTime": "2026-09-28 20:58:00",
+        "Art_Code": "202609283885417967",
+        "Np_dst": "CMS",
+        "Art_Title": "光模块龙头中际旭创要中期分红：拟每10股派12元",
+        "Art_SortStart": "1790600280017967",
+        "Art_OriginUrl": "http://stock.eastmoney.com/news/11215,202609283885417967.html",
+        "Art_Url": "http://finance.eastmoney.com/a/202609283885417967.html"
+      },
+      {
+        "Art_ShowTime": "2026-09-28 20:50:54",
+        "Art_Code": "202609283885392548",
+        "Np_dst": "CMS",
+        "Art_Title": "光模块“一哥”，盘后大消息",
+        "Art_SortStart": "1790599854092548",
+        "Art_OriginUrl": "http://finance.eastmoney.com/news/1354,202609283885392548.html",
+        "Art_Url": "http://finance.eastmoney.com/a/202609283885392548.html"
+      },
+      {
+        "Art_ShowTime": "2026-09-28 20:38:05",
+        "Art_Code": "202609283885386259",
+        "Np_dst": "CMS",
+        "Art_Title": "中际旭创向A股股东派发超13亿元中期“红包”",
+        "Art_SortStart": "1790599085086259",
+        "Art_OriginUrl": "http://stock.eastmoney.com/news/11215,202609283885386259.html",
+        "Art_Url": "http://finance.eastmoney.com/a/202609283885386259.html"
+      },
+      {
+        "Art_ShowTime": "2026-09-28 20:31:25",
+        "Art_Code": "202609283885384119",
+        "Np_dst": "CMS",
+        "Art_Title": "主力资金集中撤离科技股，中际旭创“A股双第一”",
+        "Art_SortStart": "1790598685084119",
+        "Art_OriginUrl": "http://finance.eastmoney.com/news/1349,202609283885384119.html",
+        "Art_Url": "http://finance.eastmoney.com/a/202609283885384119.html"
+      },
+      {
+        "Art_ShowTime": "2026-09-28 20:24:21",
+        "Art_Code": "202609283885375242",
+        "Np_dst": "CMS",
+        "Art_Title": "万亿龙头失守！ 中际旭创暴跌9%，“易中天”单日市值蒸发近1700亿元",
+        "Art_SortStart": "1790598261075242",
+        "Art_OriginUrl": "http://finance.eastmoney.com/news/1354,202609283885375242.html",
+        "Art_Url": "http://finance.eastmoney.com/a/202609283885375242.html"
+      },
+      {
+        "Art_ShowTime": "2026-09-28 19:59:10",
+        "Art_Code": "202609283885360032",
+        "Np_dst": "CMS",
+        "Art_Title": "拟每10股派12元！光模块龙头A股中期分红超13亿元",
+        "Art_SortStart": "1790596750060032",
+        "Art_OriginUrl": "http://stock.eastmoney.com/news/11215,202609283885360032.html",
+        "Art_Url": "http://money.eastmoney.com/a/202609283885360032.html"
+      },
+      {
+        "Art_ShowTime": "2026-09-28 19:38:17",
+        "Art_Code": "202609283885354196",
+        "Np_dst": "CMS",
+        "Art_Title": "主力资金 | 科技股，资金密集出逃",
+        "Art_SortStart": "1790595497054196",
+        "Art_OriginUrl": "http://stock.eastmoney.com/news/1407,202609283885354196.html",
+        "Art_Url": "http://stock.eastmoney.com/a/202609283885354196.html"
+      },
+      {
+        "Art_ShowTime": "2026-09-28 19:13:39",
+        "Art_Code": "202609283885334228",
+        "Np_dst": "CMS",
+        "Art_Title": "活跃个股：中际旭创成交252亿元 洛轴股份换手率66%",
+        "Art_SortStart": "1790594019034228",
+        "Art_OriginUrl": "http://finance.eastmoney.com/news/11063,202609283885334228.html",
+        "Art_Url": "http://finance.eastmoney.com/a/202609283885334228.html"
+      },
+      {
+        "Art_ShowTime": "2026-09-28 18:41:31",
+        "Art_Code": "202609283885551587",
+        "Np_dst": "CMS",
+        "Art_Title": "【一图看懂】上周融资余额小幅减少 这些个股被显著加仓",
+        "Art_SortStart": "1790592091051587",
+        "Art_OriginUrl": "http://finance.eastmoney.com/news/1354,202609283885551587.html",
+        "Art_Url": "http://finance.eastmoney.com/a/202609283885551587.html"
+      },
+      {
+        "Art_ShowTime": "2026-09-28 18:05:00",
+        "Art_Code": "202609283885313973",
+        "Np_dst": "CMS",
+        "Art_Title": "中际旭创控股股东260万股解除质押，AH股双双大跌",
+        "Art_SortStart": "1790589900013973",
+        "Art_OriginUrl": "http://finance.eastmoney.com/news/1354,202609283885313973.html",
+        "Art_Url": "http://finance.eastmoney.com/a/202609283885313973.html"
+      },
+      {
+        "Art_ShowTime": "2026-09-28 17:55:41",
+        "Art_Code": "202609283885297977",
+        "Np_dst": "CMS",
+        "Art_Title": "中际旭创：实施2026年半年度A股权益分派，股权登记日为10月9日",
+        "Art_SortStart": "1790589341097977",
+        "Art_OriginUrl": "http://stock.eastmoney.com/news/11215,202609283885297977.html",
+        "Art_Url": "http://finance.eastmoney.com/a/202609283885297977.html"
+      },
+      {
+        "Art_ShowTime": "2026-09-28 17:49:00",
+        "Art_Code": "202609283885290429",
+        "Np_dst": "CMS",
+        "Art_Title": "中际旭创：每10股派12.00元，股权登记日为10月9日",
+        "Art_SortStart": "1790588940090429",
+        "Art_OriginUrl": "http://stock.eastmoney.com/news/11215,202609283885290429.html",
+        "Art_Url": "http://finance.eastmoney.com/a/202609283885290429.html"
+      },
+      {
+        "Art_ShowTime": "2026-09-28 17:46:46",
+        "Art_Code": "202609283885289491",
+        "Np_dst": "CMS",
+        "Art_Title": "中际旭创：控股股东中际控股解除260万股质押",
+        "Art_SortStart": "1790588806089491",
+        "Art_OriginUrl": "http://finance.eastmoney.com/news/1354,202609283885289491.html",
+        "Art_Url": "http://finance.eastmoney.com/a/202609283885289491.html"
+      },
+      {
+        "Art_ShowTime": "2026-09-28 17:45:09",
+        "Art_Code": "202609283885286587",
+        "Np_dst": "CMS",
+        "Art_Title": "中际旭创：2026年半年度A股合计派发现金红利13.31亿元 股权登记日为10月9日",
+        "Art_SortStart": "1790588709086587",
+        "Art_OriginUrl": "http://finance.eastmoney.com/news/1354,202609283885286587.html",
+        "Art_Url": "http://finance.eastmoney.com/a/202609283885286587.html"
+      },
+      {
+        "Art_ShowTime": "2026-09-28 17:25:51",
+        "Art_Code": "202609283885549753",
+        "Np_dst": "CMS",
+        "Art_Title": "【焦点复盘】深成指四连阴创年内新低，算力硬件股大面积退潮，“易中天”三巨头均大跌超8%",
+        "Art_SortStart": "1790587551049753",
+        "Art_OriginUrl": "http://finance.eastmoney.com/news/1354,202609283885549753.html",
+        "Art_Url": "http://insurance.eastmoney.com/a/202609283885549753.html"
+      },
+      {
+        "Art_ShowTime": "2026-09-28 16:52:00",
+        "Art_Code": "202609283885290811",
+        "Np_dst": "CMS",
+        "Art_Title": "156.75亿元主力资金今日净流出通信板块",
+        "Art_SortStart": "1790585520090811",
+        "Art_OriginUrl": "http://stock.eastmoney.com/news/1407,202609283885290811.html",
+        "Art_Url": "http://stock.eastmoney.com/a/202609283885290811.html"
+      },
+      {
+        "Art_ShowTime": "2026-09-28 16:47:44",
+        "Art_Code": "202609283885242836",
+        "Np_dst": "CMS",
+        "Art_Title": "今日这些个股异动 主力抛售电子、通信板块",
+        "Art_SortStart": "1790585264042836",
+        "Art_OriginUrl": "http://stock.eastmoney.com/news/11215,202609283885242836.html",
+        "Art_Url": "http://stock.eastmoney.com/a/202609283885242836.html"
+      },
+      {
+        "Art_ShowTime": "2026-09-28 15:59:18",
+        "Art_Code": "202609283885210242",
+        "Np_dst": "CMS",
+        "Art_Title": "主力今日尾盘买卖这些个股",
+        "Art_SortStart": "1790582358010242",
+        "Art_OriginUrl": "http://stock.eastmoney.com/news/11215,202609283885210242.html",
+        "Art_Url": "http://finance.eastmoney.com/a/202609283885210242.html"
+      },
+      {
+        "Art_ShowTime": "2026-09-28 15:39:48",
+        "RelatedUid": "1229034599342114",
+        "Art_Code": "20260928153948766218070",
+        "Np_dst": "CFH",
+        "Author": "智通财经",
+        "Art_Title": "港股异动 | 多重利空重击光通信概念股 长飞光纤光缆(06869)跌超17% 中际旭创(03308)跌近12%",
+        "Art_SortStart": "1790581188037637",
+        "Art_Url": "http://caifuhao.eastmoney.com/news/20260928153948766218070"
+      }
+    ],
+    "page_size": 20
+  }
+}

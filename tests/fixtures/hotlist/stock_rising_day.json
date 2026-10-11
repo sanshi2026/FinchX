@@ -1,0 +1,1679 @@
+{
+  "status_code": 0,
+  "data": {
+    "stock_list": [
+      {
+        "market": 17,
+        "code": "600418",
+        "rate": "91032.9",
+        "rise_and_fall": -9.9919,
+        "name": "江淮汽车",
+        "hot_rank_chg": 0,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "百度概念",
+            "DeepSeek概念"
+          ]
+        },
+        "order": 1
+      },
+      {
+        "market": 33,
+        "code": "300821",
+        "rate": "31301.5",
+        "rise_and_fall": 20.014,
+        "name": "东岳硅材",
+        "analyse": "1、据2026年10月8日业绩预告，公司预计前三季度归母净利润5.47亿至5.67亿元，主要产品价格上涨，综合毛利率提升。\n2、据2026年10月8日业绩预告，工业硅采购价格同比下降，单位生产成本下降，公司持续推进精细化管理与安全管控。\n3、据2026年8月21日半年报，公司具备年产60万吨有机硅单体产能，形成涵盖硅橡胶、硅油、硅树脂等产品的一体化产业链。\n\n（免责声明：本内容由AI技术搜集公开信息总结生成，仅供参考，不构成投资建议，以上市公司公告为准）",
+        "hot_rank_chg": 23,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "有机硅概念",
+            "硅能源"
+          ],
+          "popularity_tag": "首板涨停"
+        },
+        "order": 2,
+        "analyse_title": "三季报预增+有机硅+全产业链"
+      },
+      {
+        "market": 17,
+        "code": "603906",
+        "rate": "27919.7",
+        "rise_and_fall": 6.0172,
+        "name": "龙蟠科技",
+        "hot_rank_chg": 3,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "钠离子电池",
+            "固态电池"
+          ],
+          "popularity_tag": "3天2板"
+        },
+        "order": 3
+      },
+      {
+        "market": 33,
+        "code": "002733",
+        "rate": "26497.1",
+        "rise_and_fall": 10.0053,
+        "name": "雄韬股份",
+        "analyse": "1、据2026年8月26日半年报，公司主营密封铅酸蓄电池、锂离子电池、氢燃料电池，专注算力中心与数据中心UPS电源，布局AIDC供配电领域。\n2、据2026年5月28日澄清公告，公司固态电池采用原位聚合固态电解质等技术，目前仍处于研发阶段，尚未量产及形成销售收入。\n3、据2026年7月13日互动易，公司与艾诺斯存在合作，已通过REVO3.0同款系列产品取得253万美元小批量订单，但对经营业绩影响较小。\n\n（免责声明：本内容由AI技术搜集公开信息总结生成，仅供参考，不构成投资建议，以上市公司公告为准）",
+        "hot_rank_chg": 13,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "固态电池",
+            "5G"
+          ],
+          "popularity_tag": "2天2板"
+        },
+        "order": 4,
+        "analyse_title": "数据中心UPS+固态电池+锂电池"
+      },
+      {
+        "market": 17,
+        "code": "600722",
+        "rate": "25681.9",
+        "rise_and_fall": 2.4707,
+        "name": "金牛化工",
+        "hot_rank_chg": 0,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "煤化工概念",
+            "国企改革"
+          ],
+          "popularity_tag": "2天1板"
+        },
+        "order": 5
+      },
+      {
+        "market": 17,
+        "code": "600241",
+        "rate": "20753.1",
+        "rise_and_fall": 10.0094,
+        "name": "时代万恒",
+        "analyse": "1、据2026年10月9日异常波动公告，公司主营锂离子电池和镍氢电池研发、生产及销售，锂电池主要应用于电动工具，镍氢电池主要应用于个人护理、民用消费品及电动工具。\n2、据2026年8月22日半年报，公司拥有全自动圆柱形锂电池生产线，产品定位于中高端电动工具领域，并按订单组织生产。\n3、据2026年8月22日半年报，公司控股股东为辽宁时代万恒控股集团有限公司，最终控制人为辽宁省人民政府国有资产监督管理委员会。\n\n（免责声明：本内容由AI技术搜集公开信息总结生成，仅供参考，不构成投资建议，以上市公司公告为准）",
+        "hot_rank_chg": 1,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "国企改革",
+            "锂电池概念"
+          ],
+          "popularity_tag": "5天5板"
+        },
+        "order": 6,
+        "analyse_title": "新能源电池+圆柱锂电+辽宁国资"
+      },
+      {
+        "market": 33,
+        "code": "002580",
+        "rate": "18355.6",
+        "rise_and_fall": -2.9494,
+        "name": "圣阳股份",
+        "hot_rank_chg": 1,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "钠离子电池",
+            "动力电池回收"
+          ]
+        },
+        "order": 7
+      },
+      {
+        "market": 33,
+        "code": "002074",
+        "rate": "17144.4",
+        "rise_and_fall": -3.1949,
+        "name": "国轩高科",
+        "hot_rank_chg": 0,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "动力电池回收",
+            "钠离子电池"
+          ]
+        },
+        "order": 8
+      },
+      {
+        "market": 33,
+        "code": "002805",
+        "rate": "15553.3",
+        "rise_and_fall": 10.017,
+        "name": "丰元股份",
+        "analyse": "1、据2026年8月26日半年报，公司布局固态电池正极材料及关键固态电解质研发，并参股固态电池企业。\n2、据2026年6月13日公告，公司拟建设10万吨改扩建、5万吨续建及新建5万吨高性能磷酸铁锂产线。\n3、据2026年6月13日公告，公司与比亚迪签订磷酸铁锂合作框架协议，并与楚能新能源约定未来三年供应磷酸铁锂正极材料10万吨。\n\n（免责声明：本内容由AI技术搜集公开信息总结生成，仅供参考，不构成投资建议，以上市公司公告为准）",
+        "hot_rank_chg": 4,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "固态电池",
+            "钠离子电池"
+          ],
+          "popularity_tag": "2天2板"
+        },
+        "order": 9,
+        "analyse_title": "固态电池+磷酸铁锂+比亚迪合作"
+      },
+      {
+        "market": 33,
+        "code": "002866",
+        "rate": "14940.6",
+        "rise_and_fall": 3.3351,
+        "name": "传艺科技",
+        "hot_rank_chg": 0,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "钠离子电池",
+            "固态电池"
+          ],
+          "popularity_tag": "4天3板"
+        },
+        "order": 10
+      },
+      {
+        "market": 17,
+        "code": "600256",
+        "rate": "14897.1",
+        "rise_and_fall": 5.0,
+        "name": "广汇能源",
+        "hot_rank_chg": 54,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "煤炭概念",
+            "煤化工概念"
+          ]
+        },
+        "order": 11
+      },
+      {
+        "market": 33,
+        "code": "002565",
+        "rate": "13972.4",
+        "rise_and_fall": 4.4181,
+        "name": "顺灏股份",
+        "hot_rank_chg": 1,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "卫星导航",
+            "商业航天"
+          ],
+          "popularity_tag": "2天1板"
+        },
+        "order": 12
+      },
+      {
+        "market": 33,
+        "code": "300209",
+        "rate": "12674.3",
+        "rise_and_fall": -4.2938,
+        "name": "行云科技",
+        "hot_rank_chg": 2,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "液冷服务器",
+            "柔性屏(折叠屏)"
+          ]
+        },
+        "order": 13
+      },
+      {
+        "market": 33,
+        "code": "002490",
+        "rate": "12230.8",
+        "rise_and_fall": -3.8158,
+        "name": "山东墨龙",
+        "hot_rank_chg": 1,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "页岩气",
+            "天然气"
+          ],
+          "popularity_tag": "2天1板"
+        },
+        "order": 14
+      },
+      {
+        "market": 17,
+        "code": "600026",
+        "rate": "12147.6",
+        "rise_and_fall": 0.0884,
+        "name": "中远海能",
+        "hot_rank_chg": 3,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "航运概念",
+            "同花顺中特估100"
+          ],
+          "popularity_tag": "2天1板"
+        },
+        "order": 15
+      },
+      {
+        "market": 33,
+        "code": "002384",
+        "rate": "10866.2",
+        "rise_and_fall": -4.5533,
+        "name": "东山精密",
+        "hot_rank_chg": 0,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "共封装光学(CPO)",
+            "同花顺果指数"
+          ]
+        },
+        "order": 16
+      },
+      {
+        "market": 17,
+        "code": "605378",
+        "rate": "10514.4",
+        "rise_and_fall": 3.8796,
+        "name": "野马电池",
+        "hot_rank_chg": 5,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "共同富裕示范区",
+            "长三角一体化"
+          ],
+          "popularity_tag": "2天1板"
+        },
+        "order": 17
+      },
+      {
+        "market": 17,
+        "code": "688836",
+        "rate": "9923.0",
+        "rise_and_fall": -1.2389,
+        "name": "宇树科技",
+        "hot_rank_chg": 0,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "科创次新股",
+            "注册制次新股"
+          ]
+        },
+        "order": 18
+      },
+      {
+        "market": 17,
+        "code": "600825",
+        "rate": "9913.1",
+        "rise_and_fall": 10.0088,
+        "name": "新华传媒",
+        "analyse": "1、据2026年9月19日公告，公司拟发行股份购买界面财联社100%股权，交易预计构成重大资产重组及关联交易。\n2、据2026年9月19日公告，公司拟向13名交易对方发行股份购买标的公司全部股权，相关交易方案仍待审议及监管批准。\n3、据2026年8月27日半年报，公司主营图书发行、报刊经营，具备中小学教材发行资源及连锁渠道优势。\n\n（免责声明：本内容由AI技术搜集公开信息总结生成，仅供参考，不构成投资建议，以上市公司公告为准）",
+        "hot_rank_chg": 0,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "无人零售",
+            "上海国企改革"
+          ],
+          "popularity_tag": "9天9板"
+        },
+        "order": 19,
+        "analyse_title": "拟收购财联社+重大资产重组+图书发行"
+      },
+      {
+        "market": 33,
+        "code": "300964",
+        "rate": "9682.4",
+        "rise_and_fall": 8.6763,
+        "name": "本川智能",
+        "hot_rank_chg": 100,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "共封装光学(CPO)",
+            "PCB概念"
+          ]
+        },
+        "order": 20
+      },
+      {
+        "market": 17,
+        "code": "600310",
+        "rate": "9602.0",
+        "rise_and_fall": -3.4205,
+        "name": "广西能源",
+        "hot_rank_chg": 4,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "超超临界发电",
+            "抽水蓄能"
+          ],
+          "popularity_tag": "2天1板"
+        },
+        "order": 21
+      },
+      {
+        "market": 33,
+        "code": "002058",
+        "rate": "9498.6",
+        "rise_and_fall": 9.991,
+        "name": "紫竹高科",
+        "analyse": "1、据2026年9月7日投资者关系管理信息，控股子公司紫江新材布局固态电池用铝塑膜，并与主要电池厂商持续保持研发合作；据2026年6月12日问询函回复，已取得固态锂电池用铝塑包装膜专利授权。\n2、据2026年9月7日投资者关系管理信息，紫江新材2025年国内铝塑膜市场占有率达24%，销量排名国内第一，全球市场占有率达16%，主要客户包括比亚迪、欣旺达、鹏辉能源等，上半年营收3.51亿元、净利润4518万元。\n\n（免责声明：本内容由AI技术搜集公开信息总结生成，仅供参考，不构成投资建议，以上市公司公告为准）",
+        "hot_rank_chg": 1,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "石墨烯",
+            "固态电池"
+          ],
+          "popularity_tag": "4天4板"
+        },
+        "order": 22,
+        "analyse_title": "固态电池+铝塑膜+电池客户"
+      },
+      {
+        "market": 17,
+        "code": "600617",
+        "rate": "9260.1",
+        "rise_and_fall": -2.139,
+        "name": "国新能源",
+        "hot_rank_chg": 6,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "天然气",
+            "地下管网"
+          ],
+          "popularity_tag": "2天1板"
+        },
+        "order": 23
+      },
+      {
+        "market": 33,
+        "code": "002702",
+        "rate": "9228.6",
+        "rise_and_fall": 1.5203,
+        "name": "海欣食品",
+        "hot_rank_chg": 6,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "预制菜",
+            "人造肉"
+          ],
+          "popularity_tag": "2天1板"
+        },
+        "order": 24
+      },
+      {
+        "market": 17,
+        "code": "600408",
+        "rate": "9030.2",
+        "rise_and_fall": 1.7442,
+        "name": "安泰集团",
+        "hot_rank_chg": 9,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "煤炭概念",
+            "煤化工概念"
+          ],
+          "popularity_tag": "2天1板"
+        },
+        "order": 25
+      },
+      {
+        "market": 17,
+        "code": "603928",
+        "rate": "9016.1",
+        "rise_and_fall": -5.3547,
+        "name": "兴业股份",
+        "hot_rank_chg": 1,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "光刻胶",
+            "先进封装"
+          ],
+          "popularity_tag": "3天2板"
+        },
+        "order": 26
+      },
+      {
+        "market": 33,
+        "code": "000333",
+        "rate": "8751.8",
+        "rise_and_fall": 1.0766,
+        "name": "美的集团",
+        "hot_rank_chg": 8,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "高股息精选",
+            "证金持股"
+          ]
+        },
+        "order": 27
+      },
+      {
+        "market": 17,
+        "code": "601975",
+        "rate": "8663.7",
+        "rise_and_fall": -6.2374,
+        "name": "招商南油",
+        "hot_rank_chg": 2,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "航运概念",
+            "央企国企改革"
+          ],
+          "popularity_tag": "2天1板"
+        },
+        "order": 28
+      },
+      {
+        "market": 33,
+        "code": "300522",
+        "rate": "8460.1",
+        "rise_and_fall": 3.2609,
+        "name": "世名科技",
+        "hot_rank_chg": 1,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "PCB概念",
+            "光刻胶"
+          ],
+          "popularity_tag": "2天1板"
+        },
+        "order": 29
+      },
+      {
+        "market": 33,
+        "code": "300530",
+        "rate": "7874.8",
+        "rise_and_fall": 20.0166,
+        "name": "领湃科技",
+        "analyse": "1、据2026年8月29日半年报，公司堆叠式家储、机架式家储实现量产，3.354MWh集装箱储能系统开发完成，并拓展工商业及家用储能、光伏配储和光储充一体化EPC业务。\n2、据2026年9月15日公告，公司集中力量发展储能电池和系统及新能源综合服务，转让化学业务所得资金将用于日常经营周转和拓展储能业务。\n3、据2026年4月23日年报，公司最终控制人为衡阳市人民政府国有资产监督管理委员会。\n\n（免责声明：本内容由AI技术搜集公开信息总结生成，仅供参考，不构成投资建议，以上市公司公告为准）",
+        "hot_rank_chg": 2,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "钠离子电池",
+            "国企改革"
+          ],
+          "popularity_tag": "2天2板"
+        },
+        "order": 30,
+        "analyse_title": "储能电池+新能源综合服务+衡阳国资"
+      },
+      {
+        "market": 33,
+        "code": "300450",
+        "rate": "7555.2",
+        "rise_and_fall": -1.676,
+        "name": "先导智能",
+        "hot_rank_chg": 0,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "钠离子电池",
+            "固态电池"
+          ]
+        },
+        "order": 31
+      },
+      {
+        "market": 17,
+        "code": "603200",
+        "rate": "7281.5",
+        "rise_and_fall": 2.3572,
+        "name": "上海洗霸",
+        "hot_rank_chg": 0,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "钠离子电池",
+            "固态电池"
+          ],
+          "popularity_tag": "4天3板"
+        },
+        "order": 32
+      },
+      {
+        "market": 17,
+        "code": "600812",
+        "rate": "7244.8",
+        "rise_and_fall": 10.0365,
+        "name": "华北制药",
+        "analyse": "1、据此前2016年6月28日关于全资子公司原料药通过WHO的PQ认证的公告，其中提到硫酸链霉素可单用于治疗土拉菌病，或与其他抗菌药物联合用于鼠疫、腹股沟肉芽肿、布鲁菌病、鼠咬热等的治疗。\n2、据2026年8月22日半年报及2026年9月18日互动易，公司青霉素、头孢系列覆盖原料药到制剂药，青霉素类产品30多种，相关产品出口海外。\n3、据2026年9月16日互动易，公司上半年获批10个新产品，六价重组诺如病毒疫苗申报临床试验获受理，奥木替韦单抗高浓度注射液等项目持续推进。\n4、据2026年8月4日公告，公司环孢素软胶囊、他克莫司胶囊、注射用替考拉宁及注射用盐酸万古霉素拟中选全国药品集中采购。\n\n（免责声明：本内容由AI技术搜集公开信息总结生成，仅供参考，不构成投资建议，以上市公司公告为准）",
+        "hot_rank_chg": 0,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "维生素",
+            "流感"
+          ],
+          "popularity_tag": "2天2板"
+        },
+        "order": 33,
+        "analyse_title": "鼠疫+抗生素+创新药+集采"
+      },
+      {
+        "market": 33,
+        "code": "000869",
+        "rate": "7179.3",
+        "rise_and_fall": -1.1727,
+        "name": "张裕A",
+        "hot_rank_chg": 12,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "超级品牌",
+            "国企改革"
+          ],
+          "popularity_tag": "2天1板"
+        },
+        "order": 34
+      },
+      {
+        "market": 17,
+        "code": "600400",
+        "rate": "6989.5",
+        "rise_and_fall": 3.5912,
+        "name": "红豆股份",
+        "hot_rank_chg": 5,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "机器人概念",
+            "工业互联网"
+          ],
+          "popularity_tag": "2天1板"
+        },
+        "order": 35
+      },
+      {
+        "market": 33,
+        "code": "002080",
+        "rate": "6899.0",
+        "rise_and_fall": -1.5766,
+        "name": "中材科技",
+        "hot_rank_chg": 3,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "PCB概念",
+            "6G概念"
+          ]
+        },
+        "order": 36
+      },
+      {
+        "market": 17,
+        "code": "601118",
+        "rate": "6868.6",
+        "rise_and_fall": 2.9186,
+        "name": "海南橡胶",
+        "hot_rank_chg": 3,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "土地流转",
+            "海南自贸区"
+          ]
+        },
+        "order": 37
+      },
+      {
+        "market": 17,
+        "code": "688099",
+        "rate": "6748.1",
+        "rise_and_fall": 5.4351,
+        "name": "晶晨股份",
+        "hot_rank_chg": 72,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "WiFi 6",
+            "汽车芯片"
+          ]
+        },
+        "order": 38
+      },
+      {
+        "market": 33,
+        "code": "002951",
+        "rate": "6701.5",
+        "rise_and_fall": -3.4945,
+        "name": "金时科技",
+        "hot_rank_chg": 13,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "超级电容",
+            "数字经济"
+          ],
+          "popularity_tag": "2天1板"
+        },
+        "order": 39
+      },
+      {
+        "market": 17,
+        "code": "603788",
+        "rate": "6603.9",
+        "rise_and_fall": -6.0667,
+        "name": "宁波高发",
+        "hot_rank_chg": 16,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "高股息精选",
+            "医疗器械概念"
+          ],
+          "popularity_tag": "2天1板"
+        },
+        "order": 40
+      },
+      {
+        "market": 17,
+        "code": "603686",
+        "rate": "6499.8",
+        "rise_and_fall": -2.649,
+        "name": "福龙马",
+        "hot_rank_chg": 7,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "中俄贸易概念",
+            "垃圾分类"
+          ]
+        },
+        "order": 41
+      },
+      {
+        "market": 17,
+        "code": "601956",
+        "rate": "6482.6",
+        "rise_and_fall": -4.7101,
+        "name": "东贝集团",
+        "hot_rank_chg": 16,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "中俄贸易概念",
+            "跨境电商"
+          ],
+          "popularity_tag": "2天1板"
+        },
+        "order": 42
+      },
+      {
+        "market": 17,
+        "code": "600663",
+        "rate": "6468.9",
+        "rise_and_fall": -5.1259,
+        "name": "陆家嘴",
+        "hot_rank_chg": 0,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "参股保险",
+            "参股券商"
+          ],
+          "popularity_tag": "3天2板"
+        },
+        "order": 43
+      },
+      {
+        "market": 17,
+        "code": "600152",
+        "rate": "6277.5",
+        "rise_and_fall": -6.2092,
+        "name": "维科技术",
+        "hot_rank_chg": 7,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "钠离子电池",
+            "固态电池"
+          ]
+        },
+        "order": 44
+      },
+      {
+        "market": 17,
+        "code": "600127",
+        "rate": "6243.8",
+        "rise_and_fall": 10.0,
+        "name": "金健米业",
+        "analyse": "1、据2026年9月4日投资者关系活动记录表，公司深耕环洞庭湖区建设优质稻订单基地，大米、面制品、食用植物油产能分别为22.8万吨、12.1万吨、21.2万吨。\n2、据2026年9月4日投资者关系活动记录表，公司重点推广低GI大米、高油酸菜籽油、健康挂面等功能性米面油产品。\n3、据2026年7月14日公告，公司子公司承担省级储备粮轮换业务，涉及早籼稻4617吨，交易金额不超过1070万元。\n\n（免责声明：本内容由AI技术搜集公开信息总结生成，仅供参考，不构成投资建议，以上市公司公告为准）",
+        "hot_rank_chg": 0,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "玉米",
+            "粮食概念"
+          ],
+          "popularity_tag": "首板涨停"
+        },
+        "order": 45,
+        "analyse_title": "粮油食品+健康食品+粮食储备"
+      },
+      {
+        "market": 17,
+        "code": "600513",
+        "rate": "6114.1",
+        "rise_and_fall": -1.9277,
+        "name": "联环药业",
+        "hot_rank_chg": 1,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "禽流感",
+            "仿制药一致性评价"
+          ],
+          "popularity_tag": "2天1板"
+        },
+        "order": 46
+      },
+      {
+        "market": 151,
+        "code": "920627",
+        "rate": "6040.2",
+        "rise_and_fall": 10.9366,
+        "name": "力王股份",
+        "hot_rank_chg": 6,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "粤港澳大湾区",
+            "融资融券"
+          ],
+          "popularity_tag": "2天1板"
+        },
+        "order": 47
+      },
+      {
+        "market": 17,
+        "code": "603073",
+        "rate": "5985.1",
+        "rise_and_fall": -10.0131,
+        "name": "彩蝶实业",
+        "analyse": "1、公司此前5个交易日累计上涨26.91%，短期涨幅较大，股价出现回调。\n2、据2026年7月6日互动易，公司2026年上半年归母净利润同比下降43.61%，主要受汇率波动、原材料价格上涨及埃及工厂产能爬坡期成本较高等因素影响。\n\n（免责声明：本内容由AI技术搜集公开信息总结生成，仅供参考，不构成投资建议，以上市公司公告为准）",
+        "hot_rank_chg": 5,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "中俄贸易概念",
+            "共同富裕示范区"
+          ],
+          "popularity_tag": "2天1板"
+        },
+        "order": 48,
+        "analyse_title": "此前涨幅较大+净利润同比下降"
+      },
+      {
+        "market": 33,
+        "code": "300619",
+        "rate": "5941.9",
+        "rise_and_fall": -3.6209,
+        "name": "金银河",
+        "hot_rank_chg": 2,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "固态电池",
+            "锂电池概念"
+          ]
+        },
+        "order": 49
+      },
+      {
+        "market": 33,
+        "code": "301513",
+        "rate": "5804.2",
+        "rise_and_fall": 3.1706,
+        "name": "尚水智能",
+        "hot_rank_chg": 0,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "钠离子电池",
+            "固态电池"
+          ]
+        },
+        "order": 50
+      },
+      {
+        "market": 33,
+        "code": "002882",
+        "rate": "5757.0",
+        "rise_and_fall": -0.5566,
+        "name": "金龙羽",
+        "hot_rank_chg": 2,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "核电",
+            "锂电池概念"
+          ]
+        },
+        "order": 51
+      },
+      {
+        "market": 33,
+        "code": "002709",
+        "rate": "5638.5",
+        "rise_and_fall": 5.1698,
+        "name": "天赐材料",
+        "hot_rank_chg": 0,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "氟化工概念",
+            "固态电池"
+          ]
+        },
+        "order": 52
+      },
+      {
+        "market": 33,
+        "code": "301697",
+        "rate": "5560.0",
+        "rise_and_fall": -6.9184,
+        "name": "贝特利",
+        "hot_rank_chg": 0,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "注册制次新股",
+            "芯片概念"
+          ],
+          "popularity_tag": "2天1板"
+        },
+        "order": 53
+      },
+      {
+        "market": 17,
+        "code": "688498",
+        "rate": "5450.2",
+        "rise_and_fall": -6.1531,
+        "name": "源杰科技",
+        "hot_rank_chg": -1,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "共封装光学(CPO)",
+            "光纤概念"
+          ]
+        },
+        "order": 54
+      },
+      {
+        "market": 17,
+        "code": "601872",
+        "rate": "5416.4",
+        "rise_and_fall": -4.2669,
+        "name": "招商轮船",
+        "hot_rank_chg": 0,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "航运概念",
+            "俄乌冲突概念"
+          ]
+        },
+        "order": 55
+      },
+      {
+        "market": 33,
+        "code": "001300",
+        "rate": "5168.8",
+        "rise_and_fall": 9.9926,
+        "name": "三柏硕",
+        "analyse": "1、据2026年8月27日半年报，公司主营休闲运动与健身器材研发、生产和销售，产品覆盖31个系列、一千余款，休闲运动器材以蹦床为核心。\n2、据2026年8月27日半年报，公司形成家用、商用健身器材及康养康复器械、智能健身设备产品矩阵，并拥有多个自有品牌。\n3、据2026年4月27日年报，公司通过美国子公司开展海外研发与品牌运营，并以ODM、OEM模式为国际客户提供产品服务。\n\n（免责声明：本内容由AI技术搜集公开信息总结生成，仅供参考，不构成投资建议，以上市公司公告为准）",
+        "hot_rank_chg": 21,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "足球概念",
+            "体育产业"
+          ],
+          "popularity_tag": "2天2板"
+        },
+        "order": 56,
+        "analyse_title": "蹦床+健身器材+外销"
+      },
+      {
+        "market": 33,
+        "code": "300599",
+        "rate": "5040.9",
+        "rise_and_fall": -17.0732,
+        "name": "雄塑科技",
+        "hot_rank_chg": 12,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "地下管网",
+            "石墨烯"
+          ]
+        },
+        "order": 57
+      },
+      {
+        "market": 33,
+        "code": "002687",
+        "rate": "4842.3",
+        "rise_and_fall": -0.1629,
+        "name": "乔治白",
+        "hot_rank_chg": 15,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "创投"
+          ],
+          "popularity_tag": "2天1板"
+        },
+        "order": 58
+      },
+      {
+        "market": 17,
+        "code": "600403",
+        "rate": "4834.0",
+        "rise_and_fall": -1.7544,
+        "name": "大有能源",
+        "hot_rank_chg": 3,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "煤炭概念",
+            "新疆振兴"
+          ]
+        },
+        "order": 59
+      },
+      {
+        "market": 33,
+        "code": "002869",
+        "rate": "4704.2",
+        "rise_and_fall": -1.4629,
+        "name": "金溢科技",
+        "hot_rank_chg": 10,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "ETC",
+            "数据要素"
+          ],
+          "popularity_tag": "2天1板"
+        },
+        "order": 60
+      },
+      {
+        "market": 17,
+        "code": "688825",
+        "rate": "4617.8",
+        "rise_and_fall": -3.3254,
+        "name": "长鑫科技",
+        "hot_rank_chg": 0,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "消费电子概念",
+            "存储芯片"
+          ]
+        },
+        "order": 61
+      },
+      {
+        "market": 33,
+        "code": "300054",
+        "rate": "4552.0",
+        "rise_and_fall": 0.0953,
+        "name": "鼎龙股份",
+        "hot_rank_chg": 8,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "中芯国际概念",
+            "存储芯片"
+          ]
+        },
+        "order": 62
+      },
+      {
+        "market": 33,
+        "code": "002774",
+        "rate": "4357.9",
+        "rise_and_fall": -2.6786,
+        "name": "快意电梯",
+        "hot_rank_chg": 12,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "物联网",
+            "粤港澳大湾区"
+          ],
+          "popularity_tag": "2天1板"
+        },
+        "order": 63
+      },
+      {
+        "market": 17,
+        "code": "603137",
+        "rate": "4352.4",
+        "rise_and_fall": -8.4356,
+        "name": "恒尚节能",
+        "hot_rank_chg": 7,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "装配式建筑",
+            "新型城镇化"
+          ],
+          "popularity_tag": "2天1板"
+        },
+        "order": 64
+      },
+      {
+        "market": 17,
+        "code": "600863",
+        "rate": "4345.6",
+        "rise_and_fall": -0.1961,
+        "name": "华能蒙电",
+        "hot_rank_chg": 3,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "超超临界发电",
+            "煤炭概念"
+          ]
+        },
+        "order": 65
+      },
+      {
+        "market": 17,
+        "code": "600458",
+        "rate": "4221.1",
+        "rise_and_fall": 3.3457,
+        "name": "时代新材",
+        "hot_rank_chg": 87,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "有机硅概念",
+            "锂电池概念"
+          ]
+        },
+        "order": 66
+      },
+      {
+        "market": 33,
+        "code": "001336",
+        "rate": "4093.2",
+        "rise_and_fall": 10.0242,
+        "name": "楚环科技",
+        "analyse": "1、据2026年8月29日半年报，公司主营废气恶臭治理系统解决方案，覆盖市政污水、餐厨垃圾及光伏、半导体等工业领域，提供设备、运维等服务。\n2、据2026年6月18日投资者关系活动记录表，公司将半导体环保作为业务方向之一，并推进工业细分市场拓展及海外业务布局。\n3、据2026年8月29日半年报，公司参与设立瀚智科创投，认缴999万元、占比33.30%，投资范围包括航空航天、半导体、新能源及新材料等领域。\n4、9月24日，证监会披露的行政处罚决定书显示，陈某、周某禄、李某萍存在操纵证券市场的违法行为，尽管无违法所得，但被合计罚款800万元，并被分别采取2年至3年不等的证券市场禁止交易措施。经复核，证监会认为，陈某、周某禄、李某萍存在操纵“楚环科技”的共同故意，综合在案证据，足以证明陈某、周某禄、李某萍三人存在共同操纵行为。\n\n（免责声明：本内容由AI技术搜集公开信息总结生成，仅供参考，不构成投资建议，以上市公司公告为准）",
+        "hot_rank_chg": 22,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "新型城镇化",
+            "共同富裕示范区"
+          ],
+          "popularity_tag": "2天2板"
+        },
+        "order": 67,
+        "analyse_title": "废气治理+半导体环保+航空航天投资+股价被操纵"
+      },
+      {
+        "market": 33,
+        "code": "002149",
+        "rate": "4045.7",
+        "rise_and_fall": -3.956,
+        "name": "西部材料",
+        "hot_rank_chg": 1,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "卫星导航",
+            "商业航天"
+          ]
+        },
+        "order": 68
+      },
+      {
+        "market": 17,
+        "code": "688196",
+        "rate": "4028.0",
+        "rise_and_fall": -0.2769,
+        "name": "卓越新能",
+        "hot_rank_chg": 13,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "可降解塑料",
+            "人民币贬值受益"
+          ],
+          "popularity_tag": "2天1板"
+        },
+        "order": 69
+      },
+      {
+        "market": 33,
+        "code": "300373",
+        "rate": "3628.7",
+        "rise_and_fall": 2.3333,
+        "name": "扬杰科技",
+        "hot_rank_chg": 17,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "中芯国际概念",
+            "第三代半导体"
+          ]
+        },
+        "order": 70
+      },
+      {
+        "market": 33,
+        "code": "301421",
+        "rate": "3593.3",
+        "rise_and_fall": -9.4489,
+        "name": "波长光电",
+        "hot_rank_chg": 40,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "光刻机",
+            "芯片概念"
+          ]
+        },
+        "order": 71
+      },
+      {
+        "market": 33,
+        "code": "002242",
+        "rate": "3591.0",
+        "rise_and_fall": 3.8545,
+        "name": "九阳股份",
+        "hot_rank_chg": 0,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "绿色电力",
+            "净水概念"
+          ],
+          "popularity_tag": "5天4板"
+        },
+        "order": 72
+      },
+      {
+        "market": 17,
+        "code": "601208",
+        "rate": "3500.9",
+        "rise_and_fall": -3.2797,
+        "name": "东材科技",
+        "hot_rank_chg": 0,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "PCB概念",
+            "PET铜箔"
+          ]
+        },
+        "order": 73
+      },
+      {
+        "market": 151,
+        "code": "920157",
+        "rate": "3472.9",
+        "rise_and_fall": 467.2727,
+        "name": "宇特光电",
+        "hot_rank_chg": 270,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "新股与次新股",
+            "融资融券"
+          ]
+        },
+        "order": 74
+      },
+      {
+        "market": 33,
+        "code": "301599",
+        "rate": "3355.6",
+        "rise_and_fall": -2.3784,
+        "name": "理奇智能",
+        "hot_rank_chg": 3,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "固态电池",
+            "注册制次新股"
+          ]
+        },
+        "order": 75
+      },
+      {
+        "market": 17,
+        "code": "603863",
+        "rate": "3307.3",
+        "rise_and_fall": -0.7342,
+        "name": "松炀资源",
+        "hot_rank_chg": 19,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "粤港澳大湾区"
+          ],
+          "popularity_tag": "2天1板"
+        },
+        "order": 76
+      },
+      {
+        "market": 33,
+        "code": "300073",
+        "rate": "3053.7",
+        "rise_and_fall": -0.0242,
+        "name": "当升科技",
+        "hot_rank_chg": 1,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "钠离子电池",
+            "动力电池回收"
+          ]
+        },
+        "order": 77
+      },
+      {
+        "market": 33,
+        "code": "300750",
+        "rate": "3034.0",
+        "rise_and_fall": 1.7018,
+        "name": "宁德时代",
+        "hot_rank_chg": 2,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "同花顺漂亮100",
+            "同花顺出海50"
+          ]
+        },
+        "order": 78
+      },
+      {
+        "market": 17,
+        "code": "601015",
+        "rate": "2837.0",
+        "rise_and_fall": -2.0888,
+        "name": "陕西黑猫",
+        "hot_rank_chg": 0,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "煤炭概念",
+            "煤化工概念"
+          ]
+        },
+        "order": 79
+      },
+      {
+        "market": 17,
+        "code": "603630",
+        "rate": "2807.6",
+        "rise_and_fall": 9.9937,
+        "name": "拉芳家化",
+        "analyse": "1、据2026年4月28日年报，公司生产洗发护发用品、美容护肤化妆品及家庭清洁用品等；据2026年8月25日半年报，洗护相关品牌收入占比较高。\n2、据2026年8月25日半年报，公司持续推进业务及品类结构优化、品质升级及降本增效，新品牌美涛上半年实现销售收入3794.95万元。\n3、据2026年8月25日半年报，公司上半年实现营业收入4.40亿元，同比增长7.23%；归母净利润3718.16万元，同比增长484.49%。\n\n（免责声明：本内容由AI技术搜集公开信息总结生成，仅供参考，不构成投资建议，以上市公司公告为准）",
+        "hot_rank_chg": 36,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "网红经济",
+            "医美概念"
+          ],
+          "popularity_tag": "首板涨停"
+        },
+        "order": 80,
+        "analyse_title": "洗护用品+品牌优化+业绩改善"
+      },
+      {
+        "market": 17,
+        "code": "603823",
+        "rate": "2672.5",
+        "rise_and_fall": -10.0021,
+        "name": "百合花",
+        "analyse": "1、据2025年年报，公司光刻胶颜料销售收入占营业收入的0.084%，相关业务对整体经营贡献较小。\n2、据同花顺iFinD数据，公司今年以来累计上涨182.57%，此前涨幅较大，短线回调压力有所增加。\n\n（免责声明：本内容由AI技术搜集公开信息总结生成，仅供参考，不构成投资建议，以上市公司公告为准）",
+        "hot_rank_chg": 2,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "光刻胶",
+            "PEEK材料"
+          ]
+        },
+        "order": 81,
+        "analyse_title": "光刻胶颜料收入占比较低+此前涨幅较大"
+      },
+      {
+        "market": 17,
+        "code": "600121",
+        "rate": "2655.3",
+        "rise_and_fall": -4.4248,
+        "name": "郑州煤电",
+        "hot_rank_chg": 1,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "煤炭概念",
+            "国企改革"
+          ]
+        },
+        "order": 82
+      },
+      {
+        "market": 17,
+        "code": "605298",
+        "rate": "2593.0",
+        "rise_and_fall": -6.2486,
+        "name": "必得科技",
+        "hot_rank_chg": 28,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "专精特新",
+            "高铁"
+          ],
+          "popularity_tag": "2天1板"
+        },
+        "order": 83
+      },
+      {
+        "market": 17,
+        "code": "601086",
+        "rate": "2574.9",
+        "rise_and_fall": 4.8601,
+        "name": "国芳集团",
+        "hot_rank_chg": -1,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "IP经济(谷子经济)",
+            "参股券商"
+          ]
+        },
+        "order": 84
+      },
+      {
+        "market": 33,
+        "code": "002927",
+        "rate": "2566.6",
+        "rise_and_fall": -9.3878,
+        "name": "泰永长征",
+        "hot_rank_chg": 14,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "军工",
+            "商业航天"
+          ]
+        },
+        "order": 85
+      },
+      {
+        "market": 33,
+        "code": "002460",
+        "rate": "2546.6",
+        "rise_and_fall": -0.1583,
+        "name": "赣锋锂业",
+        "hot_rank_chg": 4,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "小金属概念",
+            "盐湖提锂"
+          ]
+        },
+        "order": 86
+      },
+      {
+        "market": 17,
+        "code": "600693",
+        "rate": "2477.8",
+        "rise_and_fall": 0.6336,
+        "name": "东百集团",
+        "hot_rank_chg": 7,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "免税店",
+            "IP经济(谷子经济)"
+          ]
+        },
+        "order": 87
+      },
+      {
+        "market": 17,
+        "code": "603002",
+        "rate": "2416.9",
+        "rise_and_fall": 3.2103,
+        "name": "宏昌电子",
+        "hot_rank_chg": 2,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "PCB概念",
+            "先进封装"
+          ]
+        },
+        "order": 88
+      },
+      {
+        "market": 17,
+        "code": "601398",
+        "rate": "2414.9",
+        "rise_and_fall": 0,
+        "name": "工商银行",
+        "hot_rank_chg": 1,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "高股息精选",
+            "同花顺中特估100"
+          ]
+        },
+        "order": 89
+      },
+      {
+        "market": 17,
+        "code": "600227",
+        "rate": "2376.5",
+        "rise_and_fall": -1.7327,
+        "name": "赤天化",
+        "hot_rank_chg": 3,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "化肥",
+            "煤炭概念"
+          ]
+        },
+        "order": 90
+      },
+      {
+        "market": 33,
+        "code": "300072",
+        "rate": "2360.2",
+        "rise_and_fall": -0.7853,
+        "name": "海新能科",
+        "hot_rank_chg": 4,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "页岩气",
+            "化肥"
+          ]
+        },
+        "order": 91
+      },
+      {
+        "market": 17,
+        "code": "603937",
+        "rate": "2357.4",
+        "rise_and_fall": -1.8997,
+        "name": "丽岛新材",
+        "hot_rank_chg": 9,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "锂电池概念",
+            "食品包装"
+          ]
+        },
+        "order": 92
+      },
+      {
+        "market": 33,
+        "code": "002846",
+        "rate": "2320.8",
+        "rise_and_fall": 1.5926,
+        "name": "英联股份",
+        "hot_rank_chg": 3,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "固态电池",
+            "锂电池概念"
+          ]
+        },
+        "order": 93
+      },
+      {
+        "market": 33,
+        "code": "002467",
+        "rate": "2302.4",
+        "rise_and_fall": -1.5534,
+        "name": "二六三",
+        "hot_rank_chg": 1,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "云办公",
+            "智慧政务"
+          ]
+        },
+        "order": 94
+      },
+      {
+        "market": 33,
+        "code": "001317",
+        "rate": "2298.6",
+        "rise_and_fall": -2.3084,
+        "name": "三羊马",
+        "hot_rank_chg": 0,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "拼多多概念",
+            "跨境电商"
+          ]
+        },
+        "order": 95
+      },
+      {
+        "market": 33,
+        "code": "002594",
+        "rate": "2267.0",
+        "rise_and_fall": 1.4195,
+        "name": "比亚迪",
+        "hot_rank_chg": 1,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "超级品牌",
+            "同花顺漂亮100"
+          ]
+        },
+        "order": 96
+      },
+      {
+        "market": 17,
+        "code": "605020",
+        "rate": "2255.5",
+        "rise_and_fall": 0.7014,
+        "name": "永和股份",
+        "hot_rank_chg": 64,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "氟化工概念",
+            "PVDF概念"
+          ]
+        },
+        "order": 97
+      },
+      {
+        "market": 17,
+        "code": "600884",
+        "rate": "2229.7",
+        "rise_and_fall": 0.4212,
+        "name": "杉杉股份",
+        "hot_rank_chg": 0,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "石墨电极",
+            "钠离子电池"
+          ]
+        },
+        "order": 98
+      },
+      {
+        "market": 33,
+        "code": "300124",
+        "rate": "2211.7",
+        "rise_and_fall": -1.5246,
+        "name": "汇川技术",
+        "hot_rank_chg": 3,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "一体化压铸",
+            "农机"
+          ]
+        },
+        "order": 99
+      },
+      {
+        "market": 17,
+        "code": "603395",
+        "rate": "2211.4",
+        "rise_and_fall": 0.7877,
+        "name": "红四方",
+        "hot_rank_chg": 18,
+        "topic": null,
+        "tag": {
+          "concept_tag": [
+            "化肥",
+            "煤化工概念"
+          ]
+        },
+        "order": 100
+      }
+    ]
+  },
+  "status_msg": "success"
+}

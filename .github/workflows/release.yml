@@ -1,11 +1,15 @@
 name: Release
 
-on:
+"on":
   release:
     types: [published]
 
 permissions:
   contents: read
+
+defaults:
+  run:
+    shell: bash
 
 concurrency:
   group: release-${{ github.event.release.tag_name }}
@@ -37,37 +41,45 @@ jobs:
           RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
           set -euo pipefail
-          package_version="$(python - <<'PY'
+          python - <<'PY'
           import ast
+          import os
           from pathlib import Path
+          import tomllib
 
-          tree = ast.parse(Path("src/finchx/__init__.py").read_text())
-          for node in tree.body:
-              if isinstance(node, ast.Assign):
-                  for target in node.targets:
-                      if isinstance(target, ast.Name) and target.id == "__version__":
-                          print(ast.literal_eval(node.value))
-                          raise SystemExit
-          raise SystemExit("src/finchx/__init__.py does not define __version__")
+          project = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))["project"]
+          if project["name"] != "finchx":
+              raise SystemExit("project.name must be finchx")
+          package_version = project.get("version")
+          if not isinstance(package_version, str) or not package_version:
+              raise SystemExit("pyproject.toml must define a static project.version")
+          tree = ast.parse(Path("src/finchx/__init__.py").read_text(encoding="utf-8"))
+          versions = [
+              ast.literal_eval(node.value)
+              for node in tree.body
+              if isinstance(node, ast.Assign)
+              and any(isinstance(target, ast.Name) and target.id == "__version__" for target in node.targets)
+          ]
+          if versions != [package_version]:
+              raise SystemExit("project.version does not match the single public __version__")
+          tag = os.environ["RELEASE_TAG"]
+          release_version = tag[1:] if tag.startswith("v") else tag
+          if release_version != package_version:
+              raise SystemExit(f"Release tag {tag} does not match package version {package_version}")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"version={package_version}\n")
+          print(f"Validated release {tag} for package version {package_version}")
           PY
-          )"
-          release_version="${RELEASE_TAG#v}"
-
-          if [[ "$release_version" != "$package_version" ]]; then
-            echo "Release tag $RELEASE_TAG does not match package version $package_version" >&2
-            exit 1
-          fi
-
-          echo "version=$package_version" >> "$GITHUB_OUTPUT"
-          echo "Validated release $RELEASE_TAG for package version $package_version"
 
   test:
-    name: Test release source
+    name: Test release source on Python ${{ matrix.python-version }} and ${{ matrix.os }}
     needs: validate
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        python-version: ["3.10", "3.12"]
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
     permissions:
       contents: read
     steps:
@@ -83,15 +95,19 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install development dependencies
-        run: python -m pip install -e ".[dev,calendar]"
+        run: python -m pip install -e ".[dev,calendar,pdf,jygs]"
 
       - name: Run tests
-        run: pytest
+        run: python -m pytest
 
   build:
-    name: Build and validate artifacts
+    name: Build and validate artifacts on ${{ matrix.os }}
     needs: [validate, test]
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
     permissions:
       contents: read
     steps:
@@ -112,40 +128,67 @@ jobs:
       - name: Build wheel and source distribution
         run: python -m build
 
+      - name: Validate package artifacts
+        env:
+          PACKAGE_VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import os
+          from pathlib import Path
+
+          version = os.environ["PACKAGE_VERSION"]
+          expected = {
+              f"finchx-{version}-py3-none-any.whl",
+              f"finchx-{version}.tar.gz",
+          }
+          paths = list(Path("dist").iterdir())
+          actual = {path.name for path in paths}
+          if actual != expected or not all(path.is_file() for path in paths):
+              raise SystemExit(f"unexpected release artifacts: {sorted(actual)}")
+          print("Validated exact wheel and sdist artifact set")
+          PY
+          python -m twine check --strict dist/*
+
       - name: Install and smoke-test built artifacts
+        env:
+          PACKAGE_VERSION: ${{ needs.validate.outputs.version }}
         run: |
           set -euo pipefail
           for artifact in dist/*.whl dist/*.tar.gz; do
             smoke_dir="$(mktemp -d)"
+            trap 'rm -rf "$smoke_dir"' EXIT
             python -m venv "$smoke_dir"
-            "$smoke_dir/bin/python" -m pip install "$artifact"
-            "$smoke_dir/bin/python" - <<'PY'
+            if [[ "$RUNNER_OS" == "Windows" ]]; then
+              smoke_python="$smoke_dir/Scripts/python.exe"
+            else
+              smoke_python="$smoke_dir/bin/python"
+            fi
+            "$smoke_python" -m pip install --no-cache-dir "$artifact"
+            "$smoke_python" -I -B - <<'PY'
           from importlib.metadata import version
+          import os
+          import sys
 
           import finchx
           from finchx import FinchX
-          from finchx.schemas import iter_schema_resources, read_schema
 
-          assert version("finchx") == finchx.__version__
-
-          schemas = list(iter_schema_resources())
-          assert schemas, "no schema resources installed"
-          quote_schema = read_schema("market-quote.schema.json")
-          assert quote_schema["type"] == "object"
-
-          FinchX()
+          assert version("finchx") == finchx.__version__ == os.environ["PACKAGE_VERSION"]
+          fx = FinchX()
+          assert callable(fx.reference.pdf_text)
+          assert callable(fx.market.ranking)
+          assert callable(fx.regulation.deviation)
+          for optional in ("pypdfium2", "playwright", "pandas_market_calendars"):
+              assert not any(name == optional or name.startswith(optional + ".") for name in sys.modules)
+          print(f"Verified installed FinchX {finchx.__version__}: {finchx.__file__}")
           PY
+            "$smoke_python" -m pip check
             rm -rf "$smoke_dir"
+            trap - EXIT
           done
 
-      - name: Validate package artifacts
-        run: |
-          set -euo pipefail
-          python -m twine check dist/*
-          test "$(find dist -maxdepth 1 -type f | wc -l | tr -d ' ')" -eq 2
-          find dist -maxdepth 1 -type f -print
-
       - name: Upload release artifacts
+        if: runner.os == 'Linux'
         uses: actions/upload-artifact@v4
         with:
           name: finchx-${{ needs.validate.outputs.version }}-dist
@@ -181,8 +224,9 @@ jobs:
               f"finchx-{version}-py3-none-any.whl",
               f"finchx-{version}.tar.gz",
           }
-          actual = {path.name for path in Path("dist").iterdir() if path.is_file()}
-          if actual != expected:
+          paths = list(Path("dist").iterdir())
+          actual = {path.name for path in paths}
+          if actual != expected or not all(path.is_file() for path in paths):
               raise SystemExit(f"unexpected release artifacts: {sorted(actual)}")
           print("Validated exact wheel and sdist artifact set")
           PY
@@ -191,3 +235,69 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: dist/
+
+  verify:
+    name: Verify uploaded package from PyPI on ${{ matrix.os }}
+    needs: [validate, publish]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    permissions:
+      contents: read
+    steps:
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install and verify the uploaded exact version
+        env:
+          PACKAGE_VERSION: ${{ needs.validate.outputs.version }}
+          PIP_EXTRA_INDEX_URL: ""
+          PIP_FIND_LINKS: ""
+        run: |
+          set -euo pipefail
+          verify_dir="$(mktemp -d)"
+          trap 'rm -rf "$verify_dir"' EXIT
+          python -m venv "$verify_dir"
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            verify_python="$verify_dir/Scripts/python.exe"
+            export PIP_CONFIG_FILE=nul
+          else
+            verify_python="$verify_dir/bin/python"
+            export PIP_CONFIG_FILE=/dev/null
+          fi
+          installed=false
+          for attempt in 1 2 3 4 5; do
+            if "$verify_python" -m pip install --index-url https://pypi.org/simple --no-cache-dir "finchx==$PACKAGE_VERSION"; then
+              installed=true
+              break
+            fi
+            if [[ "$attempt" -lt 5 ]]; then
+              sleep 15
+            fi
+          done
+          if [[ "$installed" != true ]]; then
+            echo "PyPI upload completed, but exact-version installation verification failed" >&2
+            exit 1
+          fi
+          "$verify_python" -I -B - <<'PY'
+          from importlib.metadata import version
+          import os
+          import sys
+
+          import finchx
+          from finchx import FinchX
+
+          assert version("finchx") == finchx.__version__ == os.environ["PACKAGE_VERSION"]
+          fx = FinchX()
+          assert callable(fx.reference.pdf_text)
+          assert callable(fx.market.ranking)
+          assert callable(fx.regulation.deviation)
+          for optional in ("pypdfium2", "playwright", "pandas_market_calendars"):
+              assert not any(name == optional or name.startswith(optional + ".") for name in sys.modules)
+          print(f"Verified PyPI-installed FinchX {finchx.__version__}: {finchx.__file__}")
+          PY
+          "$verify_python" -m pip check

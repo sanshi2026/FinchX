@@ -1,0 +1,26 @@
+[
+  {
+    "loc": "http://live.financebe.com/stock/detail.html?d=2204934",
+    "publish_time": "1791461719",
+    "content": {
+      "items": [
+        {
+          "data": "格罗方德盘前涨超5%，公司与台积电签署20亿美元硅中介层协议，初始期限为5年。",
+          "type": "text"
+        }
+      ],
+      "items#num#baidu": "1"
+    },
+    "important": "0",
+    "third_url": "http://live.financebe.com/stock/detail.html?d=2204934",
+    "provider": "Finscope",
+    "tag": "快讯$美股",
+    "entity": [
+      {
+        "code": "TSM",
+        "name": "台积电",
+        "market": "us"
+      }
+    ]
+  }
+]

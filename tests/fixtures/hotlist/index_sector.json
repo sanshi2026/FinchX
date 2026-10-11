@@ -1,0 +1,374 @@
+{
+  "status_code": 0,
+  "data": {
+    "total": 253,
+    "part_order_code_list": null,
+    "indexes": [
+      {
+        "time_type": "SNAPSHOT",
+        "idx": 0,
+        "index_id": "security_name",
+        "ext_index_id": "security_name",
+        "timestamp": "0"
+      },
+      {
+        "time_type": "SNAPSHOT",
+        "idx": 1,
+        "index_id": "price_change_ratio_pct",
+        "ext_index_id": "price_change_ratio_pct",
+        "timestamp": "0"
+      },
+      {
+        "time_type": "SNAPSHOT",
+        "idx": 2,
+        "index_id": "ths-hot-data-minute-attention-rate",
+        "ext_index_id": "ths-hot-data-minute-attention-rate",
+        "timestamp": "0"
+      }
+    ],
+    "data": [
+      {
+        "code": "120:931743",
+        "values": [
+          {
+            "idx": 0,
+            "value": "半导体材料设备"
+          },
+          {
+            "idx": 1,
+            "value": -4.0217
+          },
+          {
+            "idx": 2,
+            "value": 20001.0
+          }
+        ]
+      },
+      {
+        "code": "32:399975",
+        "values": [
+          {
+            "idx": 0,
+            "value": "证券公司"
+          },
+          {
+            "idx": 1,
+            "value": 0.278666
+          },
+          {
+            "idx": 2,
+            "value": 14255.0
+          }
+        ]
+      },
+      {
+        "code": "120:950125",
+        "values": [
+          {
+            "idx": 0,
+            "value": "科创半导体材料设备"
+          },
+          {
+            "idx": 1,
+            "value": -3.7556
+          },
+          {
+            "idx": 2,
+            "value": 12791.5
+          }
+        ]
+      },
+      {
+        "code": "32:399441",
+        "values": [
+          {
+            "idx": 0,
+            "value": "生物医药"
+          },
+          {
+            "idx": 1,
+            "value": -1.700962
+          },
+          {
+            "idx": 2,
+            "value": 7323.0
+          }
+        ]
+      },
+      {
+        "code": "120:H30184",
+        "values": [
+          {
+            "idx": 0,
+            "value": "半导体"
+          },
+          {
+            "idx": 1,
+            "value": -2.7741
+          },
+          {
+            "idx": 2,
+            "value": 5869.5
+          }
+        ]
+      },
+      {
+        "code": "120:931160",
+        "values": [
+          {
+            "idx": 0,
+            "value": "通信设备"
+          },
+          {
+            "idx": 1,
+            "value": -2.6674
+          },
+          {
+            "idx": 2,
+            "value": 5781.0
+          }
+        ]
+      },
+      {
+        "code": "120:931152",
+        "values": [
+          {
+            "idx": 0,
+            "value": "CS创新药"
+          },
+          {
+            "idx": 1,
+            "value": -1.5709
+          },
+          {
+            "idx": 2,
+            "value": 5744.5
+          }
+        ]
+      },
+      {
+        "code": "32:399989",
+        "values": [
+          {
+            "idx": 0,
+            "value": "中证医疗"
+          },
+          {
+            "idx": 1,
+            "value": -1.552774
+          },
+          {
+            "idx": 2,
+            "value": 5333.5
+          }
+        ]
+      },
+      {
+        "code": "32:980017",
+        "values": [
+          {
+            "idx": 0,
+            "value": "国证芯片"
+          },
+          {
+            "idx": 1,
+            "value": -3.153522
+          },
+          {
+            "idx": 2,
+            "value": 4457.5
+          }
+        ]
+      },
+      {
+        "code": "120:000813",
+        "values": [
+          {
+            "idx": 0,
+            "value": "细分化工"
+          },
+          {
+            "idx": 1,
+            "value": -0.5717
+          },
+          {
+            "idx": 2,
+            "value": 4121.5
+          }
+        ]
+      },
+      {
+        "code": "32:399998",
+        "values": [
+          {
+            "idx": 0,
+            "value": "中证煤炭"
+          },
+          {
+            "idx": 1,
+            "value": 1.03334
+          },
+          {
+            "idx": 2,
+            "value": 3562.5
+          }
+        ]
+      },
+      {
+        "code": "32:399986",
+        "values": [
+          {
+            "idx": 0,
+            "value": "中证银行"
+          },
+          {
+            "idx": 1,
+            "value": 0.057098
+          },
+          {
+            "idx": 2,
+            "value": 3274.5
+          }
+        ]
+      },
+      {
+        "code": "120:931238",
+        "values": [
+          {
+            "idx": 0,
+            "value": "SSH黄金股票"
+          },
+          {
+            "idx": 1,
+            "value": 1.3696
+          },
+          {
+            "idx": 2,
+            "value": 3003.0
+          }
+        ]
+      },
+      {
+        "code": "120:931775",
+        "values": [
+          {
+            "idx": 0,
+            "value": "房地产"
+          },
+          {
+            "idx": 1,
+            "value": -1.3543
+          },
+          {
+            "idx": 2,
+            "value": 2625.5
+          }
+        ]
+      },
+      {
+        "code": "120:950161",
+        "values": [
+          {
+            "idx": 0,
+            "value": "科创新药"
+          },
+          {
+            "idx": 1,
+            "value": -3.5286
+          },
+          {
+            "idx": 2,
+            "value": 2542.0
+          }
+        ]
+      },
+      {
+        "code": "120:931719",
+        "values": [
+          {
+            "idx": 0,
+            "value": "CS电池"
+          },
+          {
+            "idx": 1,
+            "value": -1.0559
+          },
+          {
+            "idx": 2,
+            "value": 2167.5
+          }
+        ]
+      },
+      {
+        "code": "120:930986",
+        "values": [
+          {
+            "idx": 0,
+            "value": "金融科技"
+          },
+          {
+            "idx": 1,
+            "value": -1.1531
+          },
+          {
+            "idx": 2,
+            "value": 2124.5
+          }
+        ]
+      },
+      {
+        "code": "120:930901",
+        "values": [
+          {
+            "idx": 0,
+            "value": "动漫游戏"
+          },
+          {
+            "idx": 1,
+            "value": -0.948
+          },
+          {
+            "idx": 2,
+            "value": 2044.0
+          }
+        ]
+      },
+      {
+        "code": "120:000941",
+        "values": [
+          {
+            "idx": 0,
+            "value": "新能源"
+          },
+          {
+            "idx": 1,
+            "value": -0.6737
+          },
+          {
+            "idx": 2,
+            "value": 1937.5
+          }
+        ]
+      },
+      {
+        "code": "120:H30590",
+        "values": [
+          {
+            "idx": 0,
+            "value": "机器人"
+          },
+          {
+            "idx": 1,
+            "value": -2.4065
+          },
+          {
+            "idx": 2,
+            "value": 1866.0
+          }
+        ]
+      }
+    ]
+  },
+  "success": true,
+  "status_msg": "成功"
+}
