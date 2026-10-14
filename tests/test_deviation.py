@@ -131,7 +131,7 @@ def serve(monkeypatch):
         'index': [{'date': day.isoformat(), 'close': 100} for day in days],
         'stock_quote': {'code': '600519', 'exchange': 'sh', 'time': '2026-10-08T16:14:57+08:00', 'price': 160, 'previous_close': 154},
         'index_quote': {'code': '000002', 'exchange': 'sh', 'time': '2026-10-08T16:15:00+08:00', 'price': 100},
-        'listing': date(1980, 1, 1), 'calendar_change': None}
+        'listing': date(1980, 1, 1), 'calendar_change': None, 'actual_adjustment': 'qfq'}
     monkeypatch.setattr(source, '_now', lambda: datetime(2026, 10, 8, 16, 30, tzinfo=timezone(timedelta(hours=8))))
     def quotes(code, *, kind='stock', timeout):
         state['calls'].append(('quote', code, kind, timeout))
@@ -155,6 +155,9 @@ def serve(monkeypatch):
         return state['listing']
     monkeypatch.setattr(source.quote, 'quote_snapshot', quotes)
     monkeypatch.setattr(source.klines, 'ohlcv', klines)
+    monkeypatch.setattr(source.klines, '_ohlcv_with_basis', lambda *args, **kwargs: (
+        klines(*args, **kwargs), state['actual_adjustment'],
+    ))
     monkeypatch.setattr(source, '_listing_date', listing)
     monkeypatch.setattr(ReferenceAPI, 'trading_calendar', calendar)
     return state
@@ -187,7 +190,7 @@ def test_public_default_shape_order_real_named_fields_and_no_preopen(monkeypatch
     assert len([call for call in state['calls'] if call[0] == 'daily']) == 2
     assert all(call[-1] == 2.5 for call in state['calls'])
     assert not hasattr(FinchX().market, 'deviation')
-    assert list(inspect.signature(api.deviation).parameters) == ['code', 'windows', 'end_date']
+    assert list(inspect.signature(api.deviation).parameters) == ['code', 'windows', 'end_date', 'reset_date']
 
 
 def test_historical_raw_anchor_and_input_window_order_share_source_calls(monkeypatch):
@@ -408,8 +411,16 @@ def test_listing_boundary_reads_real_profile_without_unrelated_financial_parse(m
     assert source._listing_date('600519', timeout=2.5) == date(2001, 8, 27)
     assert calls[0][1]['timeout'] == 2.5
     assert 'code=sh600519' in calls[0][0]
+    for comparison in [None, False, {}, {'stock': {'stockcode': '600000', 'sc': 'sz'}}, {'stock': []}]:
+        payload['data']['hydb'] = comparison
+        assert source._listing_date('600519', timeout=2.5) == date(2001, 8, 27)
+    payload['data'].pop('hydb')
+    assert source._listing_date('600519', timeout=2.5) == date(2001, 8, 27)
     for invalid in [None, '2001/08/27', '2001-02-30', True]:
         payload['data']['gsjj']['riqi'] = invalid
+        with pytest.raises(SourceError): source._listing_date('600519', timeout=2.5)
+    for profile in [None, False, []]:
+        payload['data']['gsjj'] = profile
         with pytest.raises(SourceError): source._listing_date('600519', timeout=2.5)
 
 
@@ -632,16 +643,16 @@ def test_first_response_calendar_conflict_is_not_hidden_by_clean_expanded_respon
     state['calendar_change'] = lambda rows: [row.update(is_trading_day=False) for row in rows if row['date'] == '2026-10-05']
     state['index'] = [row for row in state['index'] if row['date'] != '2026-10-05']
     from finchx.sources.tencent import deviation as source
-    original = source.klines.ohlcv
+    original = source.klines._ohlcv_with_basis
     qfq_reads = []
     def klines(code, start_date, end_date, adjust=None, *, kind='stock', timeout):
-        result = original(code, start_date, end_date, adjust, kind=kind, timeout=timeout)
+        result, basis = original(code, start_date, end_date, adjust, kind=kind, timeout=timeout)
         if adjust == 'qfq':
             qfq_reads.append(start_date)
             if len(qfq_reads) > 1:
                 result = [row for row in result if row['date'] != '2026-10-05']
-        return result
-    monkeypatch.setattr(source.klines, 'ohlcv', klines)
+        return result, basis
+    monkeypatch.setattr(source.klines, '_ohlcv_with_basis', klines)
     with pytest.raises(SourceError, match='非交易标记冲突'):
         FinchX().regulation.deviation('600519', windows=(10,))
     assert qfq_reads == [date(2026, 9, 27)]
@@ -652,17 +663,17 @@ def test_expanded_response_is_validated_and_supplies_single_qfq_scale(monkeypatc
     state = serve(monkeypatch)
     remove_stock(state, '2026-09-28')
     from finchx.sources.tencent import deviation as source
-    original = source.klines.ohlcv
+    original = source.klines._ohlcv_with_basis
     reads = []
     def klines(code, start_date, end_date, adjust=None, *, kind='stock', timeout):
-        result = original(code, start_date, end_date, adjust, kind=kind, timeout=timeout)
+        result, basis = original(code, start_date, end_date, adjust, kind=kind, timeout=timeout)
         if adjust == 'qfq':
             reads.append(start_date)
             if len(reads) == 1:
                 for row in result:
                     row['close'] *= 100
-        return result
-    monkeypatch.setattr(source.klines, 'ohlcv', klines)
+        return result, basis
+    monkeypatch.setattr(source.klines, '_ohlcv_with_basis', klines)
     with pytest.warns(UserWarning):
         result = FinchX().regulation.deviation('600519', windows=(10,))
     prices = {row['date']: row['close'] for row in state['qfq']}
@@ -717,3 +728,152 @@ def test_index_missing_only_before_confirmed_listing_does_not_reject_valid_ipo_a
         result = FinchX().regulation.deviation('600519')
     assert result['coverage_status'] == 'short_history_and_halt_inferred_from_missing_kline'
     assert all(row['stock_baseline_date'] == '2026-10-06' and row['benchmark_baseline_date'] == '2026-10-07' for row in result['windows'])
+
+
+@pytest.mark.parametrize('previous_close', [1, 1000000, None, 0, True])
+def test_raw_latest_uses_actual_quotes_and_ignores_previous_close_bridge(monkeypatch, previous_close):
+    state = serve(monkeypatch)
+    state['actual_adjustment'] = None
+    state['stock_quote']['previous_close'] = previous_close
+    state['qfq'][-1]['close'] = 999  # 最新日线旧值不替代真实报价。
+    with pytest.warns(UserWarning, match='近似当作无需复权') as caught:
+        result = FinchX(timeout=2.5).regulation.deviation('600519')
+    assert len(caught) == 1
+    assert_shape(result)
+    assert result['price_basis'] == 'raw_stock__raw_index'
+    prices = {row['date']: row['close'] for row in state['qfq']}
+    for row in result['windows']:
+        assert row['stock_price'] == 160
+        assert row['stock_baseline_price'] == prices[row['stock_baseline_date']]
+        assert row['window_start_price'] == (160 if row['start_date'] == '2026-10-08' else prices[row['start_date']])
+        assert row['stock_change_percent'] == pytest.approx((160 / prices[row['stock_baseline_date']] - 1) * 100)
+    assert len([call for call in state['calls'] if call[0] == 'daily']) == 2
+
+
+def test_raw_historical_reuses_observed_close_without_extra_raw_request(monkeypatch):
+    state = serve(monkeypatch)
+    state['actual_adjustment'] = None
+    with pytest.warns(UserWarning) as caught:
+        result = FinchX().regulation.deviation('600519', end_date='2026-09-30')
+    assert len(caught) == 1
+    assert_shape(result)
+    assert result['price_basis'] == 'raw_stock__raw_index'
+    prices = {row['date']: row['close'] for row in state['qfq']}
+    for row in result['windows']:
+        assert row['stock_price'] == prices['2026-09-30']
+        assert row['stock_baseline_price'] == prices[row['stock_baseline_date']]
+        assert row['window_start_price'] == prices[row['start_date']]
+        assert row['stock_time'] is row['benchmark_time'] is None
+    assert [call[2:4] for call in state['calls'] if call[0] == 'daily'] == [('stock', 'qfq'), ('index', None)]
+
+
+@pytest.mark.parametrize('end_date', [None, '2026-10-07'])
+def test_raw_confirmed_listing_short_history_keeps_shape_and_one_warning_after_refetch(monkeypatch, end_date):
+    state = serve(monkeypatch)
+    state['actual_adjustment'] = None
+    state['listing'] = date(2026, 10, 6)
+    state['qfq'] = state['qfq'][-3:]
+    with pytest.warns(UserWarning, match='不复权') as caught:
+        result = FinchX().regulation.deviation('600519', end_date=end_date)
+    assert len(caught) == 1
+    assert_shape(result)
+    assert result['coverage_status'] == 'short_history'
+    assert all(row['window_status'] == 'partial_short_history' for row in result['windows'])
+    assert len([call for call in state['calls'] if call[0] == 'daily' and call[3] == 'qfq']) == 2
+    assert len([call for call in state['calls'] if call[0] == 'listing']) == 1
+
+
+@pytest.mark.parametrize('short_history', [False, True])
+def test_raw_halt_keeps_two_baselines_and_independent_listing_status(monkeypatch, short_history):
+    state = serve(monkeypatch)
+    state['actual_adjustment'] = None
+    if short_history:
+        state['listing'] = date(2026, 10, 6)
+        state['qfq'] = state['qfq'][-3:]
+    remove_stock(state, '2026-10-07')
+    with pytest.warns(UserWarning) as caught:
+        result = FinchX().regulation.deviation('600519')
+    assert len(caught) == 2
+    assert sum('近似当作无需复权' in str(item.message) for item in caught) == 1
+    assert result['coverage_status'] == ('short_history_and_halt_inferred_from_missing_kline' if short_history else 'halt_inferred_from_missing_kline')
+    base = next(row['close'] for row in state['qfq'] if row['date'] == '2026-10-06')
+    for row in result['windows']:
+        assert row['stock_baseline_date'] == '2026-10-06'
+        assert row['benchmark_baseline_date'] == '2026-10-07'
+        assert row['stock_baseline_price'] == base
+        assert row['stock_price'] == row['window_start_price'] == 160
+        assert row['available_trading_days'] == 1
+        assert row['stock_change_percent'] == pytest.approx((160 / base - 1) * 100)
+
+
+@pytest.mark.parametrize('broken', ['one_point', 'bad_price', 'index_gap', 'missing_observation', 'bad_listing', 'later_window'])
+def test_raw_failure_keeps_source_error_and_never_emits_success_warning(monkeypatch, broken):
+    state = serve(monkeypatch)
+    state['actual_adjustment'] = None
+    kwargs = {}
+    if broken == 'one_point':
+        state['qfq'] = state['qfq'][-1:]
+        state['listing'] = date(2026, 10, 8)
+    elif broken == 'bad_price':
+        state['qfq'][-5]['close'] = 0
+    elif broken == 'index_gap':
+        state['index'] = state['index'][:-4]
+    elif broken == 'missing_observation':
+        remove_stock(state, '2026-09-30')
+        kwargs['end_date'] = '2026-09-30'
+    elif broken == 'bad_listing':
+        state['qfq'] = state['qfq'][-3:]
+        state['listing'] = date(2026, 10, 5)
+    else:
+        from finchx.sources.tencent import deviation as source
+        original = source.calculate_window
+        def calculation(*args, **kwargs):
+            if kwargs['window_days'] == 30:
+                raise SourceError('deviation', '明确模拟后窗口失败')
+            return original(*args, **kwargs)
+        monkeypatch.setattr(source, 'calculate_window', calculation)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter('always')
+        with pytest.raises(SourceError):
+            FinchX().regulation.deviation('600519', **kwargs)
+    assert not caught
+
+
+@pytest.mark.parametrize('action', ['ignore', 'error'])
+def test_raw_warning_keeps_standard_python_filter_behavior(monkeypatch, action):
+    state = serve(monkeypatch)
+    state['actual_adjustment'] = None
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter(action, UserWarning)
+        if action == 'error':
+            with pytest.raises(UserWarning, match='不复权'):
+                FinchX().regulation.deviation('600519')
+        else:
+            assert FinchX().regulation.deviation('600519')['price_basis'] == 'raw_stock__raw_index'
+    assert not caught
+
+
+@pytest.mark.parametrize('final_basis', [None, 'qfq'])
+def test_expanded_full_response_replaces_price_basis_without_mixing_or_duplicate_warning(monkeypatch, final_basis):
+    state = serve(monkeypatch)
+    remove_stock(state, '2026-09-28')
+    from finchx.sources.tencent import deviation as source
+    original = source.klines._ohlcv_with_basis
+    reads = []
+    def with_basis(*args, **kwargs):
+        rows, _ = original(*args, **kwargs)
+        reads.append(args[1])
+        if len(reads) == 1:
+            for row in rows:
+                row['close'] *= 100
+        return rows, final_basis if len(reads) > 1 else ('qfq' if final_basis is None else None)
+    monkeypatch.setattr(source.klines, '_ohlcv_with_basis', with_basis)
+    with pytest.warns(UserWarning) as caught:
+        result = FinchX().regulation.deviation('600519', windows=(10,))
+    assert len(reads) == 2
+    assert len(caught) == (2 if final_basis is None else 1)
+    assert result['price_basis'] == ('raw_stock__raw_index' if final_basis is None else 'qfq_stock_anchored_to_price_date__raw_index')
+    prices = {row['date']: row['close'] for row in state['qfq']}
+    scale = 1 if final_basis is None else 154 / prices['2026-10-07']
+    row = result['windows'][0]
+    assert row['stock_baseline_price'] == pytest.approx(prices[row['stock_baseline_date']] * scale)

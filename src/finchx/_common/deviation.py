@@ -17,9 +17,11 @@ def calculate_window(
     stock_time: str | None, benchmark_time: str | None,
     first_baselines: tuple[date, date] | None = None,
     inferred_halt_dates: tuple[date, ...] = (),
+    reset_truncated: bool = False,
+    reset_not_started: bool = False,
 ) -> dict:
     """连续统计段；复牌首日允许股票与指数使用各自的真实基准日。"""
-    if len(sessions) < 2:
+    if len(sessions) < 2 and not reset_not_started:
         raise SourceError("deviation", "至少需要两个可比价格点")
     with localcontext() as context:
         context.prec = 40
@@ -35,7 +37,11 @@ def calculate_window(
             # 日期顺序遍历；同值保留最早基准，不为其他候选计算触发价。
             if maximum is None or candidate[0] > maximum[0]:
                 maximum = candidate
-        if maximum is None and len(sessions) == 2:
+        if reset_not_started:
+            # 尚未到重新累计日：基准只用真实观察日，不生成未来价格或收益。
+            maximum = (None, 0, stock_price, benchmark_level, None, None,
+                       sessions[0], sessions[0])
+        elif maximum is None and len(sessions) == 2:
             stock_base, index_base = first_baselines or (sessions[0], sessions[0])
             sb, ib = stock[stock_base] * scale, benchmark[index_base]
             sr, ir = stock_price / sb - 1, benchmark_level / ib - 1
@@ -62,7 +68,10 @@ def calculate_window(
                           if coverage_status == "short_history_and_halt_inferred_from_missing_kline"
                           else "partial_after_inferred_halt")
             else:
-                status = "partial_short_history"
+                status = ("partial_after_reset" if reset_truncated and coverage_status == "complete"
+                          else "partial_short_history")
+        if reset_not_started:
+            status = "reset_not_started"
         return {
             "window_days": window_days,
             "scenario": scenario,
@@ -78,16 +87,16 @@ def calculate_window(
             "benchmark_value_type": "quote" if benchmark_time is not None else "daily_close",
             "stock_time": stock_time,
             "benchmark_time": benchmark_time,
-            "start_date": sessions[maximum[1]].isoformat(),
+            "start_date": (target_date if reset_not_started else sessions[maximum[1]]).isoformat(),
             "stock_baseline_date": maximum[6].isoformat(),
             "benchmark_baseline_date": maximum[7].isoformat(),
-            "trading_days": len(sessions) - maximum[1],
+            "trading_days": 0 if reset_not_started else len(sessions) - maximum[1],
             "stock_baseline_price": number(maximum[2], "stock_baseline_price"),
-            "window_start_price": number(start_price, "window_start_price"),
+            "window_start_price": None if reset_not_started else number(start_price, "window_start_price"),
             "benchmark_baseline_level": number(maximum[3], "benchmark_baseline_level"),
-            "stock_change_percent": number(maximum[4] * 100, "stock_change_percent"),
-            "benchmark_change_percent": number(maximum[5] * 100, "benchmark_change_percent"),
-            "deviation_percent": number(maximum[0] * 100, "deviation_percent"),
+            "stock_change_percent": None if reset_not_started else number(maximum[4] * 100, "stock_change_percent"),
+            "benchmark_change_percent": None if reset_not_started else number(maximum[5] * 100, "benchmark_change_percent"),
+            "deviation_percent": None if reset_not_started else number(maximum[0] * 100, "deviation_percent"),
             "threshold_percent": 100 if window_days == 10 else 200,
             "theoretical_trigger_price": number(theoretical, "theoretical_trigger_price"),
             "trigger_price": number(rounded, "trigger_price"),

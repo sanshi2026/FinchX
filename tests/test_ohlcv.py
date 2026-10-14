@@ -1,7 +1,9 @@
 """日 K 线的真实列布局、复权身份与完整倒页边界测试。"""
 
 from datetime import date, timedelta
+import inspect
 import json
+import warnings
 from urllib.parse import parse_qs, urlparse
 
 import pytest
@@ -44,15 +46,107 @@ def test_adjustment_selects_only_requested_series(monkeypatch, mode, variable, s
     assert parse_qs(urlparse(calls[0][0]).query)["_var"] == [variable]
 
 
-def test_qfq_never_silently_returns_day(monkeypatch):
+def test_qfq_missing_key_returns_same_response_day_with_one_warning(monkeypatch):
     install(monkeypatch, response([bar()], variable="kline_dayqfq", series="day"))
-    with pytest.raises(SourceError, match="qfqday"):
-        klines.ohlcv("600519", "2026-09-30", "2026-09-30", "qfq", timeout=1)
+    with pytest.warns(UserWarning, match="day 不复权.*近似当作无需复权") as caught:
+        rows = klines.ohlcv("600519", "2026-09-30", "2026-09-30", "qfq", timeout=1)
+    assert len(caught) == 1
+    assert len(rows) == 1
+    assert set(rows[0]) == {"date", "open", "high", "low", "close", "volume", "amount"}
+    assert rows[0]['close'] == 1258.62
+
+
+def test_public_sdk_raw_warning_points_to_user_call(monkeypatch):
+    from finchx import FinchX
+    install(monkeypatch, response([bar()], variable='kline_dayqfq', series='day'))
+    with pytest.warns(UserWarning) as caught:
+        call_line = inspect.currentframe().f_lineno + 1
+        FinchX().market.ohlcv('600519', '2026-09-30', '2026-09-30', 'qfq')
+    assert len(caught) == 1
+    assert caught[0].filename == __file__
+    assert caught[0].lineno == call_line
 
 
 def test_empty_requested_series_is_valid(monkeypatch):
-    install(monkeypatch, response([], variable="kline_dayqfq", series="qfqday"))
-    assert klines.ohlcv("600519", "2026-09-30", "2026-09-30", "qfq", timeout=1) == []
+    value = 'kline_dayqfq=' + json.dumps({'code': 0, 'data': {'sh600519': {'qfqday': [], 'day': [bar()]}}})
+    install(monkeypatch, value)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter('always')
+        assert klines.ohlcv("600519", "2026-09-30", "2026-09-30", "qfq", timeout=1) == []
+    assert not caught
+
+
+@pytest.mark.parametrize('series,rows', [('qfqday', None), ('qfqday', {}), ('qfqday', False), ('qfqday', [["bad"]]), ('day', None), ('day', {}), ('day', [["bad"]])])
+def test_qfq_invalid_requested_or_fallback_series_fails_without_warning(monkeypatch, series, rows):
+    series_data = {'day': [bar()], series: rows}
+    install(monkeypatch, 'kline_dayqfq=' + json.dumps({'code': 0, 'data': {'sh600519': series_data}}))
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter('always')
+        with pytest.raises(SourceError):
+            klines.ohlcv('600519', '2026-09-30', '2026-09-30', 'qfq', timeout=1)
+    assert not caught
+
+
+def test_qfq_missing_both_series_and_hfq_day_only_are_errors(monkeypatch):
+    for mode, variable, data in [('qfq', 'kline_dayqfq', {}), ('hfq', 'kline_dayhfq', {'day': [bar()]})]:
+        install(monkeypatch, variable + '=' + json.dumps({'code': 0, 'data': {'sh600519': data}}))
+        with pytest.raises(SourceError):
+            klines.ohlcv('600519', '2026-09-30', '2026-09-30', mode, timeout=1)
+
+
+@pytest.mark.parametrize('first_series,second_series', [('day', 'qfqday'), ('qfqday', 'day')])
+def test_qfq_pages_cannot_mix_actual_adjustment(monkeypatch, first_series, second_series):
+    monkeypatch.setattr(klines, '_PAGE_SIZE', 2)
+    pages = iter([
+        response([bar('2026-09-29'), bar()], variable='kline_dayqfq', series=first_series),
+        response([bar('2026-09-28')], variable='kline_dayqfq', series=second_series),
+    ])
+    monkeypatch.setattr(klines, 'get_text', lambda *args, **kwargs: next(pages))
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter('always')
+        with pytest.raises(SourceError, match='分页实际复权口径不一致'):
+            klines.ohlcv('600519', '2026-09-28', '2026-09-30', 'qfq', timeout=1)
+    assert not caught
+
+
+def test_qfq_raw_multiple_pages_warn_once_after_all_rows_validated(monkeypatch):
+    monkeypatch.setattr(klines, '_PAGE_SIZE', 2)
+    pages = iter([
+        response([bar('2026-09-29'), bar()], variable='kline_dayqfq', series='day'),
+        response([bar('2026-09-28')], variable='kline_dayqfq', series='day'),
+    ])
+    monkeypatch.setattr(klines, 'get_text', lambda *args, **kwargs: next(pages))
+    with pytest.warns(UserWarning) as caught:
+        rows = klines.ohlcv('600519', '2026-09-28', '2026-09-30', 'qfq', timeout=1)
+    assert len(caught) == 1
+    assert [row['date'] for row in rows] == ['2026-09-28', '2026-09-29', '2026-09-30']
+
+
+@pytest.mark.parametrize('action', ['ignore', 'error'])
+def test_qfq_raw_warning_obeys_standard_filters(monkeypatch, action):
+    install(monkeypatch, response([bar()], variable='kline_dayqfq', series='day'))
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter(action, UserWarning)
+        if action == 'error':
+            with pytest.raises(UserWarning, match='qfqday'):
+                klines.ohlcv('600519', '2026-09-30', '2026-09-30', 'qfq', timeout=1)
+        else:
+            assert len(klines.ohlcv('600519', '2026-09-30', '2026-09-30', 'qfq', timeout=1)) == 1
+    assert not caught
+
+
+@pytest.mark.parametrize('mode,kind,symbol,variable,series', [
+    ('qfq', 'stock', 'sh600519', 'kline_dayqfq', 'qfqday'),
+    ('hfq', 'stock', 'sh600519', 'kline_dayhfq', 'hfqday'),
+    (None, 'stock', 'sh600519', 'kline_day', 'day'),
+    (None, 'index', 'sh000001', 'kline_day', 'day'),
+])
+def test_normal_series_do_not_warn(monkeypatch, mode, kind, symbol, variable, series):
+    install(monkeypatch, response([bar()], symbol=symbol, variable=variable, series=series))
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter('always')
+        assert len(klines.ohlcv(symbol[2:], '2026-09-30', '2026-09-30', mode, kind=kind, timeout=1)) == 1
+    assert not caught
 
 
 def test_missing_and_zero_price_volume_amount_are_not_fabricated(monkeypatch):

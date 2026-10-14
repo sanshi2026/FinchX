@@ -31,9 +31,10 @@ class RegulationAPI:
         """读取来源十日内多次异常波动统计。"""
         return regulation.abnormal_counts(timeout=self._timeout)
 
-    def deviation(self, code: str, windows=(10, 30), end_date: str | None = None) -> dict:
+    def deviation(self, code: str, windows=(10, 30), end_date: str | None = None,
+                  *, reset_date: str | None = None) -> dict:
         """计算当日及次一交易日的最大偏离，并沿用同一区间基准计算触发价。"""
         return deviation_source.deviation(
-            code, windows, end_date, timeout=self._timeout,
+            code, windows, end_date, reset_date=reset_date, timeout=self._timeout,
             calendar=ReferenceAPI(timeout=self._timeout).trading_calendar,
         )

@@ -55,7 +55,10 @@ def _response_data(document: Any, label: str) -> Any:
         raise SourceError(SOURCE, f"{label} token/signature 无效（errCode=110）")
     if code not in (0, "0"):
         # 不复制来源 msg；来源错误文本可能回显请求认证信息。
-        raise SourceError(SOURCE, f"{label} 来源返回错误状态")
+        safe_code = (str(code) if type(code) is int and 0 <= code <= 9999 else
+                     code if type(code) is str and re.fullmatch(r"[0-9]{1,4}", code) else None)
+        detail = f"（errCode={safe_code}）" if safe_code is not None else ""
+        raise SourceError(SOURCE, f"{label} 来源返回错误状态{detail}")
     if "data" not in document:
         raise SourceError(SOURCE, f"{label} 缺失 data")
     return document["data"]
@@ -149,24 +152,31 @@ def _load_playwright():
     return sync_playwright
 
 
-def _capture(url: str, session: str, timeout: float) -> tuple[dict, dict, str, str]:
+def _capture(url: str, session: str, timeout: float, headless: bool) -> tuple[dict, dict, str, str]:
     """执行官网动态签名流程，只捕获点击全部解析产生的两份响应。"""
     sync_playwright = _load_playwright()
     deadline = time.monotonic() + timeout
     records = []
     requests = {}
+    stage = "浏览器启动"
 
     def remaining() -> int:
         milliseconds = int((deadline - time.monotonic()) * 1000)
         if milliseconds <= 0:
-            raise SourceError(SOURCE, "官网复盘流程超时，未取得完整 count-pc 与 field 响应")
+            raise SourceError(SOURCE, f"官网复盘{stage}超时")
         return milliseconds
+
+    def http_failure(status: Any) -> str | None:
+        if type(status) is not int or not 100 <= status <= 599:
+            return "HTTP 状态损坏"
+        return f"HTTP {status}" if not 200 <= status < 300 else None
 
     def on_request(request):
         endpoint = request.url.split("?", 1)[0]
         if endpoint not in {_API + "count-pc", _API + "field"}:
             return
-        record = {"endpoint": endpoint, "error": None, "document": None, "complete": False}
+        record = {"endpoint": endpoint, "label": endpoint.rsplit("/", 1)[-1],
+                  "error": None, "document": None, "complete": False}
         try:
             payload = json.loads(request.post_data)
             if request.method != "POST" or not isinstance(payload, dict):
@@ -175,7 +185,7 @@ def _capture(url: str, session: str, timeout: float) -> tuple[dict, dict, str, s
             if endpoint.endswith("/field") and (isinstance(payload.get("pc"), bool) or payload.get("pc") != 1):
                 raise ValueError
         except (ValueError, TypeError, SourceError):
-            record["error"] = "官网复盘请求日期或参数结构损坏"
+            record["error"] = f"官网复盘 {record['label']} 请求日期或参数结构损坏"
         records.append(record)
         requests[request] = record
 
@@ -184,28 +194,46 @@ def _capture(url: str, session: str, timeout: float) -> tuple[dict, dict, str, s
         if record is None:
             return
         try:
-            if not 200 <= response.status < 300:
-                record["error"] = f"官网复盘请求失败（HTTP {response.status}）"
+            failure = http_failure(response.status)
+            if failure is not None:
+                record["error"] = f"官网复盘 {record['label']} 请求失败（{failure}）"
             else:
                 record["document"] = response.json()
         except Exception:
-            record["error"] = "官网复盘响应不是有效 JSON"
+            record["error"] = f"官网复盘 {record['label']} 响应不是有效 JSON"
         finally:
+            record["complete"] = True
+
+    def on_request_failed(request):
+        record = requests.get(request)
+        if record is not None:
+            # 不读取 failure：浏览器的原始失败信息可能包含 URL 或认证信息。
+            record["error"] = f"官网复盘 {record['label']} 请求失败（未取得 HTTP 响应）"
             record["complete"] = True
 
     browser = context = None
     try:
         with sync_playwright() as runtime:
             try:
-                browser = runtime.chromium.launch(headless=True, timeout=remaining())
+                browser = runtime.chromium.launch(headless=headless, timeout=remaining())
+                stage = "初始化上下文/页面"
+                remaining()
                 context = browser.new_context()
+                remaining()
                 context.add_cookies([
                     {"name": "SESSION", "value": session, "domain": domain, "path": "/"}
                     for domain in ("www.jiuyangongshe.com", "web-api.jiuyangongshe.com")
                 ])
+                remaining()
                 page = context.new_page()
-                page.goto(url, wait_until="domcontentloaded", timeout=remaining())
+                stage = "打开页面"
+                navigation = page.goto(url, wait_until="domcontentloaded", timeout=remaining())
+                if navigation is not None:
+                    failure = http_failure(navigation.status)
+                    if failure is not None:
+                        raise SourceError(SOURCE, f"官网复盘打开页面失败（{failure}）")
                 # SSR 的标签可能先可见，需等官网绑定点击事件后再切换。
+                stage = "等待初始化"
                 page.wait_for_function(
                     "() => Boolean(window.$nuxt && window.$nuxt._isMounted)",
                     timeout=remaining(),
@@ -213,6 +241,8 @@ def _capture(url: str, session: str, timeout: float) -> tuple[dict, dict, str, s
                 # 导航阶段的 SSR/初始请求不充当点击后取得的业务链。
                 page.on("request", on_request)
                 page.on("response", on_response)
+                page.on("requestfailed", on_request_failed)
+                stage = "点击全部异动解析"
                 page.get_by_text("全部异动解析", exact=True).first.click(timeout=remaining())
                 while True:
                     completed = [record for record in records if record["error"] or record["complete"]]
@@ -229,7 +259,10 @@ def _capture(url: str, session: str, timeout: float) -> tuple[dict, dict, str, s
                         count, field = counts[0], fields[0]
                         if records.index(count) > records.index(field):
                             raise SourceError(SOURCE, "官网 field 未关联此前 count-pc")
+                        stage = "等待 count-pc/field 响应"
+                        remaining()
                         return count["document"], field["document"], count["date"], field["date"]
+                    stage = "等待 field 响应" if counts else "等待 count-pc 响应"
                     page.wait_for_timeout(min(100, remaining()))
             finally:
                 if context is not None:
@@ -238,29 +271,31 @@ def _capture(url: str, session: str, timeout: float) -> tuple[dict, dict, str, s
                 if browser is not None:
                     with suppress(Exception):
                         browser.close()
-    except SourceError:
-        raise
+    except SourceError as exc:
+        raise exc from None
     except Exception as exc:
         message = str(exc).lower()
-        if "executable doesn't exist" in message or "executable does not exist" in message:
-            reason = "缺少 Chromium，请运行 python -m playwright install chromium"
+        if stage == "浏览器启动" and ("executable doesn't exist" in message or "executable does not exist" in message):
+            reason = "官网复盘浏览器启动失败：缺少 Chromium，请运行 python -m playwright install chromium"
         elif "timeout" in type(exc).__name__.lower():
-            reason = "官网复盘流程超时，未取得完整 count-pc 与 field 响应"
+            reason = f"官网复盘{stage}超时"
         else:
-            reason = f"官网浏览器流程失败（{type(exc).__name__}）"
+            reason = f"官网复盘{stage}失败"
         # 浏览器异常可能含 cookie 或请求信息，不能回显或作为异常链返回。
         raise SourceError(SOURCE, reason) from None
 
 
-def jygs_replay(date: str | None = None, *, session: str, timeout: float) -> dict:
+def jygs_replay(date: str | None = None, *, session: str, headless: bool = False, timeout: float) -> dict:
     """SESSION 仅用于单次临时浏览器，日期由官网 count-pc 确定。"""
     if date is not None:
         date = parse_date_parameter(date, "date").isoformat()
     if not isinstance(session, str) or not re.fullmatch(r"[!#$%&'()*+\-./0-9:<=>?@A-Z\[\]^_`a-z{|}~]+", session):
         raise ValueError("session 必须是非空 SESSION 值，不包含空白、分号、逗号或控制字符")
+    if type(headless) is not bool:
+        raise ValueError("headless 必须是布尔值")
     seconds = validate_timeout(timeout)
     url = f"{_ORIGIN}/action" + (f"/{date}" if date is not None else "")
-    count, field, count_date, field_date = _capture(url, session, seconds)
+    count, field, count_date, field_date = _capture(url, session, seconds, headless)
     count_data = _response_data(count, "count-pc")
     if not isinstance(count_data, dict):
         raise SourceError(SOURCE, "count-pc data 结构损坏")

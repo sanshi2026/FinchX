@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "finchx"
-version = "3.0.0"
-description = "保留来源原始信息的金融数据接口"
+version = "3.1.0"
+description = "提供 A 股行情、财务、公告和研报等数据接口的 Python 库"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"

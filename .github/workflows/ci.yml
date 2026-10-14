@@ -108,6 +108,7 @@ jobs:
 
           assert version("finchx") == finchx.__version__ == os.environ["PACKAGE_VERSION"]
           fx = FinchX()
+          assert callable(fx.reports.fetch)
           assert callable(fx.reference.pdf_text)
           assert callable(fx.market.ranking)
           assert callable(fx.regulation.deviation)

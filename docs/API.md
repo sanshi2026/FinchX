@@ -84,6 +84,7 @@
   - [`fx.disclosure.em_get`](#api-disclosure-em_get)
 
 - [研报](#reports-data)
+  - [`fx.reports.fetch`](#api-reports-fetch)
   - [`fx.reports.agp_list`](#api-reports-agp_list)
   - [`fx.reports.agp_get`](#api-reports-agp_get)
 
@@ -223,7 +224,7 @@ result = fx.reference.pdf_text(
 
 需安装可选 PDF 依赖，见 [README](../README.md#安装)。客户端 timeout 仅控制下载请求，不限制本地解析耗时。
 
-仅提取已有文字层，不做 OCR、章节推断、摘要或表格结构化；页眉、页脚及文字层中的模板文字保留，不保证复杂版式的阅读顺序。空白页或无文字层页保留，全部页面均无可读文字时抛出 SourceError。需密码且无法直接打开的 PDF 不支持。
+仅提取已有文字层，不做 OCR、章节推断、摘要或表格结构化；页眉、页脚及文字层中的模板文字保留，不保证复杂版式的阅读顺序。空白页或无文字层页保留。全文提取结果不含任何 Unicode 文字或数字，仅有空白、符号、私用区图标或替换占位时抛出 SourceError；有文字或数字时，各页符号均原样保留。图像或图形化正文需要 OCR 才能读取，少量可提取文字不代表正文完整。需密码且无法直接打开的 PDF 不支持。
 
 提取结果中的个别字符若存在 UTF-16 编码异常，保留有效文字，将无法解码的符号显示为 `�`；成功后通过一条标准 UserWarning 提示涉及页码，不推断原符号。其他下载或解析失败仍整次报错，不返回部分页面。
 
@@ -615,6 +616,8 @@ fx.market.quote_snapshot(code="600519", kind="stock")
 | `end_date` | `str \| datetime.date` | 必需 | — | 结束日期，包含当日；不得早于 start_date。 |
 | `adjustment` | `str \| None` | 可选 | `None` | `None` 不复权、`"qfq"` 前复权、`"hfq"` 后复权；指数只能为 None。 |
 | `kind` | `str` | 可选，仅限关键字 | `"stock"` | `"stock"` 股票、`"index"` 指数。 |
+
+请求 `"qfq"` 时，仅在同份来源响应完全缺少 `qfqday` 键且提供合法 `day` 序列时，返回该不复权日线，近似当作无需复权，并在整次成功后发出一条标准中文 `UserWarning`。不检查分红或除权，也不追加其他来源请求。已存在但为空的 `qfqday` 保持空结果；None、非法类型或损坏序列明确失败，不回退。后复权不回退；多页实际复权口径不一致时整次失败，返回行不增加口径字段。
 
 **返回：`list[dict]`**
 
@@ -2959,7 +2962,7 @@ fx.regulation.abnormal_counts()
 
 计算单只股票相对所属板块指数的最大上行累计涨跌幅偏离，以及同一区间的上方触发价与剩余涨幅。每个窗口返回当日 `current` 与下一交易日边界 `next_session` 两个场景。
 
-来源：腾讯股票前复权日线、历史终值的不复权日线、对应指数不复权日线及股票和指数快照；交易日历同 `fx.reference.trading_calendar`。
+来源：腾讯股票前复权日线（仅 `qfqday` 完全缺键时兼容同份响应的合法不复权 `day`）、前复权历史终值的不复权日线、对应指数不复权日线及股票和指数快照；交易日历同 `fx.reference.trading_calendar`。
 
 **参数**
 
@@ -2968,6 +2971,7 @@ fx.regulation.abnormal_counts()
 | `code` | `str` | 必需 | — | 六位 ASCII 数字字符串，支持沪市 60/68、深市 00/30 开头的股票代码。 |
 | `windows` | `list[int] \| tuple[int, ...]` | 可选 | `(10, 30)` | 非空 list/tuple，只允许非布尔整数 10、30，不得重复；保留输入顺序。 |
 | `end_date` | `str \| None` | 可选 | `None` | 日期与时刻字符串，格式见[通用约定](#common-conventions)；按真实日历回落到不晚于该自然日的最后交易日。省略时由来源最新有效观察日期确定。 |
+| `reset_date` | `str \| None` | 可选，仅限关键字传入 | `None` | 首个重新累计的市场交易日；支持通用约定的六种日期与时刻字符串，验证完整时刻后取日期，不接受 date/datetime 对象。必须由真实日历确认是交易日，不自动休市回落；非交易日为 ValueError，日历损坏或必要输入不可用为 SourceError。 |
 
 **返回：`dict`**
 
@@ -2980,7 +2984,7 @@ fx.regulation.abnormal_counts()
 | `board` | `str` | sse_main_board、star、szse_main_board 或 chinext。 |
 | `end_date` | `str` | 实际观察交易日，`YYYY-MM-DD`。 |
 | `benchmark` | `dict` | 本次计算的板块基准指数。 |
-| `price_basis` | `str` | qfq_stock_anchored_to_price_date__raw_index；股票复权序列锚定到实际终值价格尺度，指数不复权。 |
+| `price_basis` | `str` | `qfq_stock_anchored_to_price_date__raw_index`：股票前复权序列锚定到实际终值价格尺度；`raw_stock__raw_index`：实际采用来源不复权股票序列；指数均不复权。 |
 | `coverage_status` | `str` | 全部场景的历史覆盖汇总，取值见下方说明。 |
 | `inferred_halt_dates` | `list[str]` | 各场景按股票日线缺口推定的停牌日期并集，升序且不重复；不代表交易所确认停牌。 |
 | `windows` | `list[dict]` | 按窗口输入顺序，每个窗口依次 current、next_session；默认四条。 |
@@ -3004,23 +3008,23 @@ fx.regulation.abnormal_counts()
 | `available_trading_days` | `int` | 窗口内已观察可比统计日数；推定停牌后只计最后一次复牌后的统计日，不含基准点及未来交易日。 |
 | `window_status` | `str` | 本场景可用统计日数是否完整及不足原因，取值见下方说明。 |
 | `coverage_status` | `str` | 本场景历史覆盖及是否包含推定停牌，取值见下方说明。 |
-| `inferred_halt_dates` | `list[str]` | 仅本场景统计范围内推定的停牌日期，升序且不重复；无推定日期为 []。 |
+| `inferred_halt_dates` | `list[str]` | 本场景统计范围及必要基准范围内推定的停牌日期，升序且不重复；无推定日期为 []。 |
 | `stock_price` | `float` | 本场景股票实际终值，元/股。 |
 | `benchmark_level` | `float` | 本场景指数终值，点。 |
 | `stock_price_type` | `str` | daily_close 或 quote。 |
 | `benchmark_value_type` | `str` | daily_close 或 quote。 |
 | `stock_time` | `str \| None` | 股票报价的来源 ISO 时间，带 +08:00；日线为 None。 |
 | `benchmark_time` | `str \| None` | 指数报价的来源 ISO 时间，带 +08:00；日线为 None。 |
-| `start_date` | `str` | 最大偏离区间首个统计交易日。 |
+| `start_date` | `str` | 最大偏离区间首个统计交易日；reset_not_started 时为尚未开始的重新累计日。 |
 | `stock_baseline_date` | `str` | 股票收益基准日期。复牌首日起的候选区间使用停牌前最后一个实际收盘日。 |
 | `benchmark_baseline_date` | `str` | 指数收益基准日期。复牌首日起的候选区间使用复牌前一市场交易日；其他候选与股票基准日期相同。 |
 | `trading_days` | `int` | 选中区间的已观察统计日数。 |
 | `stock_baseline_price` | `float` | 股票收益基准价，按终值尺度锚定，元/股。 |
-| `window_start_price` | `float` | start_date 当日的股票价格，按终值尺度锚定，元/股。 |
+| `window_start_price` | `float \| None` | start_date 当日的股票价格，按终值尺度锚定，元/股。 |
 | `benchmark_baseline_level` | `float` | 指数收益基准点位。 |
-| `stock_change_percent` | `float` | 选中区间股票涨跌幅，百分点。 |
-| `benchmark_change_percent` | `float` | 选中区间指数涨跌幅，百分点。 |
-| `deviation_percent` | `float` | 股票涨跌幅减指数涨跌幅的最大值，百分点，可负。 |
+| `stock_change_percent` | `float \| None` | 选中区间股票涨跌幅，百分点。 |
+| `benchmark_change_percent` | `float \| None` | 选中区间指数涨跌幅，百分点。 |
+| `deviation_percent` | `float \| None` | 股票涨跌幅减指数涨跌幅的最大值，百分点，可负。 |
 | `threshold_percent` | `int` | 10 日为 100，30 日为 200，百分点。 |
 | `theoretical_trigger_price` | `float` | 由选中区间基准计算的未进位理论上方触发价，元/股。 |
 | `trigger_price` | `float` | theoretical_trigger_price 向上进位到 0.01 元，元/股。 |
@@ -3082,25 +3086,64 @@ fx.regulation.deviation(code="688175", windows=(10, 30))
 }
 ```
 
+指定重新累计起点的真实调用与返回节选：
+
+```python
+fx.regulation.deviation(
+    code="301190", end_date="2026-10-12", reset_date="2026-10-09"
+)
+```
+
+```text
+{
+  ...
+  "windows": [
+    {
+      "window_days": 10,
+      "scenario": "current",
+      "window_status": "partial_after_reset",
+      "available_trading_days": 2,
+      "start_date": "2026-10-09",
+      "stock_baseline_date": "2026-10-08",
+      "benchmark_baseline_date": "2026-10-08",
+      "deviation_percent": 24.481649885941167,
+      "trigger_price": 78.3,
+      ...
+    },
+    ...
+  ]
+}
+```
+
+同次调用的 30 日窗口触发价为 117.82 元。
+
 **必要限制**
 
 基准分别为沪市主板上证 A 指 `000002`、科创板科创 50 `000688`、深市主板深证 A 指 `399107`、创业板创业板综 `399102`。next_session 仅将统计边界移到下一交易日，不预测股价。
 
 历史观察日使用实际日线，股票前复权价格按终值价格尺度锚定；来源最新观察日使用同日有效报价。每个场景选择最大偏离区间，偏离值相同时取最早基准日期，再由该区间计算上方触发价。window_start_price 是窗口起点当日价格，与 stock_baseline_price 不同。
 
+仅当同份响应完全缺少 `qfqday` 键时，可采用合法 `day` 不复权序列，近似当作无需复权；不检查分红或除权，不追加其他来源请求。实际不复权时，历史观察日直接使用该序列的观察日收盘价，最新观察日直接叠加真实同日股票报价，不用 previous_close 对历史价格进行比例桥接。`qfqday` 已存在但为空不回退，None、非法类型或损坏明确失败；多页实际口径不一致不能混拼。回退成功后整次仅发一条标准中文 `UserWarning`，扩取不重复提示，后续计算失败不发成功提示，警告遵循 Python 过滤设置。
+
 `coverage_status` 有四种取值：`complete` 表示历史完整；`short_history` 表示由来源上市日期确认的历史不足；`halt_inferred_from_missing_kline` 表示股票日线内部缺口被推定为停牌；`short_history_and_halt_inferred_from_missing_kline` 表示后两种情况同时存在。顶层汇总所有返回场景的状态，各场景单独标记。
 
-`window_status` 的 `complete` 表示可用统计日数足够；不足时按原因返回 `partial_short_history`、`partial_after_inferred_halt` 或 `partial_short_history_and_inferred_halt`。current 的完整统计日数为 N，next_session 为 N−1 个已观察日；阈值仍为 10 日 100 个百分点、30 日 200 个百分点，不随不足而降低。
+`window_status` 的 `complete` 表示可用统计日数足够；不足时按原因返回 `partial_short_history`、`partial_after_inferred_halt` 或 `partial_short_history_and_inferred_halt`。仅因 reset_date 截短而不足时为 `partial_after_reset`；尚未开始的次一交易日重算场景为 `reset_not_started`。若上市历史不足或推定停牌原因同时适用，优先保留原有不足状态；reset_date 不改变 coverage_status 的来源历史覆盖含义。current 的完整统计日数为 N，next_session 为 N−1 个已观察日；阈值仍为 10 日 100 个百分点、30 日 200 个百分点，不随不足而降低。
 
-只将有前后真实股票价格括住的交易日日线缺口推定为停牌，不填充缺失日线；多次缺口全部记录，只在最后一次推定停牌后的连续交易段内选择最大偏离区间。复牌首日起的区间用停牌前最后一次股票收盘价与复牌前一市场交易日的指数收盘点位作为不同日期的基准；股票价格继续按前复权及实际终值尺度调整。其他候选区间的两个基准日期相同。正常与上市短历史场景至少需要两个价格点；复牌首日有真实停牌前股票基准、复牌前指数基准及当日终值时，允许计算一个统计日的收益。
+`reset_date` 由调用方指定，本接口不读取严重异动名单或公告，也不自动决定公告后的重新累计日。不传或传 None 保持原有滚动计算及请求流程。每个场景按自己的 target_date 判断重算是否生效：current 为观察日，next_session 为真实次一交易日。已生效的起点只有晚于该场景普通窗口首统计日时才截短统计段，统计日不得早于 reset_date，并保留起点前一市场交易日作为真实价格基准；较老起点随窗口滚动退出后不再影响结果。重新累计首日有两个真实价格点时可算一个已观察统计日；仍从同一最大偏离区间计算触发价，平手取最早基准，阈值保持不变。若基准股票价格缺失，沿既有有限扩取与推定停牌规则寻找最后实际股票收盘价，指数基准仍取相应前一市场交易日。
 
-普通调用仍只读取所需窗口；当缺口可能跨过窗口起点或报价缺少桥接基准时，在同次已取得的日历范围内有限补取股票前复权日线。不能找到真实基准、观察日缺少有效价格、指数缺日或必要输入损坏时，整次抛出 SourceError；未知前缀不足不能当作新上市，也不能直接当作停牌。
+当 reset_date 恰为次一交易日时，current 保持原样；next_session 返回 reset_not_started，available_trading_days 与 trading_days 均为 0，price_date 为真实观察日，target_date 与 start_date 为 reset_date。股票和指数终值、两个基准日期及基准价均采用真实观察日值；window_start_price、stock_change_percent、benchmark_change_percent、deviation_percent 均为 None。沿指数保持观察日水平的条件模型，10 日、30 日理论触发价分别为观察股票价的 2 倍、3 倍，向上取分，remaining_change_percent 相对观察股票价计算；这不是未来价格或已发生收益。reset_date 晚于次一交易日时，两场景均未生效，保持原滚动结果。返回仍为九个顶层字段与每场景二十八个字段，不另返回 reset_date。
+
+重新累计仍须具备必要的统计日价格和真实基准，必要输入不可用时明确报错。重算前已无用途的旧缺价不算作本场景停牌，也不触发停牌提示；实际返回的来源行若损坏，仍整次失败。
+
+只将有前后真实股票价格括住的交易日日线缺口推定为停牌，不填充缺失日线；多次缺口全部记录，只在最后一次推定停牌后的连续交易段内选择最大偏离区间。复牌首日起的区间用停牌前最后一次股票收盘价与复牌前一市场交易日的指数收盘点位作为不同日期的基准；采用前复权时继续按实际终值尺度调整，采用不复权时保持来源价格尺度。其他候选区间的两个基准日期相同。正常与上市短历史场景至少需要两个价格点；复牌首日有真实停牌前股票基准、复牌前指数基准及当日终值时，允许计算一个统计日的收益。
+
+普通调用仍只读取所需窗口；当缺口可能跨过窗口起点或前复权报价缺少桥接基准时，在同次已取得的日历范围内有限补取股票日线。扩取整份替换，并采用最后使用响应的实际复权口径，不混拼价格尺度。上市日期只读取指定代码公司简况中的合法上市日，不依赖行业对比数据；首条日线与上市日前缀仍严格核对。不能找到真实基准、观察日缺少有效价格、指数缺日或必要输入损坏时，整次抛出 SourceError；未知前缀不足不能当作新上市，也不能直接当作停牌。
 
 只在整次计算成功后，针对推定停牌发出一条中文 `UserWarning`（Python 标准用户警告），说明推定日期、受影响的窗口和场景及可用统计日数，并明确尚未核对交易所停牌公告。警告遵循 Python 的过滤设置；无推定停牌时不发此警告。空的 inferred_halt_dates 仅表示未推定出停牌，不代表官方确认无停牌。
 
 计算依据为沪深交易规则中的累计偏离值公式及复牌日起重新计算的规定：[上交所交易规则第 5.4.2、5.4.3 条](https://www.sse.com.cn/lawandrules/sselawsrules2025/fund/trading/c/c_20260424_10817739.shtml)、[深交所交易规则第 5.4.3、5.4.5 条](https://docs.static.szse.cn/www/lawrules/rule/trade/W020260424690713155663.pdf)。不同基准日期是以复牌日为区间首日的计算推导；日线缺口是否确为停牌尚未由停牌公告核实。
 
-本接口只提供 current、next_session 上行模型，不包含下行触发价、普通异动累计次数或公告清零规则，结果不代表交易所监管认定或停牌结论。日历回退沿用基础工具规则。
+本接口只提供 current、next_session 上行模型，不包含下行触发价、普通异动累计次数或公告自动清零规则，结果不代表交易所监管认定或停牌结论。日历回退沿用基础工具规则。
 
 <a id="hotlist-data"></a>
 ## 热榜
@@ -3345,6 +3388,7 @@ etfs = fx.hotlist.etfs()
 | --- | --- | --- | --- | --- |
 | `date` | `str \| None` | 可选 | `None` | 日期与时刻字符串，格式见[通用约定](#common-conventions)；省略时使用官网当前复盘，返回来源实际复盘日期。 |
 | `session` | `str` | 必需，仅限关键字 | — | 调用者自己的韭研公社 `SESSION` 字符串。 |
+| `headless` | `bool` | 可选，仅限关键字 | `False` | 默认显示浏览器窗口；设为 `True` 使用无头模式。仅接受布尔值。 |
 
 **返回：`dict`**
 
@@ -3372,13 +3416,43 @@ from finchx import FinchX
 
 fx = FinchX(timeout=45)
 fx.fupan.jygs_replay(
-    date="2026-09-30", session=os.environ["JYGS_SESSION"]
+    date="2026-10-13", session=os.environ["JYGS_SESSION"]
 )
+```
+
+**真实返回节选**
+
+该次调用返回 13 个题材、54 只股票；下例展示首个题材中的一只股票。`explanation` 仅展示首行，接口实际返回完整解析原文。
+
+```json
+{
+  "date": "2026-10-13",
+  "themes": [
+    {
+      "name": "公告",
+      "reason": null,
+      "stocks": [
+        {
+          "code": "600831",
+          "exchange": "sh",
+          "name": "广电网络",
+          "price": 4.3,
+          "change_percent": 9.97,
+          "limit_up_time": "09:39:06",
+          "streak_text": "2天2板",
+          "explanation": "预重整+文化传媒+算力+数据中心+AI监管+智慧广电"
+        }
+      ]
+    }
+  ]
+}
 ```
 
 **必要限制**
 
 需安装可选 `finchx[jygs]` 及 Chromium，准备方法见 [README](../README.md#安装)；调用时显式传入自己的有效 `SESSION`，认证失效时抛出 `SourceError`。
+
+默认打开临时浏览器窗口，需要可用的图形环境；服务器可显式传入 `headless=True`。每次调用注入 `SESSION` 并执行官网复盘流程，结束后关闭浏览器，不保存登录状态。`FinchX(timeout=45)` 的超时预算由浏览器启动、页面访问和业务响应等待共同使用。错误提示区分执行阶段、HTTP 状态与登录失效，不根据超时判断 IP 是否被封。
 
 仅返回来源提供的异动复盘，不保证包含全市场涨停股票，不另取文章正文。指定日期也可能由官网选择实际复盘日，以返回的 `date` 为准；不自行按工作日回退。涨停时刻缺失的股票仍保留，解析保留来源原文。
 
@@ -3463,6 +3537,8 @@ fx.news.agp_list(limit=40)
 标题缺失时只读取正文最前的明确【标题】，不由第一句生成标题。关联证券保留原标识，如 USMETA、SI、bj920275，不按六位 A 股代码过滤，也不猜交易所。
 
 仅返回来源当前可提供的快讯。来源耗尽或已越过时间下限时，结果可少于 limit 或为空；来源秒级历史边界不保证覆盖任意日期范围内的全部新闻。
+
+按新闻 ID 去重并保留首次出现的来源顺序，跨页采用后读的业务值。日期分组拼接后的时间乱序不影响合法新闻；时间筛选使用真实发布时间，分页重读交界秒。若来源固定批次停留在同一秒，或返回与已观察边界矛盾的空页，无法确认新闻是否取齐时抛出 SourceError，不跳过潜在遗漏后返回成功。
 
 视频时长以秒为单位，附件仅返回来源链接。
 
@@ -4274,6 +4350,79 @@ notice = fx.disclosure.em_get(
 <a id="reports-data"></a>
 ## 研报
 
+<a id="api-reports-fetch"></a>
+### `fx.reports.fetch`
+
+一次搜索多个来源的研报，自动读取选中报告的网页摘要或正文及可用 PDF 链接。无需再逐篇调用详情接口。
+
+来源：爱股票、东方财富、易观。关键词交给各来源自己的搜索接口，不下载全部目录后在本地匹配。
+
+**参数**
+
+| 参数 | 类型 | 是否必需 | 默认值 | 说明 |
+| --- | --- | --- | --- | --- |
+| `keyword` | `str` | 必需 | — | 非空搜索关键词。匹配范围由各来源决定，标题未包含关键词的来源搜索结果也保留。 |
+| `limit` | `int` | 可选 | `20` | 非布尔正整数，按标题和机构去重后最多返回的研报条数。 |
+| `start_date` | `str \| None` | 可选 | `None` | 发布日期下界，包含当日；支持通用六种日期/时刻字符串，验证时刻后按日筛选。 |
+| `end_date` | `str \| None` | 可选 | `None` | 发布日期上界，包含当日；格式同上，不能早于 start_date。 |
+
+**返回：`dict`**
+
+固定 `reports`、`errors` 两个字段。`reports` 是报告列表，每条固定八个字段：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `source` | `str` | 数据来源：`aigupiao`、`eastmoney` 或 `analysys`。 |
+| `title` | `str \| None` | 研报标题，去除搜索高亮标签。 |
+| `institute` | `str \| None` | 来源明确给出的研究机构。 |
+| `publication_date` | `str \| None` | 来源明示的完整发布日期，YYYY-MM-DD；不拿收录时间补年份。 |
+| `url` | `str` | 原网页链接。 |
+| `content` | `str \| None` | 网页内容客观转换的 Markdown，保留段落、标题及真实图片链接，不生成摘要、不做图片文字识别。 |
+| `content_type` | `str \| None` | `summary` 为来源网页摘要，`webpage` 为网页正文（可包含纯图报告的图片链接）；未取得内容为 None。 |
+| `pdf_urls` | `list[str] \| None` | 来源实际提供的 PDF 链接；已读取详情但无链接为 []，详情未成功读取时为 None。 |
+
+`errors` 为错误列表，全部正常时是 []。每条只有 `source`、`url`、`reason`：分别是来源、失败报告链接和中文原因；来源搜索失败时 url 为 None。部分来源或详情失败时保留已确认的报告，并在 errors 中说明；三个来源都未取得有效搜索响应时抛出 `FinchXError`，可从其 errors 属性查看各来源的 `SourceError`。合法的无匹配结果返回空列表。
+
+**调用与返回示例**
+
+```python
+fx = FinchX(timeout=30)
+result = fx.reports.fetch(keyword="易观", limit=3)
+```
+
+```text
+{
+  "reports": [
+    {
+      "source": "analysys",
+      "title": "破解具身数据瓶颈：造、治、用、通怎么做？——《中国具身智能数据产业分析报告2026》解读六",
+      "institute": "易观",
+      "publication_date": "2026-10-09",
+      "url": "https://www.analysys.cn/article/detail/20021521",
+      "content": "# 易观分析：具身数据当前的核心矛盾，已不再是“数据总量不够”，而是“量、质、异构”三重结构性卡点相互纠缠、彼此放大。...",
+      "content_type": "webpage",
+      "pdf_urls": []
+    },
+    ...
+  ],
+  "errors": []
+}
+```
+
+**读取范围**
+
+三个来源并发检索，各自顺序翻页，先筛日期、再收集所需候选。允许正常的跨页重叠和数量变化。
+
+所有来源的报告，只要非空 `title` 和 `institute` 两字段完全相同，就合并为一条；日期、来源、网页或 PDF 地址不同不影响去重。标题或机构缺失时保留独立记录，不把未知值当作同一篇报告。
+
+每组保留发布日期较新的整条记录；同日依次优先详情未失败、详情已确认、正文和 PDF 链接更齐全的记录，再按爱股票、东方财富、易观及来源内首次顺序选择。`source`、`url`、`content` 和附件均保留所选记录的实际信息，不跨记录拼正文。最终按发布日期降序排列，未知日期放在末尾；去重不足 limit 时继续读取后续页，直到达到数量、来源结束或明确失败。来源搜索顺序可能与发布日期不同，不承诺全库最新前 N 篇。
+
+有日期条件时，无法确认完整发布日期的报告不进入结果；需要时读取同篇详情确认日期。来源耗尽时允许少于 limit，不设置固定扫描条数。网页摘要不是 PDF 全文；PDF 仅返回链接，可另行传给 `fx.reference.pdf_text`。
+
+易观旧版报告的图片列表及原生 PDF 附件也会读取；图片只保留链接，不识别图片内文字。来源只有摘要或 PDF 时按实际能力返回，不补造全文。
+
+检索阶段和详情阶段分别使用客户端 timeout 作为时间预算；预算用完时保留已确认结果并说明错误。单次调用耗时可能超过 timeout，进行中的网络读取不保证能立即中断。
+
 <a id="api-reports-agp_list"></a>
 ### `fx.reports.agp_list`
 
@@ -4391,7 +4540,7 @@ report = fx.reports.agp_get(url=reports[0]["url"])
 <a id="api-forum-tgb_replies"></a>
 ### `fx.forum.tgb_replies`
 
-读取当前账户关注动态中的回复，返回回复全文及明确引用的父回复全文。
+读取当前账户关注动态中的回复与发布文章，返回完整正文及回复明确引用的父回复全文。
 
 来源：淘股吧。
 
@@ -4399,7 +4548,7 @@ report = fx.reports.agp_get(url=reports[0]["url"])
 
 | 参数 | 类型 | 是否必需 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| `limit` | `int \| None` | 可选 | `20` | 非布尔正整数或 `None`，时间筛选后最多返回的唯一回复数；`None` 遍历当前账户可见的全部匹配回复。 |
+| `limit` | `int \| None` | 可选 | `20` | 非布尔正整数或 `None`，时间筛选后最多返回的唯一内容数，回复与文章合计；`None` 遍历当前账户可见的全部匹配内容。 |
 | `since` | `str \| datetime.date \| None` | 可选 | `None` | 北京时间下界，日期与时刻格式见[通用约定](#common-conventions)，也支持 `datetime.date`；纯日期包含整日。 |
 | `until` | `str \| datetime.date \| None` | 可选 | `None` | 北京时间上界，两端包含；不得早于 `since`，也支持 `datetime.date`。 |
 | `cookies` | `str \| Mapping[str, str]` | 必需，仅限关键字 | — | 调用者自己的非空登录 Cookie 字符串或字符串键值字典，仅用于当次官方请求。 |
@@ -4408,14 +4557,14 @@ report = fx.reports.agp_get(url=reports[0]["url"])
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `reply_id` | `str` | 回复身份。 |
-| `user_id` | `str \| None` | 回复用户身份。 |
-| `username` | `str \| None` | 回复用户名。 |
-| `reply_time` | `str \| None` | 回复时刻，带 `+08:00` 的 ISO 字符串，保留来源分钟或秒精度。 |
-| `content` | `str \| None` | 回复全文；纯图片回复可为空。 |
-| `image_urls` | `list[str]` | 回复图片链接，无图片为 `[]`。 |
+| `reply_id` | `str` | 回复为来源原编号；文章为 `topic:<文章编号>`，与回复编号区分。 |
+| `user_id` | `str \| None` | 发布用户身份。 |
+| `username` | `str \| None` | 发布用户名。 |
+| `reply_time` | `str \| None` | 回复或文章发布动态时刻，带 `+08:00` 的 ISO 字符串，保留来源分钟或秒精度。 |
+| `content` | `str \| None` | 回复全文，或文章正式标题加空行及全文；纯图片回复可为空，纯图片文章保留标题。 |
+| `image_urls` | `list[str]` | 正文图片链接，无图片为 `[]`。 |
 | `post_url` | `str` | 所属主题链接。 |
-| `url` | `str` | 定位该回复的链接。 |
+| `url` | `str` | 定位回复或文章的链接；文章与 `post_url` 相同。 |
 | `parent_reply_id` | `str \| None` | 引用父回复的身份，来源未提供或无引用时为 `None`。 |
 | `parent_username` | `str \| None` | 被引用回复的用户名。 |
 | `parent_content` | `str \| None` | 被引用回复全文；无引用或纯图片引用可为空。 |
@@ -4481,11 +4630,42 @@ replies = fx.forum.tgb_replies(
 ]
 ```
 
+文章调用与返回节选：
+
+```python
+fx.forum.tgb_replies(
+    limit=1,
+    since="2026-10-12 18:44:22",
+    until="2026-10-12 18:44:22",
+    cookies=os.environ["TGB_COOKIES"],
+)
+```
+
+```text
+[
+  {
+    "reply_id": "topic:8806616",
+    ...
+    "reply_time": "2026-10-12T18:44:22+08:00",
+    "content": "2026年10月12日 明天开始，为国护盘\n\n当下这个盘面很想说不要慌，...",
+    "image_urls": [],
+    "post_url": "https://www.tgb.cn/a/2vPYh4TFgxS",
+    "url": "https://www.tgb.cn/a/2vPYh4TFgxS",
+    "parent_reply_id": null,
+    "parent_username": null,
+    "parent_content": null,
+    "parent_image_urls": null
+  }
+]
+```
+
 **必要限制**
 
 `since` / `until` 两端包含，纯日期包含整日，完整时刻按秒筛选。
 
-只返回当前账户关注动态可遍历的回复，不承诺全站或全部历史；来源耗尽可少于 `limit`。默认返回全文，不以摘要回填无法取得的回复或引用；认证失效、删除或受限内容明确失败。Cookie 不写入配置、日志或返回结果，图片仅返回链接。
+只返回当前账户关注动态可遍历的回复和发布文章，不承诺全站或全部历史；来源耗尽可少于 `limit`。默认返回全文，不以动态摘要回填无法取得的正文或引用；认证失效或必要正文不可用时明确失败。文章的四个 `parent_*` 字段均为 `None`。Cookie 不写入配置、日志或返回结果，图片仅返回链接。
+
+同一回复在页面重复展示且业务信息一致时合并。正文、图片或展开状态有冲突时，由官方全文接口确认，不按页面出现次序或文字长短选择。只有能确认与目标及必要父回复无关的页面异常才可跳过；必要回复的主题或引用身份冲突、无法确定引用归属时明确报错，不能丢弃引用后返回成功。
 
 <a id="iwencai-data"></a>
 ## 问财

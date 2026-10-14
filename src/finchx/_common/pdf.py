@@ -114,7 +114,6 @@ def pdf_text(url: str, *, timeout: float) -> dict:
                     try:
                         textpage = page.get_textpage()
                         try:
-                            recovered = False
                             try:
                                 content = textpage.get_text_bounded(errors="strict")
                             except UnicodeDecodeError as exc:
@@ -123,20 +122,20 @@ def pdf_text(url: str, *, timeout: float) -> dict:
                                     raise
                                 # 不猜测 PDFium 未能完整表达的符号；保留其余文字并明确占位。
                                 content = textpage.get_text_bounded(errors="replace")
-                                recovered = True
                                 affected_pages.append(index + 1)
                             if not isinstance(content, str):
                                 raise SourceError(SOURCE, f"PDF 第 {index + 1} 页文字层损坏")
                             content = content.replace("\r\n", "\n").replace("\r", "\n")
-                            readable_content = content.replace("�", "") if recovered else content
-                            has_text = has_text or bool(readable_content.strip())
+                            # 图标、私用区字符及占位本身不能证明提取到了可读正文；
+                            # 只判定全文是否含字母或数字，不清洗任何页面原文。
+                            has_text = has_text or any(character.isalnum() for character in content)
                             pages.append({"page_number": index + 1, "content": content})
                         finally:
                             textpage.close()
                     finally:
                         page.close()
                 if not has_text:
-                    raise SourceError(SOURCE, "PDF 全文没有非空白文字层，未执行 OCR")
+                    raise SourceError(SOURCE, "PDF 全文未提取到文字或数字，仅有空白、符号或未映射图标；若正文为图像或图形化内容，需要 OCR，当前仅提取文字层")
             finally:
                 document.close()
         except SourceError:

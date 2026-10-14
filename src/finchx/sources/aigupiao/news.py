@@ -154,34 +154,38 @@ def agp_list(limit: int = 20, since: str | None = None, until: str | None = None
     seconds = validate_timeout(timeout)
     before = 0 if upper is None else math.floor(upper.timestamp()) + 1
     collected, seen = {}, set()
-    previous_oldest = None
+    pending_boundary = None
     for _ in range(_MAX_PAGES):
         url = _ENDPOINT + "?" + urlencode({"before": before, "source": "pc", "web_data": "yes",
                                           "number": _PAGE_SIZE, "division": "", "express_show_type": 1})
         raw_rows = _page(get_json(url, timeout=seconds, headers=_HEADERS, source=_SOURCE))
         if not raw_rows:
+            if pending_boundary is not None:
+                raise SourceError(_SOURCE, "快讯边界秒重叠页为空，不能确认同秒新闻完整")
             return [row for row, moment in collected.values() if in_window(moment, lower, upper)][:target]
         moments = [_moment(raw.get("rec_time")) for raw in raw_rows]
         rows = [_row(raw, moment) for raw, moment in zip(raw_rows, moments)]
         identities = [row["id"] for row in rows]
         if len(set(identities)) != len(identities):
             raise SourceError(_SOURCE, "快讯同页 id 重复")
-        if any(left < right for left, right in zip(moments, moments[1:])):
-            raise SourceError(_SOURCE, "快讯来源页未按发布时间降序排列")
         if before and any(moment.timestamp() >= before for moment in moments):
             raise SourceError(_SOURCE, "快讯来源时间违反 before 排他上界")
-        if previous_oldest is not None and moments[0] > previous_oldest:
-            raise SourceError(_SOURCE, "快讯跨页发布时间顺序损坏")
-        if not set(identities).difference(seen):
+        oldest, newest = min(moments), max(moments)
+        next_before = int(oldest.timestamp()) + 1
+        # 日期分组的拼接顺序不代表发布时间顺序。续页保留最早秒，
+        # 只有读到更早的记录才确认可以跨过该秒，避免排他 before 漏掉同秒新闻。
+        boundary_only = pending_boundary is not None and oldest == pending_boundary
+        if not set(identities).difference(seen) and not boundary_only:
             raise SourceError(_SOURCE, "快讯分页停滞，没有新的新闻身份")
         seen.update(identities)
         for row, moment in zip(rows, moments):
             collected[row["id"]] = (row, moment)
         matched = [row for row, moment in collected.values() if in_window(moment, lower, upper)]
-        if len(matched) >= target or lower is not None and moments[0] < lower:
+        if len(matched) >= target or lower is not None and newest < lower:
             return matched[:target]
-        next_before = int(moments[-1].timestamp())
-        if before and next_before >= before:
+        if boundary_only:
+            raise SourceError(_SOURCE, "快讯边界秒未推进，来源固定批次无法确认同秒新闻完整")
+        if before and next_before > before:
             raise SourceError(_SOURCE, "快讯分页 before 未推进")
-        before, previous_oldest = next_before, moments[-1]
+        before, pending_boundary = next_before, oldest
     raise SourceError(_SOURCE, "快讯分页达到防护上限，不能确认请求范围已完成")

@@ -11,7 +11,7 @@ from finchx.api import reports
 def test_reports_exact_public_methods_and_signatures():
     api=FinchX().reports
     assert [name for name,value in vars(type(api)).items()
-            if not name.startswith("_") and callable(value)]==["agp_list","agp_get"]
+            if not name.startswith("_") and callable(value)]==["fetch","agp_list","agp_get"]
     signature=inspect.signature(api.agp_list)
     assert list(signature.parameters)==["limit","kind","keyword","industry"]
     assert [p.default for p in signature.parameters.values()]==[20,"all",None,None]

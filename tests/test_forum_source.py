@@ -533,3 +533,251 @@ def test_unknown_or_failed_terminal_never_returns_prior_partial(monkeypatch, ter
 def test_positive_size_is_not_guessed_as_page_length_or_full_count(monkeypatch, size):
     transport(monkeypatch, [{"status": True, "dto": {"size": size, "record": [row()]}}])
     assert fetch(limit=1)[0]["content"] == "全文101"
+
+
+# 以下重复容器与异常边界均用合成正文；sid=test 不是有效认证。
+def full_reply_ids(calls):
+    return [parse_qs(urlsplit(url).query)["replyID"][0]
+            for url, _ in calls if url.startswith(forum._FULL)]
+
+
+def test_observed_double_container_structure_with_synthetic_business_body(monkeypatch):
+    # 真实故障结构有reply_13186975_1与reply_13186975_16，内层同一reply103631002；
+    # 正文和图片明确合成，未把去正文结构证据称为真实全文fixture。
+    def observed_container(position):
+        return (f'<div class="comment-data user_13186975" id="reply_13186975_{position}">'
+                '<div class="comment-data-text" id="reply103631002">合成完整正文'
+                '<img src="https://image.tgb.cn/synthetic-a.jpg">'
+                '<img src="https://image.tgb.cn/synthetic-b.jpg"></div>'
+                '<a data-reply-id="103631002"></a>'
+                '<a data-topic-id="8805325" data-reply-id="103631002"></a>'
+                '<a data-reply-id="103631002"></a><a data-reply-id="103631002"></a>'
+                '<a class="topic_jb" data-topic-id="8805325" data-reply-id="103631002"></a></div>')
+    markup = '<script>var topicTopicID2=8805325;</script>' + observed_container(1) + observed_container(16)
+    second = comment("103631003", "合成另一正文").replace('data-topic-id="900"', 'data-topic-id="8805325"')
+    markup += second
+    records = [row("103631002", objectID="8805325", newTopicID="2vPJ8gIXa63"),
+               row("103631003", "2", objectID="8805325", newTopicID="2vPJ8gIXa63")]
+    calls = transport(monkeypatch, [payload(records), payload([])], pages={"/a/2vPJ8gIXa63": markup})
+    result = fetch(limit=None)
+    assert [item["reply_id"] for item in result] == ["103631002", "103631003"]
+    assert result[0]["content"] == "合成完整正文"
+    assert result[0]["image_urls"] == ["https://image.tgb.cn/synthetic-a.jpg", "https://image.tgb.cn/synthetic-b.jpg"]
+    assert len(calls) == 3 and full_reply_ids(calls) == []
+
+
+@pytest.mark.parametrize("duplicate", ["parent", "target", "both"])
+def test_equivalent_target_or_necessary_parent_duplicates_merge_without_requests(monkeypatch, duplicate):
+    parent = comment("101", "父全文")
+    target = comment("102", "目标全文", "101")
+    markup = page(parent, target, parent if duplicate in ("parent", "both") else "",
+                  target if duplicate in ("target", "both") else "")
+    calls = transport(monkeypatch, [payload([row("102", quoteContent="摘要")])], pages={"/a/abc123": markup})
+    result = fetch(limit=1)[0]
+    assert result["content"] == "目标全文" and result["parent_content"] == "父全文"
+    assert len(calls) == 2 and full_reply_ids(calls) == []
+
+
+@pytest.mark.parametrize("first,second", [
+    ("冲突正文一", "冲突正文二"),
+    ('摘要<a onclick="moreReplyContent()">展开</a>', "看似完整页面正文"),
+    ("相同正文", '相同正文<a onclick="moreReplyContent()"></a>'),
+    ('相同正文<img src="https://image.tgb.cn/a.jpg">', '相同正文<img src="https://image.tgb.cn/b.jpg">'),
+])
+@pytest.mark.parametrize("reverse", [False, True])
+def test_duplicate_body_image_or_expand_state_requires_one_exact_full(monkeypatch, first, second, reverse):
+    candidates = [comment("102", first, "101"), comment("102", second, "101")]
+    if reverse:
+        candidates.reverse()
+    markup = page(comment("101", "父全文"), *candidates)
+    calls = transport(monkeypatch, [payload([row("102", quoteContent="摘要")])],
+                      full={"102": {"status": True, "dto": '官方确定正文<img src="https://image.tgb.cn/exact.jpg">'}},
+                      pages={"/a/abc123": markup})
+    result = fetch(limit=1)[0]
+    assert result["content"] == "官方确定正文"
+    assert result["image_urls"] == ["https://image.tgb.cn/exact.jpg"]
+    assert result["parent_content"] == "父全文"
+    assert len(calls) == 3 and full_reply_ids(calls) == ["102"]
+    assert all(urlsplit(url).hostname == "www.tgb.cn" for url, _ in calls)
+    assert all(kwargs["follow_redirects"] is False and kwargs["headers"]["Cookie"] == "sid=test"
+               for _, kwargs in calls)
+    assert "sid=test" not in json.dumps(result)
+
+
+def test_conflicting_necessary_parent_body_uses_exact_full_once_for_shared_quotes(monkeypatch):
+    markup = page(comment("101", "父正文一"), comment("101", "父正文二"),
+                  comment("102", "回复二", "101"), comment("103", "回复三", "101"))
+    calls = transport(monkeypatch, [payload([row("102", quoteContent="摘要"), row("103", "2", quoteContent="摘要")])],
+                      pages={"/a/abc123": markup})
+    result = fetch(limit=2)
+    assert [item["parent_content"] for item in result] == ["全文101", "全文101"]
+    assert full_reply_ids(calls) == ["101"]
+
+
+@pytest.mark.parametrize("conflict", [
+    comment("102", "相同正文", "103"),
+    comment("102", "相同正文"),
+    comment("102", "相同正文", "101").replace('data-topic-id="900"', 'data-topic-id="901"'),
+    comment("102", "相同正文", "101").replace('data-quote-id="101"', 'data-quote-id="101" onclick="moreQuoteContent(this,901,101)"'),
+])
+def test_duplicate_reference_or_topic_conflict_never_discards_quote(monkeypatch, conflict):
+    markup = page(comment("102", "相同正文", "101"), conflict)
+    calls = transport(monkeypatch, [payload([row("102", quoteContent="摘要")])], pages={"/a/abc123": markup})
+    with pytest.raises(SourceError):
+        fetch(limit=1)
+    assert full_reply_ids(calls) == []
+
+
+@pytest.mark.parametrize("needed", ["target", "parent"])
+@pytest.mark.parametrize("control", [
+    '<a data-topic-id="901" data-reply-id="102"></a>',
+    '<a data-topic-id="900" data-reply-id="104"></a>',
+])
+def test_additional_conflicting_controls_reject_needed_candidate(monkeypatch, needed, control):
+    identity = "102" if needed == "target" else "101"
+    bad = comment(identity, "页面全文", "101" if needed == "target" else None)
+    bad = bad.replace('</div><a data-topic', '</div>' + control.replace('reply-id="102"', f'reply-id="{identity}"') + '<a data-topic')
+    markup = page(bad, comment("102", "目标全文", "101") if needed == "parent" else "")
+    calls = transport(monkeypatch, [payload([row("102", quoteContent="摘要")])], pages={"/a/abc123": markup})
+    with pytest.raises(SourceError, match="冲突"):
+        fetch(limit=1)
+    assert full_reply_ids(calls) == []
+
+
+@pytest.mark.parametrize("bad", [
+    '<div class="comment-data-text" id="reply104">缺容器</div>',
+    comment("104", "无关正文", "101").replace('data-quote-id="101"', 'data-quote-id="bad"'),
+    comment("104", "无关正文", "101") + comment("104", "无关正文", "103"),
+    comment("104", "无关正文").replace('data-topic-id="900"', 'data-topic-id="901"'),
+])
+def test_confirmed_unrelated_candidate_damage_is_local(monkeypatch, bad):
+    markup = page(bad, comment("101", "父全文"), comment("102", "目标全文", "101"))
+    calls = transport(monkeypatch, [payload([row("102", quoteContent="摘要")])], pages={"/a/abc123": markup})
+    result = fetch(limit=1)[0]
+    assert result["content"] == "目标全文" and result["parent_content"] == "父全文"
+    assert len(calls) == 2
+
+
+@pytest.mark.parametrize("identity", ["101", "102"])
+@pytest.mark.parametrize("bad", [
+    '<div class="comment-data-text" id="replyIDENTITY">缺容器</div>',
+    comment("IDENTITY", "正文", "103").replace('data-quote-id="103"', 'data-quote-id="bad"'),
+])
+def test_required_target_or_parent_damage_cannot_be_treated_as_unrelated(monkeypatch, identity, bad):
+    markup = page(bad.replace("IDENTITY", identity), comment("102", "目标全文", "101"))
+    calls = transport(monkeypatch, [payload([row("102", quoteContent="摘要")])], pages={"/a/abc123": markup})
+    with pytest.raises(SourceError):
+        fetch(limit=1)
+    assert full_reply_ids(calls) == []
+
+
+@pytest.mark.parametrize("bad", [
+    '<div class="comment-data-text">无身份候选</div>',
+    '<div class="comment-data-text" id="replybad">坏身份候选</div>',
+    comment("104", "无关候选").replace('data-reply-id="104"', 'data-reply-id="bad"'),
+    comment("104", "无法证明无关").replace('data-reply-id="104"', 'data-reply-id="102"'),
+])
+def test_uncertain_candidate_relevance_cannot_be_silently_skipped(monkeypatch, bad):
+    markup = page(bad, comment("101", "父全文"), comment("102", "目标全文", "101"))
+    transport(monkeypatch, [payload([row("102", quoteContent="摘要")])], pages={"/a/abc123": markup})
+    with pytest.raises(SourceError):
+        fetch(limit=1)
+
+
+@pytest.mark.parametrize("same", [True, False])
+def test_duplicate_complete_native_quote_without_parent_identity(monkeypatch, same):
+    def native(body):
+        return comment("102", "当前全文", "101").replace(
+            '<p class="quote-content">引用摘要</p><a data-quote-id="101">展开</a>',
+            f'<p class="quote-content data-quote-text">{body}</p>')
+    markup = page(native("完整短引用"), native("完整短引用" if same else "冲突短引用"))
+    calls = transport(monkeypatch, [payload([row("102", quoteContent="摘要")])], pages={"/a/abc123": markup})
+    if same:
+        result = fetch(limit=1)[0]
+        assert result["parent_reply_id"] is None and result["parent_content"] == "完整短引用"
+        assert len(calls) == 2
+    else:
+        with pytest.raises(SourceError, match="冲突"):
+            fetch(limit=1)
+    assert full_reply_ids(calls) == []
+
+
+def test_exact_reply_page_merge_retains_parent_conflict_and_requires_one_full(monkeypatch):
+    calls = transport(monkeypatch, [payload([row("102", quoteContent="摘要")])],
+                      pages={"/a/abc123": page(comment("101", "父正文一")),
+                             "/a/abc123/102": page(comment("101", "父正文二"), comment("102", "目标全文", "101"))})
+    result = fetch(limit=1)[0]
+    assert result["parent_content"] == "全文101" and result["content"] == "目标全文"
+    assert full_reply_ids(calls) == ["101"] and len(calls) == 4
+
+
+def test_conflicting_full_failure_after_valid_row_never_returns_partial(monkeypatch):
+    markup = page(comment("101", "有效第一回复"), comment("102", "冲突一"), comment("102", "冲突二"))
+    calls = transport(monkeypatch, [payload([row(), row("102", "2")]), payload([])],
+                      full={"102": {"status": False}}, pages={"/a/abc123": markup})
+    with pytest.raises(SourceError):
+        fetch(limit=None)
+    assert full_reply_ids(calls) == ["102"]
+
+
+def test_global_topic_conflict_still_rejects_even_with_unrelated_bad_candidate(monkeypatch):
+    markup = page('<div class="comment-data-text" id="reply104">无关坏候选</div>').replace('topicTopicID2=900', 'topicTopicID2=901')
+    transport(monkeypatch, [payload([row("102", quoteContent="摘要")])], pages={"/a/abc123": markup})
+    with pytest.raises(SourceError, match="主题页面身份"):
+        fetch(limit=1)
+
+
+@pytest.mark.parametrize("identity", ["101", "102"])
+def test_malformed_explicit_quote_callback_cannot_be_hidden_by_valid_data_id(monkeypatch, identity):
+    bad = comment(identity, "页面正文", "103").replace(
+        'data-quote-id="103"', 'data-quote-id="103" onclick="moreQuoteContent(this,900,unknown)"')
+    markup = page(bad, comment("102", "目标全文", "101") if identity == "101" else "")
+    transport(monkeypatch, [payload([row("102", quoteContent="摘要")])], pages={"/a/abc123": markup})
+    with pytest.raises(SourceError, match="引用展开控件"):
+        fetch(limit=1)
+
+
+def test_later_equivalent_duplicate_cannot_restore_conflicting_cached_body(monkeypatch):
+    markup = page(comment("101", "第一正文"), comment("101", "冲突正文"), comment("101", "第一正文"),
+                  comment("102", "目标全文", "101"))
+    calls = transport(monkeypatch, [payload([row("102", quoteContent="摘要")])], pages={"/a/abc123": markup})
+    assert fetch(limit=1)[0]["parent_content"] == "全文101"
+    assert full_reply_ids(calls) == ["101"]
+
+
+def test_leading_whitespace_expand_marker_requires_exact_full(monkeypatch):
+    markup = page(comment("101", '摘要<a onclick="  moreReplyContent()">展开</a>'), comment("102", "回复二"))
+    calls = transport(monkeypatch, [payload([row(), row("102", "2")])], pages={"/a/abc123": markup})
+    assert fetch(limit=2)[0]["content"] == "全文101"
+    assert full_reply_ids(calls) == ["101"]
+
+
+def test_exact_full_with_whitespace_expand_marker_still_fails(monkeypatch):
+    transport(monkeypatch, [payload([row()])], {"101": {"status": True, "dto": '<p>摘要</p><a onclick=" moreReplyContent()">展开</a>'}})
+    with pytest.raises(SourceError, match="未展开正文"):
+        fetch(limit=1)
+
+
+@pytest.mark.parametrize("topic,quote", [("901", "101"), ("900", "bad")])
+def test_static_dataset_quote_callback_requires_valid_exact_data_identity(monkeypatch, topic, quote):
+    markup = page(comment("102", "当前全文", "101").replace(
+        'data-quote-id="101"', f'data-topic-id="{topic}" data-quote-id="{quote}" onclick="moreQuoteContent(this,this.dataset.topicId,this.dataset.quoteId)"'))
+    transport(monkeypatch, [payload([row("102", quoteContent="摘要")])], pages={"/a/abc123": markup})
+    with pytest.raises(SourceError):
+        fetch(limit=1)
+
+
+@pytest.mark.parametrize("identity,required", [("102", True), ("101", True), ("104", False)])
+def test_explicit_quote_topic_is_checked_without_callback(monkeypatch, identity, required):
+    bad = comment(identity, "候选正文", "103").replace(
+        'data-quote-id="103"', 'data-topic-id="901" data-quote-id="103"')
+    markup = page(bad, comment("102", "目标全文", "101") if identity != "102" else "",
+                  comment("101", "父全文") if identity == "104" else "")
+    calls = transport(monkeypatch, [payload([row("102", quoteContent="摘要")])], pages={"/a/abc123": markup})
+    if required:
+        with pytest.raises(SourceError, match="引用主题身份"):
+            fetch(limit=1)
+    else:
+        result = fetch(limit=1)[0]
+        assert result["content"] == "目标全文" and result["parent_content"] == "父全文"
+    assert len(calls) == 2 and full_reply_ids(calls) == []

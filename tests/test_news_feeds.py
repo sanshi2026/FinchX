@@ -81,12 +81,12 @@ def test_bd_real_missing_title_and_cross_market_identity(monkeypatch):
     assert calls[0][0]["rn"] == ["20"] and calls[0][0]["pn"] == ["0"]
 
 
-def test_agp_oversized_source_page_retained_and_cursor_uses_last_source_row(monkeypatch):
+def test_agp_oversized_source_page_retained_and_cursor_keeps_boundary_second(monkeypatch):
     first, second = generated(agp, 0, 23), generated(agp, 23, 20)
     calls = serve(monkeypatch, agp, [response(agp, first), response(agp, second)])
     rows = invoke(agp, limit=40)
     assert [r["id"] for r in rows] == [str(i) for i in range(40)]
-    assert calls[1][0]["before"] == [first[-1]["rec_time"]]
+    assert calls[1][0]["before"] == [str(int(first[-1]["rec_time"]) + 1)]
     assert calls[0][0]["before"] == ["0"]
 
 
@@ -145,7 +145,11 @@ def test_source_empty_and_valid_lower_bound_return_less_or_empty(monkeypatch, so
     serve(monkeypatch, source, [response(source, [])])
     assert invoke(source, limit=40) == []
     serve(monkeypatch, source, [response(source, generated(source, 100, 2)), response(source, [])])
-    assert len(invoke(source, limit=40)) == 2
+    if source is agp:
+        with pytest.raises(SourceError, match="边界秒重叠页为空"):
+            invoke(source, limit=40)
+    else:
+        assert len(invoke(source, limit=40)) == 2
     serve(monkeypatch, source, [response(source, generated(source, 100, 2))])
     assert invoke(source, since="2026-10-08 20:01:00") == []
 
@@ -158,8 +162,11 @@ def test_bd_official_empty_state_and_conflicting_empty_status(monkeypatch):
         invoke(bd)
 
 
-@pytest.mark.parametrize("source", [agp, bd])
-@pytest.mark.parametrize("failure", ["duplicate", "tail_type", "tail_time", "order", "bad_status"])
+@pytest.mark.parametrize("source,failure", [
+    (source, failure) for source in [agp, bd]
+    for failure in ["duplicate", "tail_type", "tail_time", "order", "bad_status"]
+    if source is bd or failure != "order"
+])
 def test_full_source_page_validated_even_after_limit(monkeypatch, source, failure):
     rows = generated(source, 0, 23)
     payload = response(source, rows)

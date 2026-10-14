@@ -4,6 +4,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 import json
 import re
+import warnings
 from typing import Any
 from urllib.parse import urlencode
 
@@ -23,7 +24,7 @@ def _reject_constant(value: str) -> None:
     raise ValueError(f"非法 JSON 数字 {value}")
 
 
-def _page(text: str, symbol: str, variable: str, series: str) -> list[Any]:
+def _page(text: str, symbol: str, variable: str, series: str) -> tuple[list[Any], str]:
     value = text.strip()
     matched = _ASSIGNMENT.fullmatch(value)
     if matched is not None:
@@ -44,10 +45,12 @@ def _page(text: str, symbol: str, variable: str, series: str) -> list[Any]:
     data = document.get("data")
     if not isinstance(data, dict) or not isinstance(data.get(symbol), dict):
         raise SourceError("tencent", "日 K 线响应缺少请求标的身份")
-    rows = data[symbol].get(series)
+    # 仅 qfqday 完全未提供时使用同份响应的 day；显式空值或损坏不能隐藏。
+    actual_series = "day" if series == "qfqday" and series not in data[symbol] else series
+    rows = data[symbol].get(actual_series)
     if not isinstance(rows, list):
-        raise SourceError("tencent", f"日 K 线缺少有效的 {series} 序列；不替换为其他复权序列")
-    return rows
+        raise SourceError("tencent", f"日 K 线缺少有效的 {actual_series} 序列")
+    return rows, actual_series
 
 
 def _bar(raw: Any) -> tuple[date, dict[str, Any]]:
@@ -79,10 +82,10 @@ def _bar(raw: Any) -> tuple[date, dict[str, Any]]:
     }
 
 
-def ohlcv(
+def _ohlcv_with_basis(
     code: str, start_date: date | str, end_date: date | str, adjustment: str | None = None,
     *, kind: str = "stock", timeout: float,
-) -> list[dict[str, Any]]:
+) -> tuple[list[dict[str, Any]], str | None]:
     """返回首尾包含的日 K 线；不足一页或空页表示来源已耗尽。"""
     symbol = resolve_code(code, kind)
     start = parse_date_parameter(start_date, "start_date", allow_date_object=True)
@@ -98,10 +101,14 @@ def ohlcv(
     cursor = end
     collected: dict[date, dict[str, Any]] = {}
     seen: set[date] = set()
+    actual_series = None
     while True:
         params = {"_var": variable, "param": f"{symbol},day,,{cursor.isoformat()},{_PAGE_SIZE},{mode}"}
         text = get_text(f"{ENDPOINT}?{urlencode(params)}", timeout=seconds, headers=_HEADERS, source="tencent")
-        page = _page(text, symbol, variable, series)
+        page, page_series = _page(text, symbol, variable, series)
+        if actual_series is not None and page_series != actual_series:
+            raise SourceError("tencent", "日 K 线分页实际复权口径不一致")
+        actual_series = page_series
         if not page:
             break
         dates = []
@@ -122,4 +129,25 @@ def ohlcv(
         if next_end >= cursor:
             raise SourceError("tencent", "日 K 线分页日期没有向前推进")
         cursor = next_end
-    return [collected[day] for day in sorted(collected)]
+    actual_adjustment = None if actual_series == "day" else adjustment
+    return [collected[day] for day in sorted(collected)], actual_adjustment
+
+
+def _warn_raw_fallback(*, stacklevel: int) -> None:
+    warnings.warn(
+        "腾讯未提供 qfqday 前复权序列，使用同份响应的 day 不复权日线，近似当作无需复权；未检查分红或除权。",
+        UserWarning, stacklevel=stacklevel,
+    )
+
+
+def ohlcv(
+    code: str, start_date: date | str, end_date: date | str, adjustment: str | None = None,
+    *, kind: str = "stock", timeout: float,
+) -> list[dict[str, Any]]:
+    """返回日 K 线；仅前复权序列缺键时兼容同份不复权序列并提示。"""
+    rows, actual_adjustment = _ohlcv_with_basis(
+        code, start_date, end_date, adjustment, kind=kind, timeout=timeout,
+    )
+    if adjustment == "qfq" and actual_adjustment is None:
+        _warn_raw_fallback(stacklevel=4)
+    return rows

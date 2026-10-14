@@ -149,18 +149,13 @@ def _prices(
 
 
 def _listing_date(code: str, *, timeout: float) -> date:
-    """只解析简况身份和上市日，不执行无关财务业务块。"""
+    """请求指定代码的简况，只解析上市日，不执行无关业务块。"""
     symbol = resolve_code(code)
     params = {"code": symbol, "app": "official_website"}
     data = company._decode(get_text(
         f"{company.INFO_ENDPOINT}?{urlencode(params)}", timeout=timeout,
         headers=company._HEADERS, source="tencent",
     ), "jiankuang")
-    comparison = data.get("hydb")
-    identity = comparison.get("stock") if isinstance(comparison, dict) else None
-    if (not isinstance(identity, dict) or identity.get("stockcode") != code
-            or identity.get("sc") != symbol[:2]):
-        _fail("上市日期来源缺少匹配的股票身份")
     profile = data.get("gsjj")
     if not isinstance(profile, dict):
         _fail("上市边界缺少公司简况")
@@ -179,6 +174,7 @@ def deviation(
     code: str, windows: tuple[int, ...] | list[int] = (10, 30),
     end_date: str | None = None, *, timeout: float,
     calendar: Callable[..., list[dict]],
+    reset_date: str | None = None,
 ) -> dict:
     """一次调用取齐必要价格；缺口推定须有真实锚点，损坏仍整次失败。"""
     symbol = resolve_code(code)
@@ -187,6 +183,7 @@ def deviation(
             or len(set(windows)) != len(windows)):
         raise ValueError("windows 必须是非空、不重复且仅含整数10/30的 list 或 tuple")
     requested = None if end_date is None else _date(end_date, "end_date", parameter=True)
+    reset = None if reset_date is None else _date(reset_date, "reset_date", parameter=True)
     seconds = validate_timeout(timeout)
     board, benchmark_code, benchmark_exchange, benchmark_name = _BENCHMARKS[code[:2]]
     index_quote = _quote_input(
@@ -206,6 +203,11 @@ def deviation(
     start = date.fromordinal(max(1, cutoff.toordinal() - (max(windows) * 5 + 45)))
     end = date.fromordinal(min(date.max.toordinal(), cutoff.toordinal() + 45))
     sessions = _calendar(calendar(start, end), start, end)
+    if reset is not None:
+        reset_sessions = (sessions if start <= reset <= end
+                          else _calendar(calendar(reset, reset), reset, reset))
+        if reset not in reset_sessions:
+            raise ValueError("reset_date 必须是日历明确确认的市场交易日")
     previous = [day for day in sessions if day <= cutoff]
     if not previous:
         _fail("截止日期之前无可确认的交易日")
@@ -217,7 +219,23 @@ def deviation(
         _fail("日历不能确认次一交易日")
     if len(previous) < max(windows) + 1:
         _fail("日历不能确认所需历史统计边界")
-    required = previous[-(max(windows) + 1):]
+    # 先确定场景的统计段及基准，再验证真正需要的缺口。
+    # 裁剪前的旧缺价不应变成重算场景的停牌或上市不足。
+    plans = []
+    for window in windows:
+        for scenario in ("current", "next_session"):
+            count = window + (0 if scenario == "next_session" else 1)
+            selected = previous[-count:]
+            target = following[0] if scenario == "next_session" else observed
+            not_started = reset is not None and reset == target and scenario == "next_session"
+            truncated = reset is not None and reset <= target and reset > selected[1]
+            if not_started:
+                selected = [observed]
+            elif truncated:
+                position = previous.index(reset)
+                selected = previous[position - 1:]
+            plans.append((window, scenario, selected, target, truncated, not_started))
+    required = sorted({day for _, _, selected, _, _, _ in plans for day in selected})
     live = observed == latest
     if live:
         if stock_quote is None:
@@ -230,45 +248,53 @@ def deviation(
         _validate_latest_session(latest, stock_quote, index_quote, sessions, end, calendar)
     history_start = required[0]
     trading_dates = set(sessions)
-    stock = _prices(klines.ohlcv(
+    stock_rows, actual_adjustment = klines._ohlcv_with_basis(
         code, history_start, observed, "qfq", timeout=seconds,
-    ), "stock_qfq", history_start, observed, trading_dates)
+    )
+    stock = _prices(stock_rows, "stock", history_start, observed, trading_dates)
     benchmark = _prices(klines.ohlcv(
         benchmark_code, history_start, observed, kind="index", timeout=seconds,
     ), "benchmark", history_start, observed, trading_dates)
     # 原请求边界可能落在停牌段里；最多一次扩至同份日历已验证的边界。
-    # 扩取整份 qfq 后再统一锚定，避免拼接两次请求的不同复权尺度。
-    if history_start not in stock or live and not any(day < observed for day in stock):
-        stock = _prices(klines.ohlcv(
+    # 扩取后整份替换，并采用该份实际口径，避免拼接不同价格尺度。
+    if history_start not in stock or live and actual_adjustment == "qfq" and not any(day < observed for day in stock):
+        stock_rows, actual_adjustment = klines._ohlcv_with_basis(
             code, start, observed, "qfq", timeout=seconds,
-        ), "stock_qfq", start, observed, trading_dates)
+        )
+        stock = _prices(stock_rows, "stock", start, observed, trading_dates)
+    scale = Decimal(1)
     if live:
         if stock_quote[1].date() != observed or index_quote[1].date() != observed:
             _fail("取历史价格期间观察日期发生变化")
         stock_price = _positive(stock_quote[0].get("price"), "stock.price")
         benchmark_level = _positive(index_quote[0].get("price"), "benchmark.price")
-        bridge_days = [day for day in stock if day < observed]
-        if not bridge_days:
-            _fail("缺少报价桥接所需的最后实际前复权收盘价")
-        bridge_day = max(bridge_days)
-        with localcontext() as context:
-            context.prec = 40
-            scale = _positive(stock_quote[0].get("previous_close"), "stock.previous_close") / stock[bridge_day]
-            stock[observed] = stock_price / scale
+        if actual_adjustment == "qfq":
+            bridge_days = [day for day in stock if day < observed]
+            if not bridge_days:
+                _fail("缺少报价桥接所需的最后实际前复权收盘价")
+            bridge_day = max(bridge_days)
+            with localcontext() as context:
+                context.prec = 40
+                scale = _positive(stock_quote[0].get("previous_close"), "stock.previous_close") / stock[bridge_day]
+                stock[observed] = stock_price / scale
+        else:
+            stock[observed] = stock_price
         benchmark[observed] = benchmark_level
         stock_time, benchmark_time = stock_quote[0]["time"], index_quote[0]["time"]
     else:
         if observed not in stock or observed not in benchmark:
             _fail("历史观察日缺少股票或指数收盘价")
-        raw = _prices(klines.ohlcv(
-            code, observed, observed, timeout=seconds,
-        ), "stock_raw", observed, observed, trading_dates)
-        if observed not in raw:
-            _fail("历史观察日缺少不复权价格锚点")
-        stock_price, benchmark_level = raw[observed], benchmark[observed]
-        with localcontext() as context:
-            context.prec = 40
-            scale = stock_price / stock[observed]
+        stock_price, benchmark_level = stock[observed], benchmark[observed]
+        if actual_adjustment == "qfq":
+            raw = _prices(klines.ohlcv(
+                code, observed, observed, timeout=seconds,
+            ), "stock_raw", observed, observed, trading_dates)
+            if observed not in raw:
+                _fail("历史观察日缺少不复权价格锚点")
+            stock_price = raw[observed]
+            with localcontext() as context:
+                context.prec = 40
+                scale = stock_price / stock[observed]
         stock_time = benchmark_time = None
     # 前缀只有真实上市日才能解释；其余缺口须被前后实际股票价括住。
     missing_stock = [day for day in required if day not in stock]
@@ -287,44 +313,44 @@ def deviation(
     if any(day not in benchmark for day in required if listing is None or day >= listing):
         _fail("必要统计日期缺少指数收盘价")
     rows = []
-    for window in windows:
-        for scenario in ("current", "next_session"):
-            count = window + (0 if scenario == "next_session" else 1)
-            selected = previous[-count:]
-            short_history = listing is not None and any(day < listing for day in selected)
-            if listing is not None:
-                selected = [day for day in selected if day >= listing]
-            inferred = tuple(day for day in selected if day in halt_dates)
-            first_baselines = None
-            if inferred:
-                last_gap = inferred[-1]
-                resume = next(day for day in selected if day > last_gap)
-                stock_base = max(day for day in actual if day < resume)
-                index_base = previous[previous.index(resume) - 1]
-                if index_base not in benchmark:
-                    _fail("复牌首日缺少前一市场交易日指数基准")
-                first_baselines = (stock_base, index_base)
-                selected = [index_base] + [day for day in selected if day >= resume]
-            coverage = _coverage(short_history, bool(inferred))
-            rows.append(calculate_window(
-                stock, benchmark, selected, window_days=window, scenario=scenario,
-                target_date=following[0] if scenario == "next_session" else observed,
-                stock_price=stock_price, benchmark_level=benchmark_level,
-                scale=scale, coverage_status=coverage,
-                stock_time=stock_time, benchmark_time=benchmark_time,
-                first_baselines=first_baselines, inferred_halt_dates=inferred,
-            ))
+    for window, scenario, selected, target, truncated, not_started in plans:
+        short_history = listing is not None and any(day < listing for day in selected)
+        if listing is not None:
+            selected = [day for day in selected if day >= listing]
+        inferred = tuple(day for day in selected if day in halt_dates)
+        first_baselines = None
+        if inferred:
+            last_gap = inferred[-1]
+            resume = next(day for day in selected if day > last_gap)
+            stock_base = max(day for day in actual if day < resume)
+            index_base = previous[previous.index(resume) - 1]
+            if index_base not in benchmark:
+                _fail("复牌首日缺少前一市场交易日指数基准")
+            first_baselines = (stock_base, index_base)
+            selected = [index_base] + [day for day in selected if day >= resume]
+        coverage = _coverage(short_history, bool(inferred))
+        rows.append(calculate_window(
+            stock, benchmark, selected, window_days=window, scenario=scenario,
+            target_date=target,
+            stock_price=stock_price, benchmark_level=benchmark_level,
+            scale=scale, coverage_status=coverage,
+            stock_time=stock_time, benchmark_time=benchmark_time,
+            first_baselines=first_baselines, inferred_halt_dates=inferred,
+            reset_truncated=truncated, reset_not_started=not_started,
+        ))
     inferred = sorted({day for row in rows for day in row["inferred_halt_dates"]})
     result = {
         "code": code, "exchange": symbol[:2], "board": board,
         "end_date": observed.isoformat(),
         "benchmark": {"code": benchmark_code, "exchange": benchmark_exchange, "name": benchmark_name},
-        "price_basis": PRICE_BASIS,
+        "price_basis": PRICE_BASIS if actual_adjustment == "qfq" else "raw_stock__raw_index",
         "coverage_status": _coverage(any(row["coverage_status"].startswith("short_history") for row in rows), bool(inferred)),
         "inferred_halt_dates": inferred,
         "windows": rows,
     }
     # 全部窗口及数值成功后才发提示；警告过滤为 error 时保留 UserWarning。
+    if actual_adjustment is None:
+        klines._warn_raw_fallback(stacklevel=4)
     if inferred:
         affected = []
         for row in rows:

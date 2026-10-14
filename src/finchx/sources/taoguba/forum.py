@@ -1,4 +1,4 @@
-"""账户关注动态中的回复全文；认证仅用于当次官方请求。"""
+"""账户关注动态中的回复与文章全文；认证仅用于当次官方请求。"""
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
@@ -116,6 +116,7 @@ def _success(payload):
 
 @dataclass
 class _Activity:
+    kind: str
     reply_id: str
     topic_id: str
     post_id: str
@@ -123,6 +124,10 @@ class _Activity:
     row: dict
     quoted: bool
     quote_username: str | None
+
+    @property
+    def identity(self):
+        return self.kind, self.topic_id if self.kind == "T" else self.reply_id
 
 
 def _feed_page(payload):
@@ -159,10 +164,10 @@ def _feed_page(payload):
         action = _text(item.get("actionName"), "actionName")
         if action is None:
             _fail("动态缺失 actionName，无法确定回复身份")
-        if action != "R":
+        if action not in ("R", "T"):
             continue
-        reply_id = _id(item.get("otherID"), "otherID")
         topic_id = _id(item.get("objectID"), "objectID")
+        reply_id = _id(item.get("otherID"), "otherID") if action == "R" else "topic:" + topic_id
         post_id = item.get("newTopicID")
         if not isinstance(post_id, str) or re.fullmatch(r"[A-Za-z0-9]{1,128}", post_id) is None:
             _fail("newTopicID 不是有效主题身份")
@@ -170,15 +175,17 @@ def _feed_page(payload):
         user_id = _id(item.get("userID"), "userID", optional=True)
         username = _text(item.get("userName"), "userName")
         _text(item.get("body"), "body")  # 摘要只验证，不能用它回填全文。
-        quote_text = _text(item.get("quoteContent"), "quoteContent")
-        quote_user = _text(item.get("quoteUserName"), "quoteUserName")
+        if action == "T":
+            _text(item.get("objectName"), "objectName")  # 标题摘要可滞后，正式标题取主题页面。
+        quote_text = _text(item.get("quoteContent"), "quoteContent") if action == "R" else None
+        quote_user = _text(item.get("quoteUserName"), "quoteUserName") if action == "R" else None
         post_url = _BASE + "a/" + post_id
         row = dict(reply_id=reply_id, user_id=user_id, username=username,
                    reply_time=timestamp, content=None, image_urls=[], post_url=post_url,
-                   url=post_url + "/" + reply_id + "#" + reply_id,
+                   url=post_url + "/" + reply_id + "#" + reply_id if action == "R" else post_url,
                    parent_reply_id=None, parent_username=None, parent_content=None,
                    parent_image_urls=None)
-        activities.append(_Activity(reply_id, topic_id, post_id, moment, row,
+        activities.append(_Activity(action, reply_id, topic_id, post_id, moment, row,
                                     quote_text is not None or quote_user is not None, quote_user))
     return activities, action_ids, next_cursor
 
@@ -244,7 +251,7 @@ class _Tree(HTMLParser):
         self.current.children.append(data)
 
 
-def _body(node):
+def _body(node, *, check_gates=True):
     try:
         text = node.text().strip()
     except RecursionError:
@@ -252,7 +259,7 @@ def _body(node):
     text = re.sub(r"\n[ \t]+", "\n", text)
     text = re.sub(r"[ \t]+\n", "\n", text)
     text = re.sub(r"\n{3,}", "\n\n", text)
-    if any(marker in text for marker in _GATES):
+    if check_gates and any(marker in text for marker in _GATES):
         _fail("正文已删除或需要额外访问权限")
     images = []
     for child in node.walk():
@@ -285,6 +292,140 @@ class _Reply:
     parent_id: str | None
     parent_username: str | None
     parent_body: tuple | None
+    quote_display: tuple | None
+
+
+def _candidate(node, container, reply_id, topic_id):
+    for child in container.walk():
+        if "data-reply-id" not in child.attrs:
+            continue
+        if (_id(child.attrs["data-reply-id"], "页面控件 replyID") != reply_id
+                or "data-topic-id" in child.attrs
+                and _id(child.attrs["data-topic-id"], "页面控件 topicID") != topic_id):
+            _fail("页面回复控件身份与准确回复或主题冲突")
+    controls = [child for child in container.walk() if child.attrs.get("data-reply-id") == reply_id
+                and child.attrs.get("data-topic-id") == topic_id]
+    if not controls:
+        _fail("页面回复身份没有对应主题")
+    quote_nodes = [child for child in container.walk() if child.has_class("comment-data-quote")]
+    if len(quote_nodes) > 1:
+        _fail("页面引用结构歧义")
+    parent_id = parent_username = parent_body = None
+    quote_body = None
+    needs_expand = False
+    if quote_nodes:
+        quote = quote_nodes[0]
+        parent_ids = {_id(child.attrs["data-quote-id"], "data-quote-id")
+                      for child in quote.walk() if "data-quote-id" in child.attrs}
+        # 官网动态生成的同一展开按钮使用数字函数参数，静态模板使用 data 属性。
+        for child in quote.walk():
+            if ("data-quote-id" in child.attrs and "data-topic-id" in child.attrs
+                    and _id(child.attrs["data-topic-id"], "引用 topicID") != topic_id):
+                _fail("引用主题身份与动态不一致")
+            call = re.fullmatch(
+                r"\s*(?:more|less)QuoteContent\(\s*this\s*,\s*([0-9]+)\s*,\s*([0-9]+)\s*\)\s*;?\s*",
+                child.attrs.get("onclick", ""))
+            dataset_call = re.fullmatch(
+                r"\s*(?:more|less)QuoteContent\(\s*this\s*,\s*this\.dataset\.topicId\s*,\s*this\.dataset\.quoteId\s*\)\s*;?\s*",
+                child.attrs.get("onclick", ""))
+            if (child.attrs.get("onclick", "").lstrip().startswith(("moreQuoteContent", "lessQuoteContent"))
+                    and call is None and dataset_call is None):
+                _fail("引用展开控件缺少有效主题及父回复身份")
+            if dataset_call:
+                if _id(child.attrs.get("data-topic-id"), "引用 topicID") != topic_id:
+                    _fail("引用展开主题身份与动态不一致")
+                parent_ids.add(_id(child.attrs.get("data-quote-id"), "引用 replyID"))
+            if call:
+                if _id(call[1], "引用 topicID") != topic_id:
+                    _fail("引用展开主题身份与动态不一致")
+                parent_ids.add(_id(call[2], "引用 replyID"))
+        if len(parent_ids) > 1:
+            _fail("页面引用缺少明确唯一父回复身份")
+        parent_id = next(iter(parent_ids), None)
+        if parent_id == reply_id:
+            _fail("回复不能引用自身")
+        names = []
+        for child in quote.walk():
+            if child.tag != "a" or re.fullmatch(r"/blog/[0-9]+", child.attrs.get("href", "")) is None:
+                continue
+            ancestor = child.parent
+            in_content = False
+            while ancestor is not None and ancestor is not quote:
+                in_content |= ancestor.has_class("quote-content")
+                ancestor = ancestor.parent
+            if not in_content:
+                names.append(child.raw_text().strip())
+        parent_username = names[0] if len(names) == 1 else None
+        contents = [child for child in quote.walk() if child.has_class("quote-content")]
+        if len(contents) > 1:
+            _fail("页面引用正文结构歧义")
+        content_nodes = {id(child) for content in contents for child in content.walk()}
+        # 官网把引用文字原样放在 data-quote-text；须补抓的引用另附展开控件。
+        # 无展开的正式正文节点可以直接保留，父编号仍只取明确身份。
+        needs_expand = any(
+            child.has_class("data-quote-zk")
+            or child.attrs.get("onclick", "").lstrip().startswith(("moreQuoteContent", "lessQuoteContent"))
+            or child.tag == "a" and child.raw_text().strip() in ("展开", "[展开]", "收起", "[收起]")
+            for child in quote.walk()
+            if id(child) not in content_nodes)
+        if len(contents) == 1:
+            # 正文、图片与展开状态均参与重复容器的业务比较。
+            try:
+                quote_body = _body(contents[0])
+            except SourceError:
+                if parent_id is None:
+                    raise
+        if (parent_id is None and len(contents) == 1
+                and contents[0].has_class("data-quote-text") and not needs_expand):
+            parent_body = quote_body
+    expandable = any(child.attrs.get("onclick", "").lstrip().startswith("moreReplyContent") for child in container.walk())
+    try:
+        body = _body(node)
+    except SourceError:
+        # 页面候选不可用时，准确目标仍可用官方展开请求取得全文；
+        # 无关回复的空白、删除或权限提示不影响目标定位。
+        body, expandable = None, True
+    return _Reply(body, expandable, bool(quote_nodes), parent_id, parent_username,
+                  parent_body, (quote_body, needs_expand))
+
+
+def _merge_reply(previous, candidate):
+    # 引用身份/完整无编号引用不能由正文接口补核，冲突不可选第一份。
+    if (previous.has_quote, previous.parent_id, previous.parent_username, previous.parent_body) != (
+            candidate.has_quote, candidate.parent_id, candidate.parent_username, candidate.parent_body):
+        _fail("重复回复的引用身份或完整引用内容冲突")
+    if previous == candidate:
+        return previous
+    # 相同准确身份但正文、图片、展开状态或引用展示不同：仅精确全文可定夺。
+    return _Reply(None, True, previous.has_quote, previous.parent_id,
+                  previous.parent_username, previous.parent_body, None)
+
+
+class _Page(dict):
+    def __init__(self):
+        super().__init__()
+        self.errors = []
+
+    def merge(self, other):
+        self.errors.extend(other.errors)
+        for reply_id, candidate in other.items():
+            self.add(reply_id, candidate, {reply_id})
+
+    def add(self, reply_id, candidate, identities):
+        try:
+            self[reply_id] = _merge_reply(self[reply_id], candidate) if reply_id in self else candidate
+        except SourceError as exc:
+            self.errors.append((identities, exc))
+
+    def require(self, required):
+        for identities, exc in self.errors:
+            if identities & required:
+                raise exc
+        for reply_id in required:
+            candidate = self.get(reply_id)
+            if (candidate is not None and candidate.has_quote
+                    and candidate.parent_id is None and candidate.parent_body is None):
+                _fail("已观察到引用但缺少准确父回复身份")
 
 
 def _page(html, topic_id):
@@ -293,84 +434,102 @@ def _page(html, topic_id):
     ids = set(re.findall(r"\bvar\s+topicTopicID2\s*=\s*([0-9]+)\s*;", scripts))
     if ids != {topic_id}:
         _fail("主题页面身份与动态不一致")
-    replies = {}
+    replies = _Page()
     for node in root.walk():
-        match = re.fullmatch(r"reply([0-9]+)", node.attrs.get("id", ""))
-        if not match or not node.has_class("comment-data-text"):
+        if not node.has_class("comment-data-text"):
             continue
+        match = re.fullmatch(r"reply([0-9]+)", node.attrs.get("id", ""))
+        if not match:
+            _fail("页面回复缺少明确身份，无法确认是否与必要回复有关")
         reply_id = _id(match[1], "页面 replyID")
         container = node.parent
         while container is not None and not container.has_class("comment-data"):
             container = container.parent
-        if container is None or reply_id in replies:
-            _fail("页面回复容器缺失或回复身份重复")
-        controls = [child for child in container.walk() if child.attrs.get("data-reply-id") == reply_id
-                    and child.attrs.get("data-topic-id") == topic_id]
-        if not controls:
-            _fail("页面回复身份没有对应主题")
-        quote_nodes = [child for child in container.walk() if child.has_class("comment-data-quote")]
-        if len(quote_nodes) > 1:
-            _fail("页面引用结构歧义")
-        parent_id = parent_username = parent_body = None
-        if quote_nodes:
-            quote = quote_nodes[0]
-            parent_ids = {_id(child.attrs["data-quote-id"], "data-quote-id")
-                          for child in quote.walk() if "data-quote-id" in child.attrs}
-            # 官网动态生成的同一展开按钮使用数字函数参数，静态模板使用 data 属性。
-            for child in quote.walk():
-                call = re.fullmatch(
-                    r"\s*(?:more|less)QuoteContent\(\s*this\s*,\s*([0-9]+)\s*,\s*([0-9]+)\s*\)\s*;?\s*",
-                    child.attrs.get("onclick", ""))
-                if call:
-                    if _id(call[1], "引用 topicID") != topic_id:
-                        _fail("引用展开主题身份与动态不一致")
-                    parent_ids.add(_id(call[2], "引用 replyID"))
-            if len(parent_ids) > 1:
-                _fail("页面引用缺少明确唯一父回复身份")
-            parent_id = next(iter(parent_ids), None)
-            if parent_id == reply_id:
-                _fail("回复不能引用自身")
-            names = []
-            for child in quote.walk():
-                if child.tag != "a" or re.fullmatch(r"/blog/[0-9]+", child.attrs.get("href", "")) is None:
-                    continue
-                ancestor = child.parent
-                in_content = False
-                while ancestor is not None and ancestor is not quote:
-                    in_content |= ancestor.has_class("quote-content")
-                    ancestor = ancestor.parent
-                if not in_content:
-                    names.append(child.raw_text().strip())
-            parent_username = names[0] if len(names) == 1 else None
-            contents = [child for child in quote.walk() if child.has_class("quote-content")]
-            content_nodes = {id(child) for content in contents for child in content.walk()}
-            # 官网把引用文字原样放在 data-quote-text；须补抓的引用另附展开控件。
-            # 无展开的正式正文节点可以直接保留，父编号仍只取明确身份。
-            needs_expand = any(
-                child.has_class("data-quote-zk")
-                or child.attrs.get("onclick", "").lstrip().startswith(("moreQuoteContent", "lessQuoteContent"))
-                or child.tag == "a" and child.raw_text().strip() in ("展开", "[展开]", "收起", "[收起]")
-                for child in quote.walk()
-                if id(child) not in content_nodes)
-            if (parent_id is None and len(contents) == 1
-                    and contents[0].has_class("data-quote-text") and not needs_expand):
-                try:
-                    parent_body = _body(contents[0])
-                except SourceError:
-                    pass  # 无关引用候选不可用，只有目标需要它时才拒绝。
-        expandable = any(child.attrs.get("onclick", "").startswith("moreReplyContent") for child in container.walk())
+        identities = {reply_id}
+        if container is not None:
+            for child in container.walk():
+                if "data-reply-id" in child.attrs:
+                    # 损坏控件身份不能作为与目标无关的证明。
+                    identities.add(_id(child.attrs["data-reply-id"], "页面控件 replyID"))
         try:
-            body = _body(node)
-        except SourceError:
-            # 页面候选不可用时，准确目标仍可用官方展开请求取得全文；
-            # 无关回复的空白、删除或权限提示不影响目标定位。
-            body, expandable = None, True
-        replies[reply_id] = _Reply(body, expandable, bool(quote_nodes), parent_id, parent_username, parent_body)
+            if container is None:
+                _fail("页面回复容器缺失")
+            candidate = _candidate(node, container, reply_id, topic_id)
+        except SourceError as exc:
+            # 留下准确候选身份与失败；随后目标和明确父集合统一校验。
+            replies.errors.append((identities, exc))
+        else:
+            replies.add(reply_id, candidate, identities)
     return replies
 
 
+def _article(html, activity):
+    # 文章只核自己的身份、正式标题和正文，不解析无关回复候选。
+    root = _Tree(html).root
+    scripts = [node.raw_text() for node in root.walk() if node.tag == "script"]
+
+    def page_ids(name):
+        values = set()
+        for script in scripts:
+            for declaration in re.finditer(r"\bvar\s+" + name + r"\b", script):
+                assignment = re.match(r"\s*=\s*([0-9]+)\s*(?:;|$)", script[declaration.end():])
+                if assignment is None:
+                    _fail("文章页面身份声明不是有效 ASCII 数字身份")
+                values.add(_id(assignment[1], "文章页面 " + name))
+        return values
+
+    ids = page_ids("topicTopicID2")
+    if ids != {activity.topic_id}:
+        _fail("文章页面主题身份与动态不一致")
+    if activity.row["user_id"] is not None:
+        author_ids = page_ids("topicUserID")
+        if author_ids and author_ids != {activity.row["user_id"]}:
+            _fail("文章页面发布者身份与动态不一致")
+    titles = [node for node in root.walk() if node.attrs.get("id") == "stockTitle"]
+    bodies = [node for node in root.walk() if node.attrs.get("id") == "first"]
+    if (len(titles) != 1 or titles[0].tag != "div" or not titles[0].has_class("article-tittle")
+            or len(bodies) != 1 or bodies[0].tag != "div"
+            or not bodies[0].has_class("article-text") or not bodies[0].has_class("p_coten")):
+        _fail("文章页面缺少唯一正式标题或完整正文")
+    try:
+        title = titles[0].text().strip()
+    except RecursionError:
+        _fail("文章标题 HTML 嵌套超过防护范围")
+    if not title:
+        _fail("文章页面缺少正式标题")
+    content, images = _article_body(bodies[0])
+    return title + ("\n\n" + content if content is not None else ""), images
+
+
+def _article_body(node):
+    # 官网首部来源辅助标记使用固定样式和文字，不能泛删隐藏用户正文。
+    first = next((child for child in node.children if isinstance(child, _Node)), None)
+    children = []
+    for child in node.children:
+        if isinstance(child, _Node):
+            if (child is first and child.tag == "span"
+                    and child.attrs == {"style": "display:none; padding: 10px 0;"}
+                    and child.raw_text() == "[淘股吧]"):
+                continue
+            if child.tag == "div" and child.attrs.get("id") == "videoImg":
+                if child.raw_text().strip() or any(desc.tag != "div" for desc in child.walk()):
+                    _fail("文章视频区域未提供可核的完整正文")
+                continue
+        children.append(child)
+    body = _Node(node.tag, node.attrs, children=children)
+    for child in body.walk():
+        if (child.tag == "img" and not child.attrs.get("data-original")
+                and urljoin(_BASE, child.attrs.get("src", ""))
+                == "https://css.tgb.cn/images/2022/newpc/placeHolder.png"):
+            _fail("文章正文图片仅有占位图，未提供真实地址")
+    content, images = _body(body, check_gates=False)
+    if content in _GATES:
+        _fail("文章正文已删除或需要额外访问权限")
+    return content, images
+
+
 def tgb_replies(limit=20, since=None, until=None, *, cookies, timeout):
-    """读取当前账户动态的唯一匹配回复，正文及引用均要求全文。"""
+    """读取当前账户动态的唯一匹配回复与文章，正文及引用均要求全文。"""
     if limit is not None:
         validate_limit(limit)
     lower, upper = _window(since, until)
@@ -417,10 +576,10 @@ def tgb_replies(limit=20, since=None, until=None, *, cookies, timeout):
                 _fail("主题数字身份与链接身份冲突")
             post_topics[activity.post_id] = activity.topic_id
             topic_posts[activity.topic_id] = activity.post_id
-            previous = observed.get(activity.reply_id)
+            previous = observed.get(activity.identity)
             if previous is not None and (previous.topic_id, previous.post_id) != (activity.topic_id, activity.post_id):
                 _fail("同一回复的主题身份冲突")
-            observed[activity.reply_id] = activity
+            observed[activity.identity] = activity
         matching = []
         for activity in observed.values():
             if (lower is not None or upper is not None) and activity.moment is None:
@@ -444,7 +603,7 @@ def tgb_replies(limit=20, since=None, until=None, *, cookies, timeout):
             if not isinstance(html, str):
                 _fail("回复全文 dto 必须是 HTML 字符串")
             body = _Tree(html).root
-            if any(node.attrs.get("onclick", "").startswith("moreReplyContent") for node in body.walk()):
+            if any(node.attrs.get("onclick", "").lstrip().startswith("moreReplyContent") for node in body.walk()):
                 _fail("官方展开响应仍包含未展开正文")
             full[key] = _body(body)
         return full[key]
@@ -452,22 +611,27 @@ def tgb_replies(limit=20, since=None, until=None, *, cookies, timeout):
     # 先准备必要页面，再按动态源序输出，避免无引用目标在前时提前展开。
     groups = {}
     for activity in selected:
-        groups.setdefault(activity.post_id, []).append(activity)
-    pages = {}
+        if activity.kind == "R":
+            groups.setdefault(activity.post_id, []).append(activity)
+    pages, html_pages = {}, {}
     for post_id, targets in groups.items():
         quoted = [activity for activity in targets if activity.quoted]
         if not quoted and len(targets) < 2:
             continue
         topic_id = targets[0].topic_id
         html = read(targets[0].row["post_url"])
+        html_pages[post_id] = html
         # 可选批量页优化遇到合法无身份页时仍可精确读正文；引用页必须核身份。
         if not quoted and not re.search(r"\bvar\s+topicTopicID2\s*=", html):
             continue
         known = _page(html, topic_id)
         pages[post_id] = known
+        required = {activity.reply_id for activity in targets}
+        known.require(required)
         for activity in quoted:
             if activity.reply_id not in known:
-                known.update(_page(read(activity.row["url"].split("#")[0]), topic_id))
+                known.merge(_page(read(activity.row["url"].split("#")[0]), topic_id))
+                known.require(required)
             reply = known.get(activity.reply_id)
             if reply is None or reply.parent_id is None and reply.parent_body is None:
                 _fail("明确引用的回复未找到准确父回复身份")
@@ -475,13 +639,23 @@ def tgb_replies(limit=20, since=None, until=None, *, cookies, timeout):
             reply = known.get(activity.reply_id)
             if reply is not None and reply.has_quote and reply.parent_id is None and reply.parent_body is None:
                 _fail("已观察到引用但缺少准确父回复身份")
+        target_ids = required.copy()
+        required.update(reply.parent_id for reply_id, reply in known.items()
+                        if reply_id in target_ids and reply.parent_id is not None)
+        known.require(required)
         for reply_id, candidate in known.items():
-            if not candidate.expandable and candidate.body is not None:
+            if reply_id in required and not candidate.expandable and candidate.body is not None:
                 full.setdefault((topic_id, reply_id), candidate.body)
 
     output = []
     for activity in selected:
         row = activity.row.copy()
+        if activity.kind == "T":
+            if activity.post_id not in html_pages:
+                html_pages[activity.post_id] = read(row["post_url"])
+            row["content"], row["image_urls"] = _article(html_pages[activity.post_id], activity)
+            output.append(row)
+            continue
         reply = pages.get(activity.post_id, {}).get(activity.reply_id)
         if activity.quoted or reply is not None and reply.has_quote:
             row["parent_reply_id"] = reply.parent_id

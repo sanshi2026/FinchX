@@ -310,18 +310,51 @@ def test_recovered_placeholders_alone_do_not_make_a_readable_document(monkeypatc
     _, events, _ = install_reader(monkeypatch, texts=[b"\x35\xd8", b"\x35\xdc" + " \r\n".encode("utf-16-le")])
     with warnings.catch_warnings(record=True) as emitted:
         warnings.simplefilter("always")
-        with pytest.raises(SourceError, match="没有非空白文字层"):
+        with pytest.raises(SourceError, match="全文未提取到文字或数字"):
             FinchX().reference.pdf_text("https://example.org/file")
     assert emitted == [] and events[-1] == ("doc_close", None)
 
 
-def test_source_literal_replacement_character_on_strict_page_is_unchanged(monkeypatch):
-    install_reader(monkeypatch, texts=["�"])
+def test_source_literal_replacement_character_alone_is_not_readable(monkeypatch):
+    _, events, _ = install_reader(monkeypatch, texts=["�", ""])
     with warnings.catch_warnings(record=True) as emitted:
         warnings.simplefilter("always")
-        assert FinchX().reference.pdf_text("https://example.org/file")["pages"] == [
-            {"page_number": 1, "content": "�"}]
-    assert emitted == []
+        with pytest.raises(SourceError, match="全文未提取到文字或数字"):
+            FinchX().reference.pdf_text("https://example.org/file")
+    assert emitted == [] and events[-1] == ("doc_close", None)
+
+
+@pytest.mark.parametrize("texts", [
+    ["⚫\n\uf028\uf02a", ""],
+    ["⚫ • ◆ 😀 +−=∞\r\n", "!?（）"],
+    ["\ue000\uf028\uf02a", "\U000f0000\U00100000"],
+    ["⚫\uf028".encode("utf-16-le") + b"\x35\xd8", " \t", ""],
+])
+def test_symbol_or_private_use_document_fails_without_success_warning(monkeypatch, texts):
+    _, events, _ = install_reader(monkeypatch, texts=texts,
+        bookmarks=[{"title": "正文", "page": 0}])
+    with warnings.catch_warnings(record=True) as emitted:
+        warnings.simplefilter("always")
+        with pytest.raises(SourceError, match="全文未提取到文字或数字.*若正文.*需要 OCR.*仅提取文字层") as caught:
+            FinchX().reference.pdf_text("https://example.org/file")
+    assert caught.value.source == "pdf" and emitted == []
+    assert events[-1] == ("doc_close", None)
+    assert [event for event in events if event[0] == "text_close"] == [
+        ("text_close", index) for index in range(len(texts))]
+    assert [event for event in events if event[0] == "page_close"] == [
+        ("page_close", index) for index in range(len(texts))]
+
+
+@pytest.mark.parametrize("body", ["中", "A", "é", "Ж", "ع", "क", "あ", "한", "𝐹𝑚", "٢", "Ⅷ", "²"])
+def test_unicode_letter_or_number_preserves_all_pages_and_symbols(monkeypatch, body):
+    texts = ["⚫\uf028\uf02a� 😀\n", "", f"  {body} +−=∞  "]
+    _, events, _ = install_reader(monkeypatch, texts=texts)
+    with warnings.catch_warnings(record=True) as emitted:
+        warnings.simplefilter("always")
+        result = FinchX().reference.pdf_text("https://example.org/file")
+    assert result == {"outline": [], "pages": [
+        {"page_number": index + 1, "content": content} for index, content in enumerate(texts)]}
+    assert emitted == [] and events[-1] == ("doc_close", None)
 
 
 @pytest.mark.parametrize("index", [-1, 1, True, 1.0, "0"])

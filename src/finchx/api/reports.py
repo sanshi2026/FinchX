@@ -1,5 +1,6 @@
-"""爱股票研报目录与独立摘要。"""
+"""三来源研报聚合及爱股票独立目录与摘要。"""
 
+from finchx._common import reports as reports_fetch
 from finchx.sources.aigupiao import reports as agp_reports
 
 
@@ -8,6 +9,11 @@ class ReportsAPI:
 
     def __init__(self, *, timeout: float) -> None:
         self._timeout = timeout
+
+    def fetch(self, keyword: str, limit: int = 20, start_date: str | None = None,
+              end_date: str | None = None) -> dict:
+        """跨来源原生检索研报，自动读取选中结果的摘要或网页正文。"""
+        return reports_fetch.fetch(keyword, limit, start_date, end_date, timeout=self._timeout)
 
     def agp_list(
         self, limit: int = 20, kind: str = "all",
