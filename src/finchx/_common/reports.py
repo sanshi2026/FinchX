@@ -166,10 +166,10 @@ def fetch(keyword: str, limit: int = 20, start_date: str | None = None,
 
         def report_key(item):
             row = item[2]
-            title, institute = row.get("title"), row.get("institute")
-            if title and institute:
-                return ("report", title, institute)
-            # 缺标题或机构时，只有来源内部身份可确认，不合并缺失值。
+            title, institute, day = row.get("title"), row.get("institute"), row.get("publication_date")
+            if title and institute and day:
+                return ("report", title, institute, day)
+            # 标题、机构或发布日期缺失时，仅按来源内部身份保留。
             return ("identity", item[0], item[1])
 
         def representative_order(item):

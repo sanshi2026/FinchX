@@ -46,7 +46,7 @@ def test_same_exact_title_and_institute_merge_cross_source(sources, monkeypatch,
     assert result["errors"] == []
 
 
-def test_same_key_different_date_url_pdf_keeps_newest_whole_record(sources, monkeypatch):
+def test_same_title_institute_different_dates_keep_whole_records(sources, monkeypatch):
     older = report("aigupiao", 1, day="2026-10-13", content="旧来源完整正文",
                    content_type="summary", pdf_urls=["https://example.com/old.pdf"])
     newer = report("eastmoney", 2, content="新来源正文", content_type="webpage",
@@ -54,7 +54,7 @@ def test_same_key_different_date_url_pdf_keeps_newest_whole_record(sources, monk
     monkeypatch.setattr(core.aigupiao, "search_page", lambda *a, **k: ([older], None))
     monkeypatch.setattr(core.eastmoney, "search_page", lambda *a, **k: ([newer], None))
     result = core.fetch("光模块", timeout=2)
-    assert result["reports"] == [{key: newer[key] for key in core._FIELDS}]
+    assert result["reports"] == [{key: candidate[key] for key in core._FIELDS} for candidate in (newer, older)]
     assert result["errors"] == []
 
 
@@ -165,11 +165,11 @@ def test_dedup_supplement_ends_with_explicit_source_status(sources, monkeypatch,
         time.sleep(.11)
 
 
-@pytest.mark.parametrize("changed_field", ["title", "institute"])
+@pytest.mark.parametrize("changed_field", ["title", "institute", "publication_date"])
 def test_detail_key_change_merges_and_refills_next_page(sources, monkeypatch, changed_field):
     calls, reads = [], []
     first = report("aigupiao", 1)
-    second = report("aigupiao", 2) | {changed_field: "列表旧值"}
+    second = report("aigupiao", 2) | {changed_field: "2026-10-13" if changed_field == "publication_date" else "列表旧值"}
     pages = {0: ([first, second], 10), 10: ([report("aigupiao", 3, title="补位报告")], None)}
     def search(keyword, cursor, **kwargs):
         calls.append(cursor)
@@ -186,13 +186,16 @@ def test_detail_key_change_merges_and_refills_next_page(sources, monkeypatch, ch
     assert len(result["reports"]) == 2 and result["errors"] == []
 
 
-def test_detail_splits_initial_duplicate_group_before_limit(sources, monkeypatch):
+@pytest.mark.parametrize("changed_field", ["title", "publication_date"])
+def test_detail_splits_initial_duplicate_group_before_limit(sources, monkeypatch, changed_field):
     candidates = [report("aigupiao", 1), report("aigupiao", 2)]
     reads = []
     monkeypatch.setattr(core.aigupiao, "search_page", lambda *a, **k: (candidates, None))
     def detail(candidate, **kwargs):
         reads.append(candidate["_id"])
-        return dict(candidate, title="正式标题" + candidate["_id"], content="正文", content_type="summary", pdf_urls=[])
+        return dict(candidate, **{changed_field: "2026-10-1" + candidate["_id"] if changed_field == "publication_date"
+                                 else "正式标题" + candidate["_id"]},
+                    content="正文", content_type="summary", pdf_urls=[])
     monkeypatch.setattr(core.aigupiao, "get_detail", detail)
     result = core.fetch("光模块", 2, timeout=2)
     assert sorted(reads) == ["1", "2"]
@@ -213,17 +216,18 @@ def test_detail_new_date_reselects_whole_representative(sources, monkeypatch):
     assert result["reports"][0]["publication_date"] == "2026-10-15"
 
 
-def test_unknown_dates_tie_by_quality_then_source_and_first_position(sources, monkeypatch):
+def test_unknown_dates_keep_native_records_in_source_order(sources, monkeypatch):
     first = report("aigupiao", 1, day=None, content="首条", content_type="summary", pdf_urls=[])
     second = report("aigupiao", 2, day=None, content="第二条更长正文" * 100, content_type="summary", pdf_urls=[])
     other_source = report("eastmoney", 1, day=None, content="其他来源", content_type="summary", pdf_urls=[])
     monkeypatch.setattr(core.aigupiao, "search_page", lambda *a, **k: ([first, second], None))
     monkeypatch.setattr(core.eastmoney, "search_page", lambda *a, **k: ([other_source], None))
     result = core.fetch("光模块", timeout=2)
-    assert result["reports"] == [{key: first[key] for key in core._FIELDS}]
+    assert result["reports"] == [{key: candidate[key] for key in core._FIELDS}
+                                 for candidate in (first, second, other_source)]
 
 
-def test_newer_failed_record_still_wins_over_older_copy(sources, monkeypatch):
+def test_newer_failed_record_keeps_older_different_day_and_error(sources, monkeypatch):
     older = report("aigupiao", 1, day="2026-10-13", content="旧正文", content_type="summary", pdf_urls=[])
     newer = report("eastmoney", 1)
     monkeypatch.setattr(core.aigupiao, "search_page", lambda *a, **k: ([older], None))
@@ -232,7 +236,7 @@ def test_newer_failed_record_still_wins_over_older_copy(sources, monkeypatch):
         raise SourceError("eastmoney", "新稿详情失败")
     monkeypatch.setattr(core.eastmoney, "get_detail", failed)
     result = core.fetch("光模块", timeout=2)
-    assert result["reports"] == [{key: newer[key] for key in core._FIELDS}]
+    assert result["reports"] == [{key: candidate[key] for key in core._FIELDS} for candidate in (newer, older)]
     assert result["errors"][0]["reason"] == "新稿详情失败"
 
 

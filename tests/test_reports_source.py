@@ -33,135 +33,13 @@ def envelope(rows, **changes):
     return value
 
 
-def mock_pages(monkeypatch, pages):
-    calls = []
-
-    def post(url, **kwargs):
-        calls.append((url, kwargs))
-        value = pages.pop(0)
-        if isinstance(value, Exception):
-            raise value
-        return deepcopy(value)
-
-    monkeypatch.setattr(reports, "post_form_json", post)
-    return calls
-
-
-def test_real_list_preserves_business_fields_source_order_and_date_precision(monkeypatch):
-    calls = mock_pages(monkeypatch, [listing()])
-    result = reports.agp_list(timeout=4)
-    assert len(result) == 20 and all(set(item) == LIST_FIELDS for item in result)
-    assert result[0] == {"url": reports._DETAIL + "2477185",
-                         "title": "汽车行业周报：“金九”车企销量分化，关注出海进展",
-                         "kind": "industry", "ref_code": "000039", "name": "汽车行业",
-                         "institute": "华龙证券", "rating": "推荐", "publication_date_text": "10-09",
-                         "recorded_at": "2026-10-09T08:40:02.000+08:00", "symbol": "in000039", "theme_id": 950}
-    assert result[3]["url"].endswith("2477179")  # 列表 id 实际为868297。
-    assert result[3]["symbol"] == "sh603499" and result[3]["theme_id"] == 0
-    assert result[6]["publication_date_text"] == "2026-10-08"
-    assert result[7]["rating"] == ""
-    assert calls[0][1]["data"] == {"before": 0, "kind": "all", "u_id": 0,
-                                    "symbol": "", "limit": 20, "keyword": ""}
-    assert calls[0][1]["timeout"] == 4 and "Cookie" not in calls[0][1]["headers"]
-
-
-def test_complete_batch_then_limit_and_cross_page_replacement_keeps_first_position(monkeypatch):
-    first = [row(1, 100), row(2, 100), row(3, 90)]
-    second = [row(2, 80, title="后读更新"), row(4, 79), row(5, 79)]
-    calls = mock_pages(monkeypatch, [envelope(first, total=20), envelope(second, total=9)])
-    result = reports.agp_list(limit=5, timeout=3)
-    assert [item["url"] for item in result] == [reports._DETAIL + str(i) for i in range(1, 6)]
-    assert result[1]["title"] == "后读更新"
-    assert [call[1]["data"]["before"] for call in calls] == [0, 90]
-
-
-def test_short_page_is_not_exhaustion_and_empty_page_is(monkeypatch):
-    calls = mock_pages(monkeypatch, [envelope([row(1, 100)]), envelope([row(2, 99)]), envelope([])])
-    assert len(reports.agp_list(limit=20, timeout=2)) == 2
-    assert [call[1]["data"]["before"] for call in calls] == [0, 100, 99]
-
-
-def test_success_empty_page_does_not_need_an_unused_detail_url_template(monkeypatch):
-    page = envelope([])
-    page.pop("inv_url")
-    mock_pages(monkeypatch, [page])
-    assert reports.agp_list(timeout=1) == []
-
-
-@pytest.mark.parametrize("template", [None, "", "absent"])
-def test_nonempty_page_uses_verified_official_template_when_optional_inv_url_missing(monkeypatch, template):
-    page = envelope([row(1, 100)], inv_url=template)
-    if template == "absent":
-        page.pop("inv_url")
-    mock_pages(monkeypatch, [page])
-    assert reports.agp_list(limit=1, timeout=1)[0]["url"] == reports._DETAIL + "1"
-
-
-def test_extra_source_rows_not_trimmed_before_page_validation(monkeypatch):
-    rows = [row(i + 1, 1000 - i) for i in range(23)]
-    rows[-1]["rating"] = False
-    mock_pages(monkeypatch, [envelope(rows)])
-    with pytest.raises(SourceError, match="rating"):
-        reports.agp_list(limit=1, timeout=1)
-
-
-@pytest.mark.parametrize("values", [{"limit": True}, {"limit": 0}, {"limit": None}, {"limit": 1.5},
-                                     {"kind": []}, {"kind": "user"}, {"keyword": 3},
-                                     {"keyword": "a\x00b"}, {"keyword": "\ud800"},
-                                     {"industry": 39}, {"kind": "stock", "industry": "汽车行业"}])
-def test_invalid_parameters_fail_before_io(monkeypatch, values):
-    def forbidden(*args, **kwargs):
-        pytest.fail("invalid parameter performed source I/O")
-    monkeypatch.setattr(reports, "post_form_json", forbidden)
-    monkeypatch.setattr(reports, "get_json", forbidden)
-    with pytest.raises(ValueError):
-        reports.agp_list(timeout=2, **values)
-
-
-@pytest.mark.parametrize("industry", ["汽车行业", "000039", "  汽车行业  "])
-def test_each_industry_call_reads_real_dictionary_then_exact_symbol(monkeypatch, industry):
-    dictionary = json.loads((FIXTURES / "industry-dictionary.json").read_text(encoding="utf-8"))
-    dictionaries = []
-    def get(url, **kwargs):
-        dictionaries.append((url, kwargs))
-        return dictionary
-    monkeypatch.setattr(reports, "get_json", get)
-    calls = mock_pages(monkeypatch, [envelope([row(1, 100)]), envelope([row(2, 99)])])
-    for _ in range(2):
-        reports.agp_list(limit=1, keyword=" 汽车 ", industry=industry, timeout=7)
-    assert len(dictionaries) == 2 and all(call[0] == reports._INDUSTRIES for call in dictionaries)
-    assert all(call[1]["data"]["symbol"] == "000039" and call[1]["data"]["kind"] == "industry"
-               and call[1]["data"]["keyword"] == "汽车" for call in calls)
-
-
-@pytest.mark.parametrize("dictionary,industry", [
-    ({"code": 0, "status": "succ", "list": [{"symbol": "000039", "name": "汽车行业"}]}, "39"),
-    ({"code": 0, "status": "succ", "list": [{"symbol": "000039", "name": "同名"}, {"symbol": "000040", "name": "同名"}]}, "同名")])
-def test_unknown_or_ambiguous_industry_stops_before_post(monkeypatch, dictionary, industry):
-    monkeypatch.setattr(reports, "get_json", lambda *args, **kwargs: dictionary)
-    calls = mock_pages(monkeypatch, [])
-    with pytest.raises(ValueError):
-        reports.agp_list(industry=industry, timeout=1)
-    assert calls == []
-
-
-@pytest.mark.parametrize("dictionary", [{"code": False, "status": "succ", "list": []},
-                                          {"code": 0, "status": "succ", "list": []},
-                                          {"code": 0, "status": "succ", "list": [{"symbol": 39, "name": "汽车行业"}]},
-                                          {"code": 0, "status": "succ", "list": [{"symbol": "000039", "name": ""}]}])
-def test_bad_industry_dictionary_is_source_failure(monkeypatch, dictionary):
-    monkeypatch.setattr(reports, "get_json", lambda *args, **kwargs: dictionary)
-    with pytest.raises(SourceError):
-        reports.agp_list(industry="汽车行业", timeout=1)
-
-
 @pytest.mark.parametrize("change", [{"code": False}, {"code": "0"}, {"status": "success"},
                                      {"inv_url": "https://example.org/?id="}, {"total": None},
                                      {"last_page": False}, {"data": {}}, {"data": [None]}])
 def test_bad_envelope_is_failure_not_empty(monkeypatch, change):
-    mock_pages(monkeypatch, [envelope([row(1, 100)], **change)])
+    payload = envelope([row(1, 100)], **change)
     with pytest.raises(SourceError):
-        reports.agp_list(limit=1, timeout=1)
+        reports._page(payload, before=0, kind="all", industry=None)
 
 
 @pytest.mark.parametrize("changes", [{"inv_id": True}, {"inv_id": "１２"}, {"inv_id": None},
@@ -176,17 +54,17 @@ def test_bad_envelope_is_failure_not_empty(monkeypatch, change):
 def test_bad_known_leaf_fails_entire_page(monkeypatch, changes):
     item = row(1, 100)
     item.update(changes)
-    mock_pages(monkeypatch, [envelope([item])])
+    payload = envelope([item])
     with pytest.raises(SourceError):
-        reports.agp_list(limit=1, timeout=1)
+        reports._page(payload, before=0, kind="all", industry=None)
 
 
 def test_missing_zero_empty_and_unknown_fields_are_distinct(monkeypatch):
     item = row(1, 100, rating=0, theme_id=0, title="", pub_time=None, rec_time=None,
                unknown={"future": False})
     item.pop("name")
-    mock_pages(monkeypatch, [envelope([item])])
-    result = reports.agp_list(limit=1, timeout=1)[0]
+    payload = envelope([item])
+    result = reports._page(payload, before=0, kind="all", industry=None)[0][2]
     assert result["rating"] == 0 and result["theme_id"] == 0 and result["title"] == ""
     assert result["name"] is result["publication_date_text"] is result["recorded_at"] is None
     assert set(result) == LIST_FIELDS
@@ -201,38 +79,6 @@ def test_recorded_time_retains_exact_fraction_precision(time, expected):
     assert reports._recorded(time) == expected
 
 
-@pytest.mark.parametrize("pages", [
-    [envelope([row(1, 100), row(1, 99)])],
-    [envelope([row(1, 99), row(2, 100)])],
-    [envelope([row(1, 100)]), envelope([row(2, 100)])],
-    [envelope([row(1, 100)]), envelope([row(1, 99)])],
-    [envelope([row(1, 0)])],
-    [envelope([row(1, 100)]), SourceError("aigupiao", "拒绝访问")],
-    [envelope([row(i + 1, 1000 - i) for i in range(101)])]])
-def test_pagination_anomalies_never_return_partial(monkeypatch, pages):
-    mock_pages(monkeypatch, pages)
-    with pytest.raises(SourceError):
-        reports.agp_list(limit=50, timeout=1)
-
-
-def test_budget_is_failure(monkeypatch):
-    monkeypatch.setattr(reports, "_MAX_PAGES", 1)
-    mock_pages(monkeypatch, [envelope([row(1, 100)])])
-    with pytest.raises(SourceError, match="防护"):
-        reports.agp_list(limit=2, timeout=1)
-
-
-@pytest.mark.parametrize("kind,industry", [("stock", None), ("industry", None), ("all", "汽车行业")])
-def test_requested_filter_must_be_honored_by_source(monkeypatch, kind, industry):
-    item = row(1, 100)
-    if kind != "stock":
-        item.update(ref_kind="stock", ref_symbol="603499")
-    monkeypatch.setattr(reports, "get_json", lambda *args, **kwargs: json.loads((FIXTURES / "industry-dictionary.json").read_text(encoding="utf-8")))
-    mock_pages(monkeypatch, [envelope([item])])
-    with pytest.raises(SourceError):
-        reports.agp_list(limit=1, kind=kind, industry=industry, timeout=1)
-
-
 @pytest.mark.parametrize("identity,institute,researcher,publication", [
     ("2477185", "华龙证券", "李浩洋", "2026-10-09"),
     ("2477179", "华鑫证券", "任春阳", "2026-10-09"),
@@ -243,7 +89,7 @@ def test_three_real_html_details_independent_metadata_summary_and_original_pdf(m
         calls.append((url, kwargs))
         return (FIXTURES / f"detail-{identity}.html").read_text(encoding="utf-8")
     monkeypatch.setattr(reports, "get_text", get)
-    result = reports.agp_get(reports._DETAIL + identity, timeout=9)
+    result = reports._get_detail(reports._DETAIL + identity, timeout=9)
     assert set(result) == DETAIL_FIELDS
     assert (result["institute"], result["researcher"], result["publication_date"]) == (institute, researcher, publication)
     assert result["summary"] and "研究机构：" not in result["summary"]
@@ -271,7 +117,7 @@ def test_three_real_html_details_independent_metadata_summary_and_original_pdf(m
 def test_unsafe_or_unverified_detail_input_stops_before_io(monkeypatch, url):
     monkeypatch.setattr(reports, "get_text", lambda *args, **kwargs: pytest.fail("unsafe URL was accessed"))
     with pytest.raises(ValueError):
-        reports.agp_get(url, timeout=1)
+        reports._get_detail(url, timeout=1)
 
 
 def html_detail(body, views="", head=""):
@@ -313,3 +159,17 @@ def test_detail_metadata_never_borrows_list_values():
     result = reports._detail(html_detail("<p>只提供摘要</p>"), url=reports._DETAIL + "1", identity="1")
     assert result == {"title": None, "publication_date": None, "institute": None,
                       "researcher": None, "summary": "只提供摘要", "pdf_urls": []}
+
+
+@pytest.mark.parametrize("text", ["20240229", "20261009", "2024-02-29", "02-29"])
+def test_catalog_full_or_partial_date_preserves_source_text(text):
+    result = reports._page(envelope([row(1, 100, pub_time=text)]),
+                           before=0, kind="all", industry=None)[0][2]
+    assert result["publication_date_text"] == text
+
+
+@pytest.mark.parametrize("text", ["20230229", "20240230", "20261301", "00000229"])
+def test_catalog_compact_invalid_calendar_day_is_source_error(text):
+    with pytest.raises(SourceError, match="pub_time"):
+        reports._page(envelope([row(1, 100, pub_time=text)]),
+                      before=0, kind="all", industry=None)

@@ -1,7 +1,9 @@
-"""三来源研报聚合及爱股票独立目录与摘要。"""
+"""三来源研报聚合及各来源独立研报。"""
 
 from finchx._common import reports as reports_fetch
-from finchx.sources.aigupiao import reports as agp_reports
+from finchx.sources.aigupiao import reports_single as agp_reports
+from finchx.sources.eastmoney import reports_single as em_reports
+from finchx.sources.analysys import reports_single as analysys_reports
 
 
 class ReportsAPI:
@@ -15,15 +17,31 @@ class ReportsAPI:
         """跨来源原生检索研报，自动读取选中结果的摘要或网页正文。"""
         return reports_fetch.fetch(keyword, limit, start_date, end_date, timeout=self._timeout)
 
-    def agp_list(
+    def agp_fetch(
         self, limit: int = 20, kind: str = "all",
-        keyword: str | None = None, industry: str | None = None,
+        keyword: str | None = None, industry: str | None = None, *,
+        start_date: str | None = None, end_date: str | None = None,
     ) -> list[dict]:
-        """按来源类别、关键词或行业读取研报目录。"""
-        return agp_reports.agp_list(
-            limit, kind, keyword, industry, timeout=self._timeout,
+        """读取爱股票研报目录及选中报告的网页摘要与 PDF 链接。"""
+        return agp_reports.agp_fetch(
+            limit, kind, keyword, industry, start_date=start_date,
+            end_date=end_date, timeout=self._timeout,
         )
 
-    def agp_get(self, url: str) -> dict:
-        """独立读取单篇研报的来源摘要与 PDF 链接。"""
-        return agp_reports.agp_get(url, timeout=self._timeout)
+    def em_fetch(
+        self, limit: int = 20, keyword: str | None = None,
+        start_date: str | None = None, end_date: str | None = None,
+    ) -> list[dict]:
+        """读取东方财富研报目录及选中报告的网页摘要与 PDF 链接。"""
+        return em_reports.em_fetch(
+            limit, keyword, start_date, end_date, timeout=self._timeout,
+        )
+
+    def analysys_fetch(
+        self, limit: int = 20, keyword: str | None = None,
+        start_date: str | None = None, end_date: str | None = None,
+    ) -> list[dict]:
+        """读取易观原生目录或搜索结果及正式正文与 PDF 链接。"""
+        return analysys_reports.analysys_fetch(
+            limit, keyword, start_date, end_date, timeout=self._timeout,
+        )

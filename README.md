@@ -10,7 +10,9 @@ FinchX 3.0 相对旧版有重大更新：重构接口架构与业务分类，统
 
 **3.0 的接口、参数和返回结构与 2.x 不兼容。** 请保留旧环境，在独立环境按 API 文档逐项迁移调用和字段读取。
 
-3.1 新增 `fx.reports.fetch`，按关键词聚合爱股票、东方财富和易观研报，自动获取来源提供的摘要或正文及 PDF 链接，并按完全相同的标题和机构去重。
+3.1 新增 `fx.reports.fetch`，按关键词聚合爱股票、东方财富和易观研报，自动获取来源提供的摘要或正文及 PDF 链接。
+
+3.1.1 新增 `fx.reports.agp_fetch`、`fx.reports.em_fetch` 和 `fx.reports.analysys_fetch`，支持各来源无关键词目录获取和关键词搜索。四个研报接口统一按完全相同的标题、机构和发布日期去重，保留跨日同名报告；三个独立接口的客户端超时按每次 HTTP 请求计算。原 `fx.reports.agp_list` 和 `fx.reports.agp_get` 已由 `fx.reports.agp_fetch` 替代，自动完成目录和详情读取。
 
 ## 安装
 
@@ -21,16 +23,16 @@ python -m pip install finchx
 ```
 需要 Python 3.10 或更新版本。建议使用独立虚拟环境。
 
-已有用户升级到 3.1：
+已有用户升级到 3.1.1：
 
 ```bash
-python -m pip install --upgrade 'finchx==3.1.0'
+python -m pip install --upgrade 'finchx==3.1.1'
 ```
 
 按需安装可选依赖：`calendar` 用于离线交易日历及自动日历回退，`pdf` 用于 PDF 文字层和原生书签提取，`jygs` 用于韭研复盘。可组合安装，只保留需要的项：
 
 ```bash
-python -m pip install --upgrade 'finchx[calendar,pdf,jygs]==3.1.0'
+python -m pip install --upgrade 'finchx[calendar,pdf,jygs]==3.1.1'
 ```
 
 使用韭研复盘还须在同一 Python 环境安装 Chromium，并在调用时传入自己的 `SESSION`：

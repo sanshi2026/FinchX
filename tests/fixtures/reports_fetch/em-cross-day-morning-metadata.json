@@ -1,0 +1,95 @@
+{
+  "evidence": "公开SDK已保存的返回元信息节选；不是原生HTTP响应。不从info_code推断发布日期。",
+  "records": [
+    {
+      "title": "万联晨会",
+      "institute": "万联证券",
+      "info_code": "AP202610141830434926",
+      "publication_date": "2026-10-14",
+      "pdf_urls": [
+        "https://pdf.dfcfw.com/pdf/H3_AP202610141830434926_1.pdf?1791973581000.pdf"
+      ]
+    },
+    {
+      "title": "万联晨会",
+      "institute": "万联证券",
+      "info_code": "AP202610151830485562",
+      "publication_date": "2026-10-15",
+      "pdf_urls": [
+        "https://pdf.dfcfw.com/pdf/H3_AP202610151830485562_1.pdf?1792057010000.pdf"
+      ]
+    },
+    {
+      "title": "金元晨报",
+      "institute": "金元证券",
+      "info_code": "AP202610141830433053",
+      "publication_date": "2026-10-14",
+      "pdf_urls": [
+        "https://pdf.dfcfw.com/pdf/H3_AP202610141830433053_1.pdf?1792062257000.pdf"
+      ]
+    },
+    {
+      "title": "金元晨报",
+      "institute": "金元证券",
+      "info_code": "AP202610151830485544",
+      "publication_date": "2026-10-15",
+      "pdf_urls": [
+        "https://pdf.dfcfw.com/pdf/H3_AP202610151830485544_1.pdf?1792062257000.pdf"
+      ]
+    },
+    {
+      "title": "晨会纪要",
+      "institute": "国信证券",
+      "info_code": "AP202610141830431504",
+      "publication_date": "2026-10-14",
+      "pdf_urls": [
+        "https://pdf.dfcfw.com/pdf/H3_AP202610141830431504_1.pdf?1791969956000.pdf"
+      ]
+    },
+    {
+      "title": "晨会纪要",
+      "institute": "国信证券",
+      "info_code": "AP202610151830482188",
+      "publication_date": "2026-10-15",
+      "pdf_urls": [
+        "https://pdf.dfcfw.com/pdf/H3_AP202610151830482188_1.pdf?1792054385000.pdf"
+      ]
+    },
+    {
+      "title": "开源晨会",
+      "institute": "开源证券",
+      "info_code": "AP202610141830426780",
+      "publication_date": "2026-10-14",
+      "pdf_urls": [
+        "https://pdf.dfcfw.com/pdf/H3_AP202610141830426780_1.pdf?1791963283000.pdf"
+      ]
+    },
+    {
+      "title": "开源晨会",
+      "institute": "开源证券",
+      "info_code": "AP202610151830481082",
+      "publication_date": "2026-10-15",
+      "pdf_urls": [
+        "https://pdf.dfcfw.com/pdf/H3_AP202610151830481082_1.pdf?1792057853000.pdf"
+      ]
+    },
+    {
+      "title": "晨会纪要",
+      "institute": "东吴证券",
+      "info_code": "AP202610131830420140",
+      "publication_date": "2026-10-14",
+      "pdf_urls": [
+        "https://pdf.dfcfw.com/pdf/H3_AP202610131830420140_1.pdf?1791962461000.pdf"
+      ]
+    },
+    {
+      "title": "晨会纪要",
+      "institute": "东吴证券",
+      "info_code": "AP202610141830472539",
+      "publication_date": "2026-10-15",
+      "pdf_urls": [
+        "https://pdf.dfcfw.com/pdf/H3_AP202610141830472539_1.pdf?1792048106000.pdf"
+      ]
+    }
+  ]
+}

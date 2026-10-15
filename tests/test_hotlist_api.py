@@ -32,7 +32,7 @@ def test_hotlist_preserves_all_existing_namespaces_and_timeout():
         "reference":"trading_calendar","market":"all_quotes","fund_flow":"stock",
         "sector":"ths_concept_list","company":"info","financial":"statements",
         "regulation":"deviation","fupan":"jygs_replay","news":"em_list",
-        "articles":"hot_content","disclosure":"em_list","reports":"agp_list","hotlist":"stocks","forum":"tgb_replies","iwencai":"select",
+        "articles":"hot_content","disclosure":"em_list","reports":"agp_fetch","hotlist":"stocks","forum":"tgb_replies","iwencai":"select",
     }
     assert set(vars(fx))==set(expected)
     names=list(vars(fx))

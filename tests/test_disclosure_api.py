@@ -31,7 +31,7 @@ def test_disclosure_addition_preserves_all_existing_client_namespaces_and_method
         "reference": "trading_calendar", "market": "all_quotes", "fund_flow": "stock",
         "sector": "ths_concept_list", "company": "info", "financial": "statements",
         "regulation": "deviation", "fupan": "jygs_replay", "news": "em_list",
-        "articles": "hot_content", "disclosure": "em_list", "reports": "agp_list", "hotlist": "stocks", "forum": "tgb_replies", "iwencai": "select",
+        "articles": "hot_content", "disclosure": "em_list", "reports": "agp_fetch", "hotlist": "stocks", "forum": "tgb_replies", "iwencai": "select",
     }
     assert set(vars(fx)) == set(expected)
     for namespace, method in expected.items():

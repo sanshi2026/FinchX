@@ -11,15 +11,13 @@ from urllib.parse import parse_qsl, urljoin, urlsplit
 from finchx._common.convert import validate_timeout
 from finchx._common.errors import SourceError
 from finchx._common.http import DEFAULT_HEADERS, get_json, get_text, post_form_json
-from finchx._common.news import BEIJING_TZ, validate_limit
+from finchx._common.news import BEIJING_TZ
 
 _SOURCE = "aigupiao"
 _LIST = "https://app.aigupiao.com/goapi/report/search"
 _INDUSTRIES = "https://app.aigupiao.com/v2/report/getIndustryInfos"
 _DETAIL = "http://101.35.29.159:82/report/detail_m.php?id="
 _HEADERS = {**DEFAULT_HEADERS, "Referer": "https://report.aigupiao.com/"}
-_PAGE_SIZE = 20
-_MAX_PAGES = 1000
 _MAX_ROWS = 100
 _MAX_BEFORE = 253402300799
 
@@ -66,7 +64,9 @@ def _publication_text(value: Any) -> str | None:
         return text
     try:
         if re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}|[0-9]{8}", text):
-            date.fromisoformat(text)
+            # Python 3.10 仅接受带连字符的 ISO 日期；来源原文仍原样保留。
+            normalized = f"{text[:4]}-{text[4:6]}-{text[6:]}" if len(text) == 8 else text
+            date.fromisoformat(normalized)
         elif re.fullmatch(r"[0-9]{2}-[0-9]{2}", text):
             # 校验月日而不填造来源缺失的年份；闰日仍是有效月日。
             date.fromisoformat("2000-" + text)
@@ -177,38 +177,6 @@ def _page(payload: Any, *, before: int, kind: str, industry: str | None) -> list
                "recorded_at": _recorded(item.get("rec_time")), "symbol": symbol, "theme_id": theme}
         rows.append((identity, position, row))
     return rows
-
-
-def agp_list(limit: int = 20, kind: str = "all", keyword: str | None = None,
-             industry: str | None = None, *, timeout: float) -> list[dict]:
-    """读取最多 limit 条真实唯一研报，秒边界不保证全部历史。"""
-    target, seconds = validate_limit(limit), validate_timeout(timeout)
-    if not isinstance(kind, str) or kind not in {"all", "stock", "industry"}:
-        raise ValueError("kind 必须是 all、stock 或 industry")
-    keyword, industry = _filter(keyword, "keyword"), _filter(industry, "industry")
-    if kind == "stock" and industry is not None:
-        raise ValueError("industry 不能与 kind='stock' 同用")
-    if industry is not None:
-        industry, kind = _industry(industry, timeout=seconds), "industry"
-    before, collected = 0, {}
-    for _ in range(_MAX_PAGES):
-        payload = post_form_json(_LIST, data={"before": before, "kind": kind, "u_id": 0,
-                                            "symbol": industry or "", "limit": _PAGE_SIZE,
-                                            "keyword": keyword or ""},
-                                 timeout=seconds, headers=_HEADERS, source=_SOURCE)
-        rows = _page(payload, before=before, kind=kind, industry=industry)
-        if not rows:
-            return list(collected.values())[:target]
-        if not any(identity not in collected for identity, _, _ in rows):
-            raise SourceError(_SOURCE, "研报分页停滞，没有新的研报身份")
-        for identity, _, row in rows:
-            collected[identity] = row
-        if len(collected) >= target:
-            return list(collected.values())[:target]
-        before = rows[-1][1]
-        if before == 0:
-            raise SourceError(_SOURCE, "研报 before 到达零边界，无法继续确认请求范围")
-    raise SourceError(_SOURCE, "研报分页达到防护上限，不能返回部分结果")
 
 
 def _url(url: Any) -> str:
@@ -366,7 +334,7 @@ def _detail(page: str, *, url: str, identity: str) -> dict:
             "researcher": values.get("researcher"), "summary": summary, "pdf_urls": pdfs}
 
 
-def agp_get(url: str, *, timeout: float) -> dict:
+def _get_detail(url: str, *, timeout: float) -> dict:
     """只读取该研报网页的独立摘要和原 PDF 链接。"""
     identity = _url(url)
     page = get_text(url, timeout=validate_timeout(timeout), headers={**_HEADERS, "Accept": "text/html,application/xhtml+xml"},

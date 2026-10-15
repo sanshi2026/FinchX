@@ -29,7 +29,7 @@ def test_forum_preserves_namespaces_timeout_and_requested_category_order():
         "sector": "ths_concept_list", "company": "info", "financial": "statements",
         "regulation": "deviation", "hotlist": "stocks", "fupan": "jygs_replay",
         "news": "em_list", "articles": "hot_content", "disclosure": "em_list",
-        "reports": "agp_list", "forum": "tgb_replies", "iwencai": "select",
+        "reports": "agp_fetch", "forum": "tgb_replies", "iwencai": "select",
     }
     assert list(vars(fx)) == list(expected)
     for namespace, method in expected.items():
