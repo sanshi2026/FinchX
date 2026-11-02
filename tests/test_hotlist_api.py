@@ -1,11 +1,16 @@
 """热榜公开签名、来源薄转发与客户端既有能力。"""
 
 import inspect
+import json
+from pathlib import Path
 
 import pytest
 
 from finchx import FinchX, SourceError
 from finchx.api import hotlist
+from finchx.sources.tonghuashun import hotlist as ths_hotlist
+
+FIXTURES = Path(__file__).parent / "fixtures" / "hotlist"
 
 
 def test_hotlist_has_exact_public_methods_signatures_defaults_and_order():
@@ -65,6 +70,35 @@ def test_hotlist_forwards_all_inputs_and_unwrapped_result_without_cache(monkeypa
     assert getattr(api,name)(*args,**kwargs) is sentinel
     assert getattr(api,name)(*args,**kwargs) is sentinel
     assert calls==[(expected,2.5),(expected,2.5)]
+
+
+def test_public_hotlist_stock_fixture_has_fixed_fields_without_market_or_exchange(monkeypatch):
+    payload = json.loads((FIXTURES / "stock_technical_day.json").read_text(encoding="utf-8"))
+    monkeypatch.setattr(ths_hotlist, "get_json", lambda *args, **kwargs: payload)
+
+    rows = FinchX().hotlist.stocks(category="technical", limit=1)
+
+    assert rows == [{
+        "rank": 1,
+        "code": "603906",
+        "name": "龙蟠科技",
+        "change_percent": 6.0172,
+        "heat": 29240.0,
+        "rank_change": 2,
+        "concept_tags": ["钠离子电池", "固态电池"],
+        "popularity_tag": "热搜",
+        "analysis_title": None,
+        "analysis": None,
+        "search_count": 1190,
+        "updated_at": "2026-10-09T09:48:29+08:00",
+        "issue_pe": None,
+    }]
+    assert set(rows[0]) == {
+        "rank", "code", "name", "change_percent", "heat", "rank_change",
+        "concept_tags", "popularity_tag", "analysis_title", "analysis",
+        "search_count", "updated_at", "issue_pe",
+    }
+    assert "market" not in rows[0] and "exchange" not in rows[0]
 
 
 @pytest.mark.parametrize("name",["stocks","sectors","convertible_bonds","etfs"])

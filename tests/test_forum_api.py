@@ -14,10 +14,12 @@ def test_forum_exact_public_method_and_keyword_only_required_cookies():
     assert [name for name, value in vars(type(api)).items()
             if not name.startswith("_") and callable(value)] == ["tgb_replies"]
     signature = inspect.signature(api.tgb_replies)
-    assert list(signature.parameters) == ["limit", "since", "until", "cookies"]
+    assert list(signature.parameters) == ["limit", "since", "until", "cookies", "on_missing_reply"]
     assert [signature.parameters[name].default for name in ["limit", "since", "until"]] == [20, None, None]
     assert signature.parameters["cookies"].kind is inspect.Parameter.KEYWORD_ONLY
     assert signature.parameters["cookies"].default is inspect.Parameter.empty
+    assert signature.parameters["on_missing_reply"].kind is inspect.Parameter.KEYWORD_ONLY
+    assert signature.parameters["on_missing_reply"].default is None
     for name in ["list", "get", "replies", "get_many", "tgb_get", "user_names"]:
         assert not hasattr(api, name)
 
@@ -86,3 +88,30 @@ def test_forum_propagates_source_and_parameter_errors(monkeypatch, error):
     with pytest.raises(type(error)) as caught:
         FinchX().forum.tgb_replies(cookies="invalid-test-cookie=1")
     assert caught.value is error
+
+
+def test_forum_forwards_missing_reply_callback_only_when_supplied(monkeypatch):
+    sentinel = []
+    callback = lambda item: None
+    calls = []
+
+    def source(*args, cookies, timeout, on_missing_reply=None):
+        calls.append((args, cookies, timeout, on_missing_reply))
+        return sentinel
+
+    monkeypatch.setattr(forum.tgb_forum, "tgb_replies", source)
+    api = FinchX(timeout=2.5).forum
+    assert api.tgb_replies(cookies="test") is sentinel
+    assert api.tgb_replies(cookies="test", on_missing_reply=callback) is sentinel
+    assert calls == [((20, None, None), "test", 2.5, None),
+                     ((20, None, None), "test", 2.5, callback)]
+
+
+def test_forum_does_not_pass_default_callback_to_legacy_source_signature(monkeypatch):
+    sentinel = []
+
+    def legacy_source(*args, cookies, timeout):
+        return sentinel
+
+    monkeypatch.setattr(forum.tgb_forum, "tgb_replies", legacy_source)
+    assert FinchX().forum.tgb_replies(cookies="test") is sentinel

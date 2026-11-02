@@ -65,6 +65,7 @@
 
 - [复盘](#fupan-data)
   - [`fx.fupan.jygs_replay`](#api-fupan-jygs_replay)
+  - [`fx.fupan.jygs_replay_ego`](#api-fupan-jygs_replay_ego)
 
 - [新闻](#news-data)
   - [`fx.news.agp_list`](#api-news-agp_list)
@@ -3149,6 +3150,8 @@ fx.regulation.deviation(
 <a id="hotlist-data"></a>
 ## 热榜
 
+来源 `market` 类别只要求是合法正整数，不再限于特定枚举；它不作为筛选参数或返回字段，必要身份和结构仍须合法。
+
 <a id="api-hotlist-stocks"></a>
 ### `fx.hotlist.stocks`
 
@@ -3170,7 +3173,6 @@ fx.regulation.deviation(
 | --- | --- | --- |
 | `rank` | `int` | 当前所选榜名次。 |
 | `code` | `str` | 六位股票代码，保留前导零。 |
-| `exchange` | `str` | sh、sz 或 bj。 |
 | `name` | `str \| None` | 来源证券名称。 |
 | `change_percent` | `float \| None` | 涨跌幅，百分点。 |
 | `heat` | `float \| None` | 来源热度，保留原尺度。 |
@@ -3194,7 +3196,6 @@ stocks = fx.hotlist.stocks()
   {
     "rank": 1,
     "code": "600418",
-    "exchange": "sh",
     "name": "江淮汽车",
     "change_percent": -9.9919,
     "heat": 1543892.0,
@@ -3243,7 +3244,6 @@ stocks = fx.hotlist.stocks()
 | `tag` | `str \| None` | 来源板块说明。 |
 | `hot_tag` | `str \| None` | 来源上榜状态文字。 |
 | `related_etf_code` | `str \| None` | 来源关联 ETF 的六位代码。 |
-| `related_etf_exchange` | `str \| None` | 关联 ETF 交易所，sh 或 sz。 |
 | `related_etf_name` | `str \| None` | 来源关联 ETF 产品名称。 |
 | `related_etf_change_percent` | `float \| None` | 关联 ETF 涨跌幅，百分点。 |
 
@@ -3265,7 +3265,6 @@ sectors = fx.hotlist.sectors()
     "tag": "4家涨停",
     "hot_tag": "5天5次上榜",
     "related_etf_code": "159796",
-    "related_etf_exchange": "sz",
     "related_etf_name": "电池ETF",
     "related_etf_change_percent": -2.8571
   },
@@ -3294,7 +3293,6 @@ sector_code 是行情标识，不能直接传给 fx.sector.ths_concept_quote_sna
 | --- | --- | --- |
 | `rank` | `int` | 当前转债榜名次。 |
 | `code` | `str` | 六位可转债代码。 |
-| `exchange` | `str` | sh 或 sz。 |
 | `name` | `str \| None` | 来源可转债名称。 |
 | `change_percent` | `float \| None` | 涨跌幅，百分点。 |
 | `heat` | `float \| None` | 来源热度，保留原尺度。 |
@@ -3310,7 +3308,6 @@ bonds = fx.hotlist.convertible_bonds()
   {
     "rank": 1,
     "code": "123268",
-    "exchange": "sz",
     "name": "本川转债",
     "change_percent": 7.67,
     "heat": 136033.5
@@ -3341,7 +3338,6 @@ bonds = fx.hotlist.convertible_bonds()
 | --- | --- | --- |
 | `rank` | `int` | 所选候选池内的热度名次。 |
 | `code` | `str` | 六位 ETF 代码。 |
-| `exchange` | `str` | sh 或 sz。 |
 | `name` | `str \| None` | 来源 ETF 产品名称。 |
 | `change_percent` | `float \| None` | 涨跌幅，百分点。 |
 | `heat` | `float \| None` | 来源 24 小时热度，保留原尺度。 |
@@ -3358,7 +3354,6 @@ etfs = fx.hotlist.etfs()
   {
     "rank": 1,
     "code": "588060",
-    "exchange": "sh",
     "name": "科创50ETF广发",
     "change_percent": -3.675676,
     "heat": 15337193.4,
@@ -3371,7 +3366,7 @@ etfs = fx.hotlist.etfs()
 ]
 ```
 
-五类均按对应完整候选池的 24 小时热度降序排列，缺失热度置末，同值按交易所与代码稳定排序。当前来源候选池不保证全部上市 ETF。
+五类均按对应完整候选池的 24 小时热度降序排列，缺失热度置末；同值先按代码、再按完整来源身份稳定排序。当前来源候选池不保证全部上市 ETF。
 
 <a id="fupan-data"></a>
 ## 复盘
@@ -3456,6 +3451,49 @@ fx.fupan.jygs_replay(
 默认打开临时浏览器窗口，需要可用的图形环境；服务器可显式传入 `headless=True`。每次调用注入 `SESSION` 并执行官网复盘流程，结束后关闭浏览器，不保存登录状态。`FinchX(timeout=45)` 的超时预算由浏览器启动、页面访问和业务响应等待共同使用。错误提示区分执行阶段、HTTP 状态与登录失效，不根据超时判断 IP 是否被封。
 
 仅返回来源提供的异动复盘，不保证包含全市场涨停股票，不另取文章正文。指定日期也可能由官网选择实际复盘日，以返回的 `date` 为准；不自行按工作日回退。涨停时刻缺失的股票仍保留，解析保留来源原文。
+
+<a id="api-fupan-jygs_replay_ego"></a>
+### `fx.fupan.jygs_replay_ego`
+
+`fx.fupan.jygs_replay_ego(date=None)` 通过 Ego Lite 读取韭研公社复盘，日期格式和返回结构与 [`fx.fupan.jygs_replay`](#api-fupan-jygs_replay) 相同。请先安装并启动 Ego Lite，确保 `ego-browser` 命令可用，并在 Ego 中手动登录韭研公社。接口无需传入 session 或 headless，也不需要安装 Playwright。`FinchX(timeout=45)` 设置总采集预算。
+
+```python
+from finchx import FinchX
+
+fx = FinchX(timeout=45)
+result = fx.fupan.jygs_replay_ego("2026-10-30")
+```
+
+
+**真实返回节选**
+
+该次调用返回 8 个题材、72 条题材内股票；以下展示首个题材的首只股票，`...` 表示省略其余内容。
+
+```text
+{
+  "date": "2026-10-30",
+  "themes": [
+    {
+      "name": "公告",
+      "reason": null,
+      "stocks": [
+        {
+          "code": "001219",
+          "exchange": "sz",
+          "name": "青岛食品",
+          "price": 19.94,
+          "change_percent": 9.98,
+          "limit_up_time": "13:00:00",
+          "streak_text": "5天5板",
+          "explanation": "青啤拟入主+三季报增长+休闲食品+青岛国资+银发经济\n1、2026年10月27日晚公告，经核查，控股股东华通集团正筹划以非公开协议方式向青啤集团转让5701.76万股公司股份，占公司股份总数的29.24%；交易协议尚未签署，双方正在论证和磋商交易价格等核心条款。若交易完成，青啤集团将成为公司控股股东。\n2、2026年10月23日盘后三季度报告，前三季度营业收入4.49亿元，同比增长6.00%；归母净利润1.02亿元，同比增长10.38%。主因存货跌价准备转回，理财产品公允价值变动收益增加。\n3、公司主要产品包括“青食”品牌钙奶饼干、“青食”品牌休闲饼干和“海友”品牌花生酱，同时公司亦通过OEM模式代工生产少量花生酱产品。公司针对老年人的营养需求生产“硒锌钙奶饼干”、“不加蔗糖钙奶饼干”等产品。公司已在石家庄和大连建设了2家营销中心，后期还要建设6家营销中心。\n4、公司最终实控人为青岛市国资委。公司销售模式健全，已经构建起了以经销模式为主，直销模式、OEM模式为辅的多渠道销售网络。通过OEM和中性品牌等方式销往新西兰、日本、菲律宾等国家，成为公司多元化渠道的有益补充。"
+        },
+        ...
+      ]
+    },
+    ...
+  ]
+}
+```
 
 <a id="news-data"></a>
 ## 新闻
@@ -4715,6 +4753,7 @@ reports = fx.reports.analysys_fetch(limit=1, keyword="2026中国AIGC应用发展
 | `since` | `str \| datetime.date \| None` | 可选 | `None` | 北京时间下界，日期与时刻格式见[通用约定](#common-conventions)，也支持 `datetime.date`；纯日期包含整日。 |
 | `until` | `str \| datetime.date \| None` | 可选 | `None` | 北京时间上界，两端包含；不得早于 `since`，也支持 `datetime.date`。 |
 | `cookies` | `str \| Mapping[str, str]` | 必需，仅限关键字 | — | 调用者自己的非空登录 Cookie 字符串或字符串键值字典，仅用于当次官方请求。 |
+| `on_missing_reply` | `Callable[[dict[str, str \| None]], object] \| None` | 可选，仅限关键字 | `None` | 可选处理回调；只在带引用标记的目标回复在成功解析的主题页和精确回复页中均不存在时调用。 |
 
 **返回：`list[dict]`**
 
@@ -4828,7 +4867,9 @@ fx.forum.tgb_replies(
 
 只返回当前账户关注动态可遍历的回复和发布文章，不承诺全站或全部历史；来源耗尽可少于 `limit`。默认返回全文，不以动态摘要回填无法取得的正文或引用；认证失效或必要正文不可用时明确失败。文章的四个 `parent_*` 字段均为 `None`。Cookie 不写入配置、日志或返回结果，图片仅返回链接。
 
-同一回复在页面重复展示且业务信息一致时合并。正文、图片或展开状态有冲突时，由官方全文接口确认，不按页面出现次序或文字长短选择。只有能确认与目标及必要父回复无关的页面异常才可跳过；必要回复的主题或引用身份冲突、无法确定引用归属时明确报错，不能丢弃引用后返回成功。
+默认 `on_missing_reply=None` 时，带引用标记的目标回复缺失仍明确失败。提供回调后，仅当主题页和该回复的精确页都成功解析、且两页均没有目标回复本身时，才调用一次；回调收到仅含 `reply_id`、`reply_time`、`url`、`post_url`、`reason="target_reply_unavailable"` 的字典，正常返回后跳过该条。回调异常、页面或网络错误、身份或结构损坏，以及父回复缺失仍会失败。`limit` 限制筛选后的候选内容数；若回调跳过候选，返回条数可以少于 `limit`。
+
+同一回复在页面重复展示且业务信息一致时合并。正文、图片或展开状态有冲突时，由官方全文接口确认，不按页面出现次序或文字长短选择。除回调明确接收的目标回复自身缺失情形外，只有能确认与目标及必要父回复无关的页面异常才可跳过；必要回复的主题或引用身份冲突、无法确定引用归属时明确报错，不能丢弃引用后返回成功。
 
 <a id="iwencai-data"></a>
 ## 问财

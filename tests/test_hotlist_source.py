@@ -11,11 +11,11 @@ from finchx._common.errors import SourceError
 from finchx.sources.tonghuashun import hotlist
 
 FIXTURES = Path(__file__).parent / "fixtures" / "hotlist"
-STOCK_FIELDS = {"rank", "code", "exchange", "name", "change_percent", "heat", "rank_change",
+STOCK_FIELDS = {"rank", "code", "name", "change_percent", "heat", "rank_change",
                 "concept_tags", "popularity_tag", "analysis_title", "analysis", "search_count", "updated_at", "issue_pe"}
 SECTOR_FIELDS = {"rank", "sector_code", "name", "change_percent", "heat", "rank_change", "tag", "hot_tag",
-                 "related_etf_code", "related_etf_exchange", "related_etf_name", "related_etf_change_percent"}
-BOND_FIELDS = {"rank", "code", "exchange", "name", "change_percent", "heat"}
+                 "related_etf_code", "related_etf_name", "related_etf_change_percent"}
+BOND_FIELDS = {"rank", "code", "name", "change_percent", "heat"}
 ETF_FIELDS = BOND_FIELDS | {"tags"}
 
 
@@ -71,10 +71,10 @@ def replay(monkeypatch):
     return calls
 
 
-def test_real_technical_fixed_fourteen_fields_and_source_rank(replay):
+def test_real_technical_fixed_thirteen_fields_and_source_rank(replay):
     rows = hotlist.stocks(category="technical", limit=None, timeout=4)
     assert len(rows) == 100 and all(set(row) == STOCK_FIELDS for row in rows)
-    assert rows[0] == {"rank": 1, "code": "603906", "exchange": "sh", "name": "龙蟠科技",
+    assert rows[0] == {"rank": 1, "code": "603906", "name": "龙蟠科技",
                        "change_percent": 6.0172, "heat": 29240.0, "rank_change": 2,
                        "concept_tags": ["钠离子电池", "固态电池"], "popularity_tag": "热搜",
                        "analysis_title": None, "analysis": None, "search_count": 1190,
@@ -94,7 +94,7 @@ def test_real_stock_categories_source_windows_north_and_missing_price(replay, ca
         assert rows[-1]["change_percent"] == 0
     if category == "new":
         assert rows[0]["updated_at"] is rows[0]["change_percent"] is rows[0]["issue_pe"] is None
-        assert rows[1]["issue_pe"] == 27.99 and rows[2]["exchange"] == "bj" and rows[2]["code"] == "920196"
+        assert rows[1]["issue_pe"] == 27.99 and rows[2]["code"] == "920196"
         assert all(row["updated_at"] is None for row in rows)
 
 
@@ -104,15 +104,14 @@ def test_real_plate_and_bonds_fixed_fields(replay):
     assert sectors[0] == {"rank": 1, "sector_code": "886032", "name": "固态电池",
                           "change_percent": -1.4903, "heat": 213391.5, "rank_change": 0,
                           "tag": "5家涨停", "hot_tag": "5天5次上榜", "related_etf_code": "159156",
-                          "related_etf_exchange": "sz", "related_etf_name": "电池ETF",
-                          "related_etf_change_percent": -0.7538}
+                          "related_etf_name": "电池ETF", "related_etf_change_percent": -0.7538}
     industry = hotlist.sectors("industry", limit=1, timeout=1)[0]
     assert industry["sector_code"] == "881281" and industry["related_etf_code"] == "159147"
     bonds = hotlist.convertible_bonds(None, timeout=1)
     assert len(bonds) == 100 and all(set(row) == BOND_FIELDS for row in bonds)
-    assert bonds[0] == {"rank": 1, "code": "123268", "exchange": "sz", "name": "本川转债",
+    assert bonds[0] == {"rank": 1, "code": "123268", "name": "本川转债",
                         "change_percent": 7.6939, "heat": 109634.5}
-    assert any(row["exchange"] == "sh" for row in bonds)
+    assert bonds[-1]["code"] == "113686"
 
 
 def test_real_index_window_full_source_identity_and_nineteen_unique_etfs(replay):
@@ -120,7 +119,7 @@ def test_real_index_window_full_source_identity_and_nineteen_unique_etfs(replay)
     assert len(rows) == 20 and all(set(row) == SECTOR_FIELDS for row in rows)
     assert rows[0] == {"rank": 1, "sector_code": "120:931743", "name": "半导体材料设备",
                        "change_percent": -4.0217, "heat": 20001.0, "rank_change": None, "tag": None,
-                       "hot_tag": None, "related_etf_code": "159327", "related_etf_exchange": "sz",
+                       "hot_tag": None, "related_etf_code": "159327",
                        "related_etf_name": "半导体设备ETF万家", "related_etf_change_percent": -4.191617}
     assert rows[4]["sector_code"] == "120:H30184"
     assert replay[0][1]["data"] == {"page_info": {"page_begin": 0, "page_size": 20}}
@@ -137,12 +136,12 @@ def test_real_all_etf_pools_complete_then_metrics_sort_and_selected_tags(replay,
     assert [row["rank"] for row in rows] == list(range(1, count + 1))
     assert all(rows[index]["heat"] >= rows[index+1]["heat"] for index in range(count-1))
     if category == "popular":
-        assert rows[0] == {"rank": 1, "code": "588060", "exchange": "sh", "name": "科创50ETF广发",
+        assert rows[0] == {"rank": 1, "code": "588060", "name": "科创50ETF广发",
                            "change_percent": -2.810811, "heat": 15337193.4, "tags": ["连跌3天", "存储芯片"]}
         assert len([row for row in rows if row["change_percent"] is None]) == 9
         assert len([row for row in rows if row["change_percent"] == 0]) == 56
         missing_name = next(row for row in rows if row["code"] == "158030")
-        assert missing_name["name"] is None and missing_name["exchange"] == "sz"
+        assert missing_name["name"] is None and missing_name["code"] == "158030"
     assert len(replay) == 3
     assert replay[1][1]["data"]["page_info"]["page_size"] == count
     assert replay[2][1]["data"]["tag_infos"] == [{"tag_key": key} for key in hotlist._TAG_KEYS]
@@ -170,7 +169,7 @@ def test_bad_public_parameters_fail_before_http(monkeypatch, function, kwargs):
         function(**({"timeout": 1} | kwargs))
 
 
-@pytest.mark.parametrize("field,bad", [("market", 999), ("market", False), ("code", "１２３４５６"),
+@pytest.mark.parametrize("field,bad", [("market", []), ("market", 0), ("market", -1), ("market", False), ("code", "１２３４５６"),
                                       ("code", "123"), ("display_order", 0), ("display_order", True),
                                       ("rate", True), ("rate", float("nan")), ("rate", -1),
                                       ("rise_and_fall", {}), ("search_cnt", 1.5),
@@ -182,6 +181,39 @@ def test_constructed_bad_business_in_last_stock_row_fails_before_limit(monkeypat
     monkeypatch.setattr(hotlist, "get_json", lambda *args, **kwargs: payload)
     with pytest.raises(SourceError):
         hotlist.stocks(category="technical", limit=1, timeout=1)
+
+
+def test_constructed_stock_market_22_st_and_new_code_at_tail_do_not_break_limit_one(monkeypatch):
+    payload = fixture("stock_technical_day")
+    last = payload["data"]["stock_list"][-1]
+    last.update(market=22, code="920001", name="*ST构造新代码样本")
+    monkeypatch.setattr(hotlist, "get_json", lambda *args, **kwargs: payload)
+
+    first = hotlist.stocks(category="technical", limit=1, timeout=1)
+    assert len(first) == 1 and first[0]["code"] == "603906"
+    assert set(first[0]) == STOCK_FIELDS
+
+    all_rows = hotlist.stocks(category="technical", limit=None, timeout=1)
+    assert all_rows[-1]["code"] == "920001"
+    assert all_rows[-1]["name"] == "*ST构造新代码样本"
+    assert set(all_rows[-1]) == STOCK_FIELDS
+
+
+def test_constructed_stock_same_code_keeps_market_identity_and_rejects_duplicate(monkeypatch):
+    template = deepcopy(fixture("stock_technical_day")["data"]["stock_list"][0])
+    first, second = deepcopy(template), deepcopy(template)
+    first.update(market=22, code="000001", name="构造市场22", order=1, display_order=1)
+    second.update(market=999, code="000001", name="构造市场999", order=2, display_order=2)
+    payload = {"status_code": 0, "data": {"stock_list": [first, second]}}
+    monkeypatch.setattr(hotlist, "get_json", lambda *args, **kwargs: payload)
+    rows = hotlist.stocks(category="technical", limit=None, timeout=1)
+    assert [row["code"] for row in rows] == ["000001", "000001"]
+    assert [row["name"] for row in rows] == ["构造市场22", "构造市场999"]
+    assert all(set(row) == STOCK_FIELDS for row in rows)
+
+    second["market"] = 22
+    with pytest.raises(SourceError, match="重复身份"):
+        hotlist.stocks(category="technical", limit=None, timeout=1)
 
 
 def test_constructed_unknown_and_unverified_new_fields_do_not_change_contract(monkeypatch):
@@ -205,6 +237,76 @@ def test_constructed_duplicates_rank_order_and_empty_current_bonds(monkeypatch):
         hotlist.convertible_bonds(1, timeout=1)
     payload["data"] = []
     assert hotlist.convertible_bonds(timeout=1) == []
+
+
+def test_constructed_bond_market_identity_keeps_same_code_and_leading_zero(monkeypatch):
+    template = deepcopy(fixture("bond")["data"][0])
+    first, second = deepcopy(template), deepcopy(template)
+    first.update(market="222", code="001234", name="构造市场222", order=1)
+    second.update(market="333", code="001234", name="构造市场333", order=2)
+    payload = {"status_code": 0, "data": [first, second]}
+    monkeypatch.setattr(hotlist, "get_json", lambda *args, **kwargs: payload)
+
+    rows = hotlist.convertible_bonds(limit=None, timeout=1)
+    assert [row["code"] for row in rows] == ["001234", "001234"]
+    assert [row["name"] for row in rows] == ["构造市场222", "构造市场333"]
+    assert all(set(row) == BOND_FIELDS for row in rows)
+
+    second["market"] = "222"
+    with pytest.raises(SourceError, match="重复身份"):
+        hotlist.convertible_bonds(limit=None, timeout=1)
+
+
+def constructed_etf_responses(identities, heats=None):
+    """为身份/排序边界构造ETF响应，不冒称真实来源捕获。"""
+    heats = {} if heats is None else heats
+    indexes = ["etfName", "subMarket", "tradeCode", "simpleName", "code"]
+    item_list = []
+    metric_rows = []
+    tag_rows = []
+    for position, identity in enumerate(identities):
+        market, code = identity.split(":")
+        name = f"构造ETF{position + 1}"
+        item_list.append([name, market, code, name, identity])
+        metric_rows.append({"code": identity, "values": [
+            {"idx": 0, "value": 1.25}, {"idx": 1, "value": heats.get(identity, 10.0)}
+        ]})
+        tag_rows.append({"code": identity, "values": []})
+    pool = {"status_code": 0, "data": {"total": len(identities), "offset": 0,
+            "limit": len(identities), "indexes": [{"type": name} for name in indexes],
+            "itemList": item_list}}
+    metrics = {"status_code": 0, "data": {"total": len(identities), "indexes": [
+        {"index_id": "price_change_ratio_pct", "idx": 0},
+        {"index_id": "ths-hot-data-day-attention-rate", "idx": 1},
+    ], "data": metric_rows}}
+    tags = {"status_code": 0, "data": {"data": tag_rows}}
+    return pool, metrics, tags
+
+
+def run_constructed_etfs(monkeypatch, identities, heats=None):
+    calls = post_sequence(monkeypatch, list(constructed_etf_responses(identities, heats)))
+    rows = hotlist.etfs(limit=None, timeout=1)
+    return rows, calls
+
+
+def test_constructed_etf_unknown_market_prefix_and_identity_flow(monkeypatch):
+    identity = "777:001234"
+    rows, calls = run_constructed_etfs(monkeypatch, [identity])
+    assert rows == [{"rank": 1, "code": "001234", "name": "构造ETF1",
+                     "change_percent": 1.25, "heat": 10.0, "tags": []}]
+    assert set(rows[0]) == ETF_FIELDS
+    assert calls[1][1]["data"]["code_selectors"]["include"][0]["values"] == [identity]
+    assert calls[2][1]["data"]["code_selectors"]["include"][0]["values"] == [identity]
+    assert calls[1][1]["headers"]["Source-Id"] == calls[2][1]["headers"]["Source-Id"] == "ths-hot-list"
+
+
+def test_constructed_etf_equal_heat_sorts_code_then_full_source_identity(monkeypatch):
+    identities = ["777:000002", "50:000001", "1:000002"]
+    rows, calls = run_constructed_etfs(monkeypatch, identities)
+    expected = ["50:000001", "1:000002", "777:000002"]
+    assert [row["code"] for row in rows] == ["000001", "000002", "000002"]
+    assert [row["name"] for row in rows] == ["构造ETF2", "构造ETF3", "构造ETF1"]
+    assert calls[2][1]["data"]["code_selectors"]["include"][0]["values"] == expected
 
 
 def small_pool(codes, total, offset=0, limit=2):
@@ -276,7 +378,7 @@ def test_constructed_dynamic_indexes_heat_missing_and_zero_keep_identity(monkeyp
     rows[0]["values"][1]["value"] = None
     rows[1]["values"][1]["value"] = 0
     rows[2]["values"][1]["value"] = 0
-    pool = {row["code"]: {"code": row["code"].split(":")[1], "exchange": "sh", "name": None} for row in rows}
+    pool = {row["code"]: {"code": row["code"].split(":")[1], "name": None} for row in rows}
     post_sequence(monkeypatch, [payload])
     result = hotlist._fund_metrics(pool, 1)
     assert [row[1]["code"] for row in result] == ["518600", "518680", "518850"]
@@ -356,6 +458,47 @@ def test_constructed_missing_related_code_and_bad_market_is_source_error(monkeyp
     post_sequence(monkeypatch, [payload, rec])
     with pytest.raises(SourceError):
         hotlist.sectors("index", limit=1, timeout=1)
+
+
+def test_constructed_plate_market_identity_and_related_etf_without_exchange(monkeypatch):
+    template = deepcopy(fixture("plate_concept")["data"]["plate_list"][0])
+    first, second = deepcopy(template), deepcopy(template)
+    first.update(code="000001", market_id=22, etf_product_id="001234", etf_market_id=777,
+                 name="构造市场22", order=1)
+    second.update(code="000001", market_id=999, etf_product_id="001234", etf_market_id=778,
+                  name="构造市场999", order=2)
+    payload = {"status_code": 0, "data": {"plate_list": [first, second]}}
+    monkeypatch.setattr(hotlist, "get_json", lambda *args, **kwargs: payload)
+
+    rows = hotlist.sectors(limit=None, timeout=1)
+    assert [row["sector_code"] for row in rows] == ["000001", "000001"]
+    assert [row["name"] for row in rows] == ["构造市场22", "构造市场999"]
+    assert [row["related_etf_code"] for row in rows] == ["001234", "001234"]
+    assert all(set(row) == SECTOR_FIELDS for row in rows)
+
+    second["market_id"] = 22
+    with pytest.raises(SourceError, match="重复身份"):
+        hotlist.sectors(limit=None, timeout=1)
+
+
+def test_constructed_index_etf_unknown_market_and_leading_zero_keep_identity(monkeypatch):
+    indexes = fixture("index_sector")
+    indexes["data"]["data"] = indexes["data"]["data"][:1]
+    index_code = indexes["data"]["data"][0]["code"]
+    recommendations = fixture("index_etf_recommend")
+    recommendations["data"] = recommendations["data"][:1]
+    recommendations["data"][0].update(stockCode=index_code, etfMarket="777", etfCode="001234")
+    quotes = fixture("index_etf_quotes")
+    quotes["data"]["data"] = quotes["data"]["data"][:1]
+    quotes["data"]["data"][0]["code"] = "777:001234"
+    calls = post_sequence(monkeypatch, [indexes, recommendations, quotes])
+
+    rows = hotlist.sectors("index", limit=1, timeout=1)
+    assert rows[0]["sector_code"] == index_code
+    assert rows[0]["related_etf_code"] == "001234"
+    assert rows[0]["related_etf_change_percent"] == -4.191617
+    assert set(rows[0]) == SECTOR_FIELDS
+    assert calls[2][1]["data"]["code_selectors"]["include"][0]["values"] == ["777:001234"]
 
 
 def test_constructed_index_extra_internal_id_does_not_reject_valid_business(monkeypatch):

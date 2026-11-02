@@ -528,8 +528,10 @@ def _article_body(node):
     return content, images
 
 
-def tgb_replies(limit=20, since=None, until=None, *, cookies, timeout):
-    """读取当前账户动态的唯一匹配回复与文章，正文及引用均要求全文。"""
+def tgb_replies(limit=20, since=None, until=None, *, cookies, timeout, on_missing_reply=None):
+    """读取当前账户动态；可选回调处理页面均成功解析但缺失的带引用目标。"""
+    if on_missing_reply is not None and not callable(on_missing_reply):
+        raise TypeError("on_missing_reply 必须是 callable 或 None")
     if limit is not None:
         validate_limit(limit)
     lower, upper = _window(since, until)
@@ -592,6 +594,7 @@ def tgb_replies(limit=20, since=None, until=None, *, cookies, timeout):
         _fail("动态分页达到防护预算，不能返回不完整结果")
     selected = matching[:limit] if observed else []
     full = {}
+    skipped = set()
 
     def expand(topic_id, reply_id):
         key = (topic_id, reply_id)
@@ -633,13 +636,28 @@ def tgb_replies(limit=20, since=None, until=None, *, cookies, timeout):
                 known.merge(_page(read(activity.row["url"].split("#")[0]), topic_id))
                 known.require(required)
             reply = known.get(activity.reply_id)
-            if reply is None or reply.parent_id is None and reply.parent_body is None:
+            if reply is None:
+                if on_missing_reply is None:
+                    _fail("明确引用的回复未找到准确父回复身份")
+                on_missing_reply({
+                    "reply_id": activity.row["reply_id"],
+                    "reply_time": activity.row["reply_time"],
+                    "url": activity.row["url"],
+                    "post_url": activity.row["post_url"],
+                    "reason": "target_reply_unavailable",
+                })
+                skipped.add(activity.identity)
+                continue
+            if reply.parent_id is None and reply.parent_body is None:
                 _fail("明确引用的回复未找到准确父回复身份")
         for activity in targets:
+            if activity.identity in skipped:
+                continue
             reply = known.get(activity.reply_id)
             if reply is not None and reply.has_quote and reply.parent_id is None and reply.parent_body is None:
                 _fail("已观察到引用但缺少准确父回复身份")
-        target_ids = required.copy()
+        target_ids = {activity.reply_id for activity in targets if activity.identity not in skipped}
+        required = target_ids.copy()
         required.update(reply.parent_id for reply_id, reply in known.items()
                         if reply_id in target_ids and reply.parent_id is not None)
         known.require(required)
@@ -649,6 +667,8 @@ def tgb_replies(limit=20, since=None, until=None, *, cookies, timeout):
 
     output = []
     for activity in selected:
+        if activity.identity in skipped:
+            continue
         row = activity.row.copy()
         if activity.kind == "T":
             if activity.post_id not in html_pages:

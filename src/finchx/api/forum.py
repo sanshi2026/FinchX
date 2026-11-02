@@ -1,6 +1,6 @@
 """淘股吧账户关注动态中的回复与文章。"""
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from datetime import date
 
 from finchx.sources.taoguba import forum as tgb_forum
@@ -16,8 +16,12 @@ class ForumAPI:
         self, limit: int | None = 20,
         since: str | date | None = None, until: str | date | None = None,
         *, cookies: str | Mapping[str, str],
+        on_missing_reply: Callable[[dict[str, str | None]], object] | None = None,
     ) -> list[dict]:
-        """按数量和北京时间范围读取当前账户可见的回复与文章。"""
+        """读取当前账户内容；回调可跳过主题页与精确页均缺失的带引用回复。"""
+        options = {"cookies": cookies, "timeout": self._timeout}
+        if on_missing_reply is not None:
+            options["on_missing_reply"] = on_missing_reply
         return tgb_forum.tgb_replies(
-            limit, since, until, cookies=cookies, timeout=self._timeout,
+            limit, since, until, **options,
         )

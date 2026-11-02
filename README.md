@@ -14,6 +14,10 @@ FinchX 3.0 相对旧版有重大更新：重构接口架构与业务分类，统
 
 3.1.1 新增 `fx.reports.agp_fetch`、`fx.reports.em_fetch` 和 `fx.reports.analysys_fetch`，支持各来源无关键词目录获取和关键词搜索。四个研报接口统一按完全相同的标题、机构和发布日期去重，保留跨日同名报告；三个独立接口的客户端超时按每次 HTTP 请求计算。原 `fx.reports.agp_list` 和 `fx.reports.agp_get` 已由 `fx.reports.agp_fetch` 替代，自动完成目录和详情读取。
 
+3.1.2 新增 `fx.fupan.jygs_replay_ego`，复用 Ego Lite 中的韭研公社登录状态，返回结构与原复盘接口相同。热榜接受来源提供的合法正整数市场类别，修复市场值 `22` 导致整榜失败的问题。论坛接口新增可选 `on_missing_reply` 回调，可处理官网主题页和精确回复页均成功读取但目标回复缺失的情况。
+
+**3.1.2 热榜返回字段有变化：**股票、可转债和 ETF 热榜删除 `exchange`，板块热榜删除 `related_etf_exchange`；读取这些字段的调用代码需要同步调整。ETF 同热度时按证券代码、完整来源市场身份稳定排序。详细字段与回调规则见 [API 文档](https://github.com/sanshi2026/FinchX/blob/main/docs/API.md)。
+
 ## 安装
 
 安装：
@@ -23,23 +27,25 @@ python -m pip install finchx
 ```
 需要 Python 3.10 或更新版本。建议使用独立虚拟环境。
 
-已有用户升级到 3.1.1：
+已有用户升级到 3.1.2：
 
 ```bash
-python -m pip install --upgrade 'finchx==3.1.1'
+python -m pip install --upgrade 'finchx==3.1.2'
 ```
 
-按需安装可选依赖：`calendar` 用于离线交易日历及自动日历回退，`pdf` 用于 PDF 文字层和原生书签提取，`jygs` 用于韭研复盘。可组合安装，只保留需要的项：
+按需安装可选依赖：`calendar` 用于离线交易日历及自动日历回退，`pdf` 用于 PDF 文字层和原生书签提取，`jygs` 用于原韭研复盘接口 `fx.fupan.jygs_replay`。可组合安装，只保留需要的项：
 
 ```bash
-python -m pip install --upgrade 'finchx[calendar,pdf,jygs]==3.1.1'
+python -m pip install --upgrade 'finchx[calendar,pdf,jygs]==3.1.2'
 ```
 
-使用韭研复盘还须在同一 Python 环境安装 Chromium，并在调用时传入自己的 `SESSION`：
+使用 `fx.fupan.jygs_replay` 还须在同一 Python 环境安装 Chromium，并在调用时传入自己的 `SESSION`：
 
 ```bash
 python -m playwright install chromium
 ```
+
+使用 `fx.fupan.jygs_replay_ego` 时，先安装并启动 Ego Lite，确保 `ego-browser` 命令可用，并在 Ego Lite 中登录韭研公社。
 
 ## 快速开始
 

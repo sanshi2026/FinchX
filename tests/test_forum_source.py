@@ -277,6 +277,104 @@ def test_page_observed_quote_without_identity_fails_even_if_feed_quote_missing(m
         fetch(limit=2)
 
 
+def test_missing_explicit_quote_target_is_skipped_only_after_both_pages_are_parsed(monkeypatch):
+    calls = transport(monkeypatch, [payload([row("102", quoteContent="引用摘要")])],
+                      pages={"/a/abc123": page(), "/a/abc123/102": page()})
+    notifications = []
+    result = fetch(limit=1, on_missing_reply=notifications.append)
+    assert result == []
+    assert notifications == [{
+        "reply_id": "102",
+        "reply_time": "2026-10-08T11:32:58+08:00",
+        "url": "https://www.tgb.cn/a/abc123/102#102",
+        "post_url": "https://www.tgb.cn/a/abc123",
+        "reason": "target_reply_unavailable",
+    }]
+    assert list(notifications[0]) == ["reply_id", "reply_time", "url", "post_url", "reason"]
+    assert [url for url, _ in calls] == [
+        forum._FEED + "?perPageNum=20&actionID=0&type=A",
+        "https://www.tgb.cn/a/abc123",
+        "https://www.tgb.cn/a/abc123/102",
+    ]
+
+
+def test_missing_explicit_quote_target_remains_strict_without_callback(monkeypatch):
+    transport(monkeypatch, [payload([row("102", quoteContent="引用摘要")])],
+              pages={"/a/abc123": page(), "/a/abc123/102": page()})
+    with pytest.raises(SourceError, match="明确引用的回复未找到准确父回复身份"):
+        fetch(limit=1)
+
+
+def test_callback_exception_propagates_unchanged(monkeypatch):
+    transport(monkeypatch, [payload([row("102", quoteContent="引用摘要")])],
+              pages={"/a/abc123": page(), "/a/abc123/102": page()})
+    expected = RuntimeError("callback failed")
+
+    def reject(_item):
+        raise expected
+
+    with pytest.raises(RuntimeError) as caught:
+        fetch(limit=1, on_missing_reply=reject)
+    assert caught.value is expected
+
+
+@pytest.mark.parametrize("exact_page", [SourceError("taoguba", "页面读取失败"),
+                                        '<script>var topicTopicID2=901;</script>'])
+def test_callback_does_not_hide_exact_page_network_or_identity_errors(monkeypatch, exact_page):
+    calls = transport(monkeypatch, [payload([row("102", quoteContent="引用摘要")])],
+                      pages={"/a/abc123": page(), "/a/abc123/102": exact_page})
+    notifications = []
+    with pytest.raises(SourceError):
+        fetch(limit=1, on_missing_reply=notifications.append)
+    assert notifications == [] and len(calls) == 3
+
+
+def test_non_callable_callback_fails_before_source_request(monkeypatch):
+    monkeypatch.setattr(forum, "get_text", lambda *a, **k: pytest.fail("network"))
+    with pytest.raises(TypeError, match="on_missing_reply"):
+        fetch(on_missing_reply=1)
+
+
+def test_missing_quoted_target_does_not_block_other_selected_reply(monkeypatch):
+    calls = transport(monkeypatch,
+                      [payload([row("102", "1", quoteContent="引用摘要"), row("103", "2")])],
+                      pages={"/a/abc123": page(comment("103", "成功回复")),
+                             "/a/abc123/102": page()})
+    notifications = []
+    result = fetch(limit=2, on_missing_reply=notifications.append)
+    assert [item["reply_id"] for item in result] == ["103"]
+    assert result[0]["content"] == "成功回复"
+    assert [item["reply_id"] for item in notifications] == ["102"]
+    assert full_reply_ids(calls) == []
+
+
+def test_skipped_target_can_still_be_expanded_as_another_reply_parent(monkeypatch):
+    calls = transport(monkeypatch,
+                      [payload([row("101", "1", quoteContent="引用摘要"),
+                               row("102", "2", quoteContent="引用摘要")])],
+                      pages={"/a/abc123": page(comment("102", "成功回复", "101")),
+                             "/a/abc123/101": page()})
+    notifications = []
+    result = fetch(limit=2, on_missing_reply=notifications.append)
+    assert [item["reply_id"] for item in result] == ["102"]
+    assert result[0]["parent_reply_id"] == "101"
+    assert result[0]["parent_content"] == "全文101"
+    assert notifications[0]["reply_id"] == "101"
+    assert full_reply_ids(calls) == ["101"]
+
+
+def test_failed_expansion_of_skipped_target_as_parent_still_fails_batch(monkeypatch):
+    calls = transport(monkeypatch,
+                      [payload([row("101", "1", quoteContent="引用摘要"),
+                               row("102", "2", quoteContent="引用摘要")])],
+                      full={"101": {"status": False}},
+                      pages={"/a/abc123": page(comment("102", "成功回复", "101")),
+                             "/a/abc123/101": page()})
+    with pytest.raises(SourceError):
+        fetch(limit=2, on_missing_reply=lambda _item: None)
+    assert full_reply_ids(calls) == ["101"]
+
+
 def test_parent_pure_image_and_display_blog_links(monkeypatch):
     markup = page(comment("101", '<img src="https://image.tgb.cn/parent.jpg">'),
                   comment("102", "当前回复", "101").replace('引用摘要</p>', '<a href="/blog/123">无关显示文字</a>引用摘要</p>'))
@@ -297,8 +395,10 @@ def test_ambiguous_optional_page_author_keeps_same_response_feed_name(monkeypatc
 def test_matched_page_without_parent_identity_cannot_return_quote_excerpt(monkeypatch):
     markup = page(comment("102", "当前回复", "101").replace('data-quote-id="101"', 'data-unknown="101"'))
     transport(monkeypatch, [payload([row("102", "1", quoteContent="摘要")])], pages={"/a/abc123": markup})
+    notifications = []
     with pytest.raises(SourceError):
-        fetch(limit=1)
+        fetch(limit=1, on_missing_reply=notifications.append)
+    assert notifications == []
 
 
 @pytest.mark.parametrize("function", ["moreQuoteContent", "lessQuoteContent"])

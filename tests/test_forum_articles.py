@@ -138,8 +138,10 @@ def test_w_and_p_actions_remain_excluded(monkeypatch):
 def test_public_signature_remains_unchanged():
     method = FinchX().forum.tgb_replies
     signature = inspect.signature(method)
-    assert list(signature.parameters) == ["limit", "since", "until", "cookies"]
+    assert list(signature.parameters) == ["limit", "since", "until", "cookies", "on_missing_reply"]
     assert signature.parameters["cookies"].kind is inspect.Parameter.KEYWORD_ONLY
+    assert signature.parameters["on_missing_reply"].kind is inspect.Parameter.KEYWORD_ONLY
+    assert signature.parameters["on_missing_reply"].default is None
     assert signature.parameters["limit"].default == 20
 
 

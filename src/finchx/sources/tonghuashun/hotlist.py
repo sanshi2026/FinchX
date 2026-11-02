@@ -121,28 +121,17 @@ def _code(value: Any, field: str) -> str:
 def _security(code: Any, market: Any, kind: str) -> tuple[str, str]:
     code = _code(code, kind + ".code")
     market = _market(market, kind + ".market")
-    if kind == "stock":
-        exchange = {"17": "sh", "33": "sz", "151": "bj"}.get(market)
-        prefixes = {}
-    elif kind == "bond":
-        exchange = {"19": "sh", "35": "sz"}.get(market)
-        prefixes = {"sh": ("11",), "sz": ("12",)}
-    else:
-        exchange = {"20": "sh", "36": "sz"}.get(market)
-        prefixes = {"sh": ("5",), "sz": ("1",)}
-    if exchange is None or kind != "stock" and not code.startswith(prefixes[exchange]):
-        _fail(f"{kind} 的来源市场与证券代码身份无效或冲突")
-    return code, exchange
+    return code, market
 
 
 def _fund_identity(value: Any, field: str) -> tuple[str, str, str]:
     if not isinstance(value, str) or not re.fullmatch(r"[0-9]+:[0-9]{6}", value):
         _fail(f"字段 {field} 必须是完整市场:ETF代码")
-    market, code = value.split(":")
-    code, exchange = _security(code, market, "etf")
-    if market != str(int(market)):
+    source_market, code = value.split(":")
+    code, market = _security(code, source_market, "etf")
+    if source_market != market:
         _fail(f"字段 {field} 的市场身份无效")
-    return value, code, exchange
+    return value, code, market
 
 
 def _rank(raw: dict) -> int:
@@ -197,13 +186,13 @@ def _ranked(rows: list, parser, limit: int | None) -> list[dict]:
 
 
 def _stock_row(raw: dict, category: str) -> tuple[tuple, dict]:
-    code, exchange = _security(raw.get("code"), raw.get("market"), "stock")
+    code, market = _security(raw.get("code"), raw.get("market"), "stock")
     tag = raw.get("tag")
     if tag is not None:
         tag = _object(tag, "tag")
     tag = tag or {}
     row = {
-        "rank": _rank(raw), "code": code, "exchange": exchange,
+        "rank": _rank(raw), "code": code,
         "name": _text(raw.get("name"), "name"),
         "change_percent": _number(raw.get("rise_and_fall"), "rise_and_fall"),
         "heat": _number(raw.get("rate"), "rate", nonnegative=True),
@@ -216,7 +205,7 @@ def _stock_row(raw: dict, category: str) -> tuple[tuple, dict]:
         "updated_at": _updated(raw.get("update_time")),
         "issue_pe": _number(raw.get("pe"), "pe") if category == "new" else None,
     }
-    return (exchange, code), row
+    return (market, code), row
 
 
 def stocks(category: str = "popular", period: str | None = None, limit: int | None = 20, *, timeout: float) -> list[dict]:
@@ -234,16 +223,14 @@ def stocks(category: str = "popular", period: str | None = None, limit: int | No
     return _ranked(_array(data.get("stock_list"), "stock_list"), lambda row: _stock_row(row, category), limit)
 
 
-def _plate_row(raw: dict) -> tuple[str, dict]:
+def _plate_row(raw: dict) -> tuple[tuple[str, str], dict]:
     code = _code(raw.get("code"), "plate.code")
-    if _market(raw.get("market_id"), "market_id") != "48":
-        _fail("板块来源市场身份无效")
+    market = _market(raw.get("market_id"), "market_id")
     related_code = _text(raw.get("etf_product_id"), "etf_product_id")
     related_market = raw.get("etf_market_id")
     if related_code is not None:
-        related_code, related_exchange = _security(related_code, related_market, "etf")
+        related_code, _ = _security(related_code, related_market, "etf")
     else:
-        related_exchange = None
         if not _empty_related_market(related_market):
             _fail("关联 ETF 缺少代码身份")
     row = {
@@ -252,11 +239,11 @@ def _plate_row(raw: dict) -> tuple[str, dict]:
         "heat": _number(raw.get("rate"), "rate", nonnegative=True),
         "rank_change": _number(raw.get("hot_rank_chg"), "hot_rank_chg", integer=True),
         "tag": _text(raw.get("tag"), "tag"), "hot_tag": _text(raw.get("hot_tag"), "hot_tag"),
-        "related_etf_code": related_code, "related_etf_exchange": related_exchange,
+        "related_etf_code": related_code,
         "related_etf_name": _text(raw.get("etf_name"), "etf_name"),
         "related_etf_change_percent": _number(raw.get("etf_rise_and_fall"), "etf_rise_and_fall"),
     }
-    return code, row
+    return (market, code), row
 
 
 def _metric_data(payload: dict, required: tuple[str, ...], *, field: str) -> tuple[dict, list]:
@@ -315,7 +302,7 @@ def _index_sectors(timeout: float, limit: int | None) -> list[dict]:
             "change_percent": _number(values["price_change_ratio_pct"], "price_change_ratio_pct"),
             "heat": _number(values["ths-hot-data-minute-attention-rate"], "attention-rate", nonnegative=True),
             "rank_change": None, "tag": None, "hot_tag": None,
-            "related_etf_code": None, "related_etf_exchange": None,
+            "related_etf_code": None,
             "related_etf_name": None, "related_etf_change_percent": None,
         })
     if not rows:
@@ -334,12 +321,12 @@ def _index_sectors(timeout: float, limit: int | None) -> list[dict]:
         if code is None:
             if not _empty_related_market(market):
                 _fail("ETF推荐缺少代码身份")
-            recommendations[identity] = (None, None, _text(item.get("etfName"), "etfName"), None)
+            recommendations[identity] = (None, _text(item.get("etfName"), "etfName"), None)
         else:
-            code, exchange = _security(code, market, "etf")
-            full_code = _market(market, "etfMarket") + ":" + code
+            code, market_id = _security(code, market, "etf")
+            full_code = market_id + ":" + code
             funds.add(full_code)
-            recommendations[identity] = (code, exchange, _text(item.get("etfName"), "etfName"), full_code)
+            recommendations[identity] = (code, _text(item.get("etfName"), "etfName"), full_code)
     quotes = {}
     if funds:
         payload = _post(_INDEX_ETF_QUOTES, {
@@ -361,9 +348,9 @@ def _index_sectors(timeout: float, limit: int | None) -> list[dict]:
     for row in rows:
         recommendation = recommendations.get(row["sector_code"])
         if recommendation is not None:
-            code, exchange, name, full_code = recommendation
-            row.update(related_etf_code=code, related_etf_exchange=exchange,
-                       related_etf_name=name, related_etf_change_percent=quotes.get(full_code))
+            code, name, full_code = recommendation
+            row.update(related_etf_code=code, related_etf_name=name,
+                       related_etf_change_percent=quotes.get(full_code))
     return rows if limit is None else rows[:limit]
 
 
@@ -378,9 +365,9 @@ def sectors(sector_type: str = "concept", limit: int | None = 20, *, timeout: fl
 
 
 def _bond_row(raw: dict) -> tuple[tuple, dict]:
-    code, exchange = _security(raw.get("code"), raw.get("market"), "bond")
-    return (exchange, code), {
-        "rank": _rank(raw), "code": code, "exchange": exchange,
+    code, market = _security(raw.get("code"), raw.get("market"), "bond")
+    return (market, code), {
+        "rank": _rank(raw), "code": code,
         "name": _text(raw.get("name"), "name"),
         "change_percent": _number(raw.get("rise_and_fall"), "rise_and_fall"),
         "heat": _number(raw.get("hot"), "hot", nonnegative=True),
@@ -417,17 +404,17 @@ def _pool_page(payload: dict, offset: int) -> tuple[int, list[tuple[str, dict]],
         raw = _array(raw, "基金池行")
         if len(raw) != len(indexes):
             _fail("基金池行与字段定义不匹配")
-        identity, code, exchange = _fund_identity(raw[positions["code"]], "pool.code")
+        identity, code, market_id = _fund_identity(raw[positions["code"]], "pool.code")
         if identity in seen:
             _fail("同页基金池身份重复")
         seen.add(identity)
-        market = raw[positions["subMarket"]]
-        if market is not None and market != "":
-            if _market(market, "subMarket") != identity.split(":")[0]:
+        sub_market = raw[positions["subMarket"]]
+        if sub_market is not None and sub_market != "":
+            if _market(sub_market, "subMarket") != market_id:
                 _fail("基金池市场身份冲突")
         if _code(raw[positions["tradeCode"]], "tradeCode") != code:
             _fail("基金池交易代码身份冲突")
-        result.append((identity, {"code": code, "exchange": exchange,
+        result.append((identity, {"code": code,
                                   "name": _text(raw[positions["etfName"]], "etfName")}))
     if len(raw_rows) != min(declared_size, max(0, total - offset)):
         _fail("基金池提前短页")
@@ -493,7 +480,7 @@ def _fund_metrics(pool: dict, timeout: float) -> list[tuple[str, dict]]:
         _fail("ETF指标身份未完整覆盖基金池")
     result.sort(key=lambda item: (item[1]["heat"] is None,
                 -item[1]["heat"] if item[1]["heat"] is not None else 0,
-                item[1]["exchange"], item[1]["code"]))
+                item[1]["code"], item[0]))
     return result
 
 

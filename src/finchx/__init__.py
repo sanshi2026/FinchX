@@ -3,5 +3,5 @@
 from finchx.client import FinchX
 from finchx._common.errors import FinchXError, SourceError
 
-__version__ = "3.1.1"
+__version__ = "3.1.2"
 __all__ = ["FinchX", "FinchXError", "SourceError"]
