@@ -1,5 +1,6 @@
 """同花顺公开新闻、社区文章、视频与专题；不保存会话或结果。"""
 
+
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from html import unescape
@@ -12,6 +13,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import parse_qs, urljoin, urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
+from finchx._common.proxy import proxy_handlers
 from finchx._common.convert import validate_timeout
 from finchx._common.errors import SourceError
 from finchx._common.http import DEFAULT_HEADERS
@@ -275,7 +277,7 @@ def _read(url: str, *, timeout: float) -> str:
     headers = {**DEFAULT_HEADERS, "Accept":"application/json,text/html,*/*", "Referer":"https://news.10jqka.com.cn/"}
     request = Request(url, headers=headers, method="GET")
     try:
-        with build_opener(_Redirect()).open(request, timeout=timeout) as response:
+        with build_opener(*proxy_handlers(), _Redirect()).open(request, timeout=timeout) as response:
             if not 200 <= response.status < 300:
                 raise _ReadError(f"HTTP 状态 {response.status}", fallback=response.status == 404 or response.status >= 500)
             _transport_target(url, response.geturl())

@@ -1,8 +1,12 @@
 """基础工具接口及来源选择。"""
 
+
+
 from datetime import date
 import warnings
 
+from finchx._common.proxy import bind_api
+from finchx._common.proxy import warning_stacklevel
 from finchx._common.convert import parse_date_parameter
 from finchx._common.errors import FinchXError, SourceError
 from finchx._common import pdf
@@ -10,6 +14,7 @@ from finchx.sources.szse import calendar as szse
 from finchx.sources.pandas_market_calendars import calendar as pmc
 
 
+@bind_api
 class ReferenceAPI:
     """交易日历与 PDF 文字层提取等基础工具。"""
 
@@ -52,6 +57,6 @@ class ReferenceAPI:
                 "交易日历整段请求已改用 pandas_market_calendars 的 SSE 离线日历；"
                 f"主来源失败原因：{primary_error}",
                 UserWarning,
-                stacklevel=2,
+                stacklevel=warning_stacklevel(2),
             )
             return rows

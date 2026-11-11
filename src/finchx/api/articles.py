@@ -1,11 +1,13 @@
 """热门内容、同花顺话题目录与按来源读取的公开文章。"""
 
+from finchx._common.proxy import bind_api
 from finchx.sources.aigupiao import articles as agp_articles
 from finchx.sources.tonghuashun import articles as ths_articles
 from finchx.sources.tonghuashun import hot_content as ths_hot_content
 from finchx.sources.tonghuashun import topic_articles as ths_topic_articles
 
 
+@bind_api
 class ArticlesAPI:
     """按来源顺序读取文章及其公开提供的内容。"""
 

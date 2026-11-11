@@ -1,10 +1,12 @@
 """问财条件选股、文档搜索与正文读取。"""
 
+from finchx._common.proxy import bind_api
 from finchx.sources.iwencai import report as wc_report
 from finchx.sources.iwencai import search as wc_search
 from finchx.sources.iwencai import selection as wc_selection
 
 
+@bind_api
 class IwencaiAPI:
     """读取问财来源的业务结果，认证参数仅用于当次调用。"""
 

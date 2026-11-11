@@ -1,11 +1,13 @@
 """东方财富独立研报读取：原生关键词搜索或无关键词目录。"""
 
+
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 import json
 import re
 from urllib.parse import urlencode
 
+from finchx._common.proxy import thread_options
 from finchx._common import http
 from finchx._common.convert import parse_date_parameter, validate_timeout
 from finchx._common.errors import SourceError
@@ -244,7 +246,7 @@ def em_fetch(limit=20, keyword=None, start_date=None, end_date=None, *, timeout)
                      positions[group[2]["info_code"]]))
         return ordered
 
-    with ThreadPoolExecutor(max_workers=4, thread_name_prefix="finchx-em-reports") as executor:
+    with ThreadPoolExecutor(max_workers=4, thread_name_prefix="finchx-em-reports", **thread_options()) as executor:
         while cursor is not None:
             if keyword:
                 rows, next_cursor = _search_page(keyword, cursor, timeout=seconds)

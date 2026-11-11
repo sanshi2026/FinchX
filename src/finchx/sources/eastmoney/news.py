@@ -1,5 +1,6 @@
 """东方财富个股文章目录与文章网页，不保存结果。"""
 
+
 from datetime import datetime
 from html.parser import HTMLParser
 from http.client import HTTPException
@@ -9,6 +10,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urljoin, urlsplit, urlunsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
+from finchx._common.proxy import proxy_handlers
 from finchx._common.convert import resolve_code, validate_timeout
 from finchx._common.errors import SourceError
 from finchx._common.http import DEFAULT_HEADERS, get_json
@@ -215,7 +217,7 @@ class _Redirect(HTTPRedirectHandler):
 def _get_html(url, identity, timeout):
     request = Request(url, headers=_HEADERS, method="GET")
     try:
-        with build_opener(_Redirect(identity)).open(request, timeout=timeout) as response:
+        with build_opener(*proxy_handlers(), _Redirect(identity)).open(request, timeout=timeout) as response:
             if not 200 <= response.status < 300:
                 _fail(f"HTTP 请求失败（状态码 {response.status}）")
             final_id, _ = _article_url(response.geturl())

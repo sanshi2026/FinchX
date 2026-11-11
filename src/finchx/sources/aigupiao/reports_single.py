@@ -1,8 +1,10 @@
 """爱股票目录与正式摘要的单来源批量读取。"""
 
+
 from datetime import date
 from concurrent.futures import ThreadPoolExecutor
 
+from finchx._common.proxy import thread_options
 from finchx._common.convert import parse_date_parameter, validate_timeout
 from finchx._common.errors import SourceError
 from finchx._common.news import validate_limit
@@ -141,7 +143,7 @@ def agp_fetch(limit: int = 20, kind: str = "all", keyword: str | None = None,
         selected.sort(key=lambda group: _quality(group[1][1], positions[group[1][0]]))
         return selected[:target]
 
-    with ThreadPoolExecutor(max_workers=4, thread_name_prefix="finchx-agp-reports") as executor:
+    with ThreadPoolExecutor(max_workers=4, thread_name_prefix="finchx-agp-reports", **thread_options()) as executor:
         for rows in _pages(min(20, target), kind, keyword, industry, seconds):
             for identity, _, candidate in rows:
                 if identity not in positions:

@@ -1,11 +1,13 @@
 """三来源研报聚合及各来源独立研报。"""
 
+from finchx._common.proxy import bind_api
 from finchx._common import reports as reports_fetch
 from finchx.sources.aigupiao import reports_single as agp_reports
 from finchx.sources.eastmoney import reports_single as em_reports
 from finchx.sources.analysys import reports_single as analysys_reports
 
 
+@bind_api
 class ReportsAPI:
     """读取研报目录、来源摘要及 PDF 链接。"""
 

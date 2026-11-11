@@ -1,10 +1,12 @@
 """研报原生关键词检索、日期筛选和有限候选聚合。"""
 
+
 from concurrent.futures import ThreadPoolExecutor, wait
 from dataclasses import dataclass, field
 from threading import Event, Lock
 from time import monotonic
 
+from finchx._common.proxy import thread_options
 from finchx._common.convert import parse_date_parameter, validate_timeout
 from finchx._common.errors import FinchXError, SourceError
 from finchx.sources.aigupiao import reports_fetch as aigupiao
@@ -135,7 +137,7 @@ def fetch(keyword: str, limit: int = 20, start_date: str | None = None,
     deadline = monotonic() + validate_timeout(timeout)
     modules = (("aigupiao", aigupiao), ("eastmoney", eastmoney), ("analysys", analysys))
     states = [_State(source) for source, _ in modules]
-    executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="finchx-reports")
+    executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="finchx-reports", **thread_options())
     search_stop, detail_stop = Event(), Event()
     try:
         jobs = {executor.submit(_prepare, module, state, keyword, limit, start, end, deadline, search_stop): state

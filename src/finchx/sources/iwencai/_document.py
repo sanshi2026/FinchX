@@ -9,8 +9,9 @@ import json
 import re
 from urllib.error import HTTPError, URLError
 from urllib.parse import parse_qsl, quote, urljoin, urlsplit, urlunsplit
-from urllib.request import Request, urlopen
+from urllib.request import Request, build_opener, urlopen
 
+from finchx._common.proxy import proxy_handlers
 from finchx._common.convert import validate_timeout
 from finchx._common.errors import SourceError
 from finchx._common.http import DEFAULT_HEADERS
@@ -80,7 +81,9 @@ def _pdf_result(url):
 def _fetch(url, timeout):
     request = Request(_request_url(url), headers={**DEFAULT_HEADERS, "Accept": "text/html,application/xhtml+xml,*/*;q=0.5"}, method="GET")
     try:
-        with urlopen(request, timeout=timeout) as response:
+        handlers = proxy_handlers()
+        open_request = build_opener(*handlers).open if handlers else urlopen
+        with open_request(request, timeout=timeout) as response:
             if not 200 <= response.status < 300:
                 _fail(f"HTTP 请求失败（状态码 {response.status}）")
             final_url = _url(response.geturl())

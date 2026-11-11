@@ -7,6 +7,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import HTTPRedirectHandler, Request, build_opener, urlopen
 
+from finchx._common.proxy import proxy_handlers
 from finchx._common.convert import validate_timeout
 from finchx._common.errors import SourceError
 
@@ -25,12 +26,19 @@ class _NoRedirects(HTTPRedirectHandler):
         return None
 
 
+def _open_request(follow_redirects=True):
+    handlers = proxy_handlers()
+    if not follow_redirects:
+        handlers += (_NoRedirects(),)
+    return build_opener(*handlers).open if handlers else urlopen
+
+
 def get_bytes(url: str, *, timeout: float, headers: dict[str, str], source: str) -> bytes:
     """完整读取二进制响应，不解码、不写文件。"""
     seconds = validate_timeout(timeout)
     request = Request(url, headers=headers, method="GET")
     try:
-        with urlopen(request, timeout=seconds) as response:
+        with _open_request()(request, timeout=seconds) as response:
             if not 200 <= response.status < 300:
                 raise SourceError(source, f"HTTP 请求失败（状态码 {response.status}）")
             if response.status == 206:
@@ -58,7 +66,7 @@ def get_bytes(url: str, *, timeout: float, headers: dict[str, str], source: str)
 def get_json(url: str, *, timeout: float, headers: dict[str, str], source: str) -> Any:
     request = Request(url, headers=headers, method="GET")
     try:
-        with urlopen(request, timeout=timeout) as response:
+        with _open_request()(request, timeout=timeout) as response:
             if not 200 <= response.status < 300:
                 raise SourceError(source, f"HTTP 请求失败（状态码 {response.status}）")
             body = response.read()
@@ -79,7 +87,7 @@ def get_text(
     """读取来源文本；编码由接口明确指定，默认 UTF-8。"""
     request = Request(url, headers=headers, method="GET")
     try:
-        open_request = urlopen if follow_redirects else build_opener(_NoRedirects()).open
+        open_request = _open_request(follow_redirects)
         with open_request(request, timeout=timeout) as response:
             if not 200 <= response.status < 300:
                 raise SourceError(source, f"HTTP 请求失败（状态码 {response.status}）")
@@ -108,7 +116,7 @@ def post_form_json(
         raise SourceError(source, "请求数据不是有效的表单") from exc
     request = Request(url, data=body, headers={**headers, "Content-Type": "application/x-www-form-urlencoded"}, method="POST")
     try:
-        open_request = urlopen if follow_redirects else build_opener(_NoRedirects()).open
+        open_request = _open_request(follow_redirects)
         with open_request(request, timeout=seconds) as response:
             if not 200 <= response.status < 300:
                 raise SourceError(source, f"HTTP 请求失败（状态码 {response.status}）")
@@ -135,7 +143,7 @@ def post_json(
         raise SourceError(source, "请求数据不是有效的 JSON") from exc
     request = Request(url, data=body, headers={**headers, "Content-Type": "application/json"}, method="POST")
     try:
-        open_request = urlopen if follow_redirects else build_opener(_NoRedirects()).open
+        open_request = _open_request(follow_redirects)
         with open_request(request, timeout=seconds) as response:
             if not 200 <= response.status < 300:
                 raise SourceError(source, f"HTTP 请求失败（状态码 {response.status}）")
@@ -162,7 +170,7 @@ def post_text(
         raise SourceError(source, "请求数据不是有效的 JSON") from exc
     request = Request(url, data=body, headers={**headers, "Content-Type": "application/json"}, method="POST")
     try:
-        open_request = urlopen if follow_redirects else build_opener(_NoRedirects()).open
+        open_request = _open_request(follow_redirects)
         with open_request(request, timeout=seconds) as response:
             if not 200 <= response.status < 300:
                 raise SourceError(source, f"HTTP 请求失败（状态码 {response.status}）")

@@ -18,6 +18,8 @@ FinchX 3.0 相对旧版有重大更新：重构接口架构与业务分类，统
 
 **3.1.2 热榜返回字段有变化：**股票、可转债和 ETF 热榜删除 `exchange`，板块热榜删除 `related_etf_exchange`；读取这些字段的调用代码需要同步调整。ETF 同热度时按证券代码、完整来源市场身份稳定排序。详细字段与回调规则见 [API 文档](https://github.com/sanshi2026/FinchX/blob/main/docs/API.md)。
 
+3.1.3 为 `fx.market.ohlcv` 增加同花顺 HXKline 日线来源，可通过 `source="tonghuashun"` 选择，原有调用仍默认使用腾讯。`FinchX(use_proxy=False)` 可让该实例的 HTTP 请求绕过系统和环境代理，默认仍使用代理。
+
 ## 安装
 
 安装：
@@ -27,16 +29,16 @@ python -m pip install finchx
 ```
 需要 Python 3.10 或更新版本。建议使用独立虚拟环境。
 
-已有用户升级到 3.1.2：
+已有用户升级到 3.1.3：
 
 ```bash
-python -m pip install --upgrade 'finchx==3.1.2'
+python -m pip install --upgrade 'finchx==3.1.3'
 ```
 
 按需安装可选依赖：`calendar` 用于离线交易日历及自动日历回退，`pdf` 用于 PDF 文字层和原生书签提取，`jygs` 用于原韭研复盘接口 `fx.fupan.jygs_replay`。可组合安装，只保留需要的项：
 
 ```bash
-python -m pip install --upgrade 'finchx[calendar,pdf,jygs]==3.1.2'
+python -m pip install --upgrade 'finchx[calendar,pdf,jygs]==3.1.3'
 ```
 
 使用 `fx.fupan.jygs_replay` 还须在同一 Python 环境安装 Chromium，并在调用时传入自己的 `SESSION`：

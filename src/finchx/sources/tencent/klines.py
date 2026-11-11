@@ -1,5 +1,6 @@
 """腾讯日 K 线，按结束日期向前取完请求区间。"""
 
+
 from datetime import date, timedelta
 from decimal import Decimal
 import json
@@ -8,6 +9,7 @@ import warnings
 from typing import Any
 from urllib.parse import urlencode
 
+from finchx._common.proxy import warning_stacklevel
 from finchx._common.convert import parse_date_parameter, resolve_code, to_decimal, to_number, validate_timeout
 from finchx._common.errors import SourceError
 from finchx._common.http import DEFAULT_HEADERS, get_text
@@ -136,7 +138,7 @@ def _ohlcv_with_basis(
 def _warn_raw_fallback(*, stacklevel: int) -> None:
     warnings.warn(
         "腾讯未提供 qfqday 前复权序列，使用同份响应的 day 不复权日线，近似当作无需复权；未检查分红或除权。",
-        UserWarning, stacklevel=stacklevel,
+        UserWarning, stacklevel=warning_stacklevel(stacklevel),
     )
 
 

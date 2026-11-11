@@ -1,10 +1,13 @@
 """东方财富公告目录与独立正文。"""
 
+
 from datetime import date
 
+from finchx._common.proxy import bind_api
 from finchx.sources.eastmoney import disclosure as em_disclosure
 
 
+@bind_api
 class DisclosureAPI:
     """读取公告目录、来源正文与附件链接。"""
 

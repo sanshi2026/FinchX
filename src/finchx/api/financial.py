@@ -1,8 +1,10 @@
 """财务报表接口。"""
 
+from finchx._common.proxy import bind_api
 from finchx.sources.tonghuashun import financial
 
 
+@bind_api
 class FinancialAPI:
     """读取选定财务报表的报告期与业务科目。"""
 

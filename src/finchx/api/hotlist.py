@@ -1,8 +1,10 @@
 """同花顺股票、板块、转债与 ETF 热榜。"""
 
+from finchx._common.proxy import bind_api
 from finchx.sources.tonghuashun import hotlist as ths_hotlist
 
 
+@bind_api
 class HotlistAPI:
     """读取当前热榜或候选池的来源热度排行。"""
 

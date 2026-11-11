@@ -1,11 +1,13 @@
 """易观独立研报：原生关键词搜索或热门分析目录及正式详情。"""
 
+
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 import json
 import re
 from urllib.parse import unquote, urlencode
 
+from finchx._common.proxy import thread_options
 from finchx._common import http
 from finchx._common.convert import parse_date_parameter, validate_timeout
 from finchx._common.errors import SourceError
@@ -193,7 +195,7 @@ def analysys_fetch(limit=20, keyword=None, start_date=None, end_date=None, *, ti
                       positions[group[1]["report_id"]]))
         return selected[:limit]
 
-    with ThreadPoolExecutor(max_workers=4, thread_name_prefix="finchx-analysys-reports") as executor:
+    with ThreadPoolExecutor(max_workers=4, thread_name_prefix="finchx-analysys-reports", **thread_options()) as executor:
         while cursor is not None:
             rows, next_cursor = _page(keyword, cursor, timeout=seconds)
             if next_cursor is not None and (type(next_cursor) is not int or next_cursor <= cursor):

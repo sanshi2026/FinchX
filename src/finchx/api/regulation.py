@@ -1,10 +1,12 @@
 """监管信息接口。"""
 
+from finchx._common.proxy import bind_api
 from finchx.sources.eastmoney import regulation
 from finchx.sources.tencent import deviation as deviation_source
 from finchx.api.reference import ReferenceAPI
 
 
+@bind_api
 class RegulationAPI:
     """读取重点监控、异常波动记录及来源模型预测。"""
 

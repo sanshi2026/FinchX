@@ -1,12 +1,15 @@
 """股票与概念板块接口。"""
 
+
 from datetime import date
 
+from finchx._common.proxy import bind_api
 from finchx.sources.eastmoney import keywords
 from finchx.sources.tencent import sector as tencent
 from finchx.sources.tonghuashun import concept
 
 
+@bind_api
 class SectorAPI:
     """读取股票板块资料与概念行情。"""
 

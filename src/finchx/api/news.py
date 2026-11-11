@@ -1,10 +1,12 @@
 """来源新闻列表与东方财富新闻正文。"""
 
+from finchx._common.proxy import bind_api
 from finchx.sources.aigupiao import news as agp_news
 from finchx.sources.baidu import news as bd_news
 from finchx.sources.eastmoney import news as em_news
 
 
+@bind_api
 class NewsAPI:
     """按来源读取新闻及其实际发布时间。"""
 

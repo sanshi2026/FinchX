@@ -1,9 +1,11 @@
 """股票资金流与龙虎榜接口。"""
 
+from finchx._common.proxy import bind_api
 from finchx.sources.aigupiao import dragon_tiger
 from finchx.sources.tencent import fund_flow as tencent
 
 
+@bind_api
 class FundFlowAPI:
     """读取股票资金流、龙虎榜事件与席位。"""
 

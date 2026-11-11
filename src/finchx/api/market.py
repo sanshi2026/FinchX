@@ -1,13 +1,17 @@
 """市场行情接口。"""
 
+
 from datetime import date
 
+from finchx._common.proxy import bind_api
 from finchx.sources.aigupiao import consecutive, sentiment
 from finchx.sources.eastmoney import breadth, pools
 from finchx.sources.tencent import intraday, klines, quote
 from finchx.sources.tencent import market as tencent
+from finchx.sources.tonghuashun import klines as tonghuashun_klines
 
 
+@bind_api
 class MarketAPI:
     """市场行情接口，直接返回所需业务数据。"""
 
@@ -39,9 +43,15 @@ class MarketAPI:
 
     def ohlcv(
         self, code: str, start_date: date | str, end_date: date | str,
-        adjustment: str | None = None, *, kind: str = "stock",
+        adjustment: str | None = None, *, kind: str = "stock", source: str = "tencent",
     ) -> list[dict]:
         """读取包含首尾日期的股票或指数日线。"""
+        if not isinstance(source, str) or source not in {"tencent", "tonghuashun"}:
+            raise ValueError("source 必须是 tencent 或 tonghuashun")
+        if source == "tonghuashun":
+            return tonghuashun_klines.ohlcv(
+                code, start_date, end_date, adjustment, kind=kind, timeout=self._timeout,
+            )
         return klines.ohlcv(code, start_date, end_date, adjustment, kind=kind, timeout=self._timeout)
 
     def orderbook(self, code: str) -> dict:

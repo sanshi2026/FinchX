@@ -1,5 +1,6 @@
 """腾讯当前/下一交易日偏离模型；有真实前后价格的股票缺口推定停牌。"""
 
+
 from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal, localcontext
 import re
@@ -7,6 +8,7 @@ import warnings
 from typing import Callable
 from urllib.parse import urlencode
 
+from finchx._common.proxy import warning_stacklevel
 from finchx._common.convert import parse_date_parameter, resolve_code, to_decimal, validate_timeout
 from finchx._common.deviation import PRICE_BASIS, calculate_window
 from finchx._common.errors import SourceError
@@ -363,6 +365,6 @@ def deviation(
         warnings.warn(
             "股票日线缺口推定为停牌，未核对交易所停牌公告；缺口日期："
             + "、".join(inferred) + "；受影响：" + "、".join(affected),
-            UserWarning, stacklevel=3,
+            UserWarning, stacklevel=warning_stacklevel(3),
         )
     return result

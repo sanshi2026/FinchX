@@ -1,5 +1,6 @@
 """内存中的 PDF 文字层提取；PDFium 调用统一串行执行。"""
 
+
 import ctypes
 from importlib import import_module
 from ipaddress import ip_address
@@ -8,6 +9,7 @@ from threading import Lock
 from urllib.parse import quote, urlsplit, urlunsplit
 import warnings
 
+from finchx._common.proxy import warning_stacklevel
 from finchx._common.errors import SourceError
 from finchx._common.http import DEFAULT_HEADERS, get_bytes
 
@@ -148,6 +150,6 @@ def pdf_text(url: str, *, timeout: float) -> dict:
         warnings.warn(
             f"PDF 第 {page_numbers} 页的部分符号编码异常，已使用 � 占位；其余可提取文字已保留。",
             UserWarning,
-            stacklevel=3,
+            stacklevel=warning_stacklevel(3),
         )
     return {"outline": outline, "pages": pages}

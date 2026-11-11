@@ -1,11 +1,14 @@
 """淘股吧账户关注动态中的回复与文章。"""
 
+
 from collections.abc import Callable, Mapping
 from datetime import date
 
+from finchx._common.proxy import bind_api
 from finchx.sources.taoguba import forum as tgb_forum
 
 
+@bind_api
 class ForumAPI:
     """读取回复与文章全文，以及回复明确引用的父回复全文。"""
 

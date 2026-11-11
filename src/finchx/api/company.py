@@ -1,8 +1,10 @@
 """上市公司信息接口。"""
 
+from finchx._common.proxy import bind_api
 from finchx.sources.tencent import company
 
 
+@bind_api
 class CompanyAPI:
     """读取上市公司资料与财务概要及流通股东。"""
 

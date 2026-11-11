@@ -22,7 +22,7 @@ from finchx.api.iwencai import IwencaiAPI
 class FinchX:
     """每次调用直接取数；timeout 为每次 HTTP 请求的超时秒数。"""
 
-    def __init__(self, timeout: float = 15.0) -> None:
+    def __init__(self, timeout: float = 15.0, *, use_proxy: bool = True) -> None:
         if isinstance(timeout, bool) or not isinstance(timeout, (int, float)):
             raise ValueError("timeout 必须是有限的正数（秒）")
         try:
@@ -46,3 +46,8 @@ class FinchX:
         self.reports = ReportsAPI(timeout=seconds)
         self.forum = ForumAPI(timeout=seconds)
         self.iwencai = IwencaiAPI(timeout=seconds)
+
+        if use_proxy is False:
+            for api in vars(self).values():
+                if api is not self.fupan:
+                    api._use_proxy = False
