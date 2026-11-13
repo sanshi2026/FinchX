@@ -1,5 +1,6 @@
 import json
 import subprocess
+import tempfile
 from types import SimpleNamespace
 
 import pytest
@@ -7,6 +8,15 @@ import pytest
 from finchx import FinchX
 from finchx._common.errors import SourceError
 from finchx.sources.jiuyangongshe import replay, replay_ego
+
+
+def _run_node_script(node, script):
+    with tempfile.TemporaryFile(mode='w+t', encoding='utf-8') as output:
+        subprocess.run([node, '--input-type=module', '--eval', script], text=True,
+                       encoding='utf-8', stdout=output, stderr=subprocess.STDOUT,
+                       check=True, timeout=5)
+        output.seek(0)
+        return output.read()
 
 
 def test_public_forward(monkeypatch):
@@ -71,9 +81,8 @@ const taskSpace = async () => ({page: () => page});
                           'timeout': 2, 'name': 'test'})
     for failure, should_close in [('network failure', True), ('EGO_TASK_SPACE_INACTIVE', False)]:
         script = stub.replace('FAILURE', json.dumps(failure)) + '\ntry {\n' + replay_ego._SCRIPT.replace('INPUT', payload, 1) + '\n} catch {}\n'
-        result = subprocess.run([node, '--input-type=module'], input=script, text=True, encoding='utf-8',
-                                capture_output=True, check=True, timeout=5)
-        assert ('PAGE_CLOSED' in result.stdout) is should_close
+        output = _run_node_script(node, script)
+        assert ('PAGE_CLOSED' in output) is should_close
 
 
 def test_script_returns_single_login_response():
@@ -99,8 +108,7 @@ const taskSpace = async () => ({page: () => page, finish: async () => {}});
     payload = json.dumps({'url': 'https://example.org', 'api': replay._API,
                           'timeout': 2, 'name': 'test'})
     script = stub + '\n{\n' + replay_ego._SCRIPT.replace('INPUT', payload, 1) + '\n}\n'
-    result = subprocess.run([node, '--input-type=module'], input=script, text=True, encoding='utf-8',
-                            capture_output=True, check=True, timeout=5)
-    records = json.loads(result.stdout.split('FINCHX_RESULT=', 1)[1])
+    output = _run_node_script(node, script)
+    records = json.loads(output.split('FINCHX_RESULT=', 1)[1])
     assert len(records) == 1
     assert json.loads(records[0]['body']) == {'errCode': 1}

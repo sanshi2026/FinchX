@@ -118,15 +118,21 @@ def _exchange(code) -> str:
     _fail(f"无法核实证券代码所属交易所：{code}")
 
 
-def _market_identity(code, market, *, watch: bool = False) -> str:
+def _market_identity(code, market) -> str:
     exchange = _exchange(code)
-    if watch:
-        expected = {"sh": "1", "sz": "0", "bj": "B"}[exchange]
-        if market != expected:
-            _fail("重点监控证券的 MARKET 与代码身份不符")
-    elif _integer(market, "market") != (1 if exchange == "sh" else 0):
+    if _integer(market, "market") != (1 if exchange == "sh" else 0):
         _fail("证券的市场标记与代码身份不符")
     return exchange
+
+
+def _watch_exchange(code, market) -> str:
+    """重点监控名单以来源 MARKET 字段标记交易所，代码只校验格式。"""
+    if not isinstance(code, str) or not _CODE.fullmatch(code):
+        _fail("证券代码不是六位 ASCII 数字字符串")
+    exchange_by_market = {"1": "sh", "0": "sz", "B": "bj"}
+    if not isinstance(market, str) or market not in exchange_by_market:
+        _fail("重点监控证券的 MARKET 不是已识别的交易所标记")
+    return exchange_by_market[market]
 
 
 def _dc_identity(raw: dict) -> tuple[str, str, str]:
@@ -345,7 +351,7 @@ def watchlist(*, timeout: float) -> list[dict]:
         if not isinstance(raw, dict):
             _fail("重点监控记录不是字典")
         code = raw.get("STKCODE")
-        exchange = _market_identity(code, raw.get("MARKET"), watch=True)
+        exchange = _watch_exchange(code, raw.get("MARKET"))
         row = {
             "code": code, "exchange": exchange, "name": _text(raw.get("STKNAME"), "STKNAME", required=True),
             "monitor_start_date": _date(raw.get("VALIDATESTARTDATE"), "VALIDATESTARTDATE"),

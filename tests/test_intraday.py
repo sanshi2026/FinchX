@@ -49,6 +49,20 @@ def test_endpoints_identity_and_point_units(monkeypatch, method, code, symbol, m
     assert len(calls) == 1
 
 
+@pytest.mark.parametrize("method,minute", [("index_intraday", True), ("index_intraday_5d", False)])
+@pytest.mark.parametrize("code,symbol", [
+    ("000001", "sh000001"), ("000002", "sh000002"), ("000688", "sh000688"),
+    ("399001", "sz399001"), ("399006", "sz399006"),
+    ("399102", "sz399102"), ("399107", "sz399107"),
+])
+def test_index_intraday_uses_resolved_identity_without_extra_code_allowlist(monkeypatch, method, minute, code, symbol):
+    calls = _stub(monkeypatch, symbol=symbol, minute=minute)
+    rows = getattr(intraday, method)(code, timeout=7)
+    assert rows[0]["date"] == "2026-09-30"
+    assert parse_qs(urlparse(calls[0][0]).query)["code"] == [symbol]
+    assert len(calls) == 1
+
+
 def test_latest_days_sorting_reset_and_no_prec_dependency(monkeypatch):
     days = [_day(f"202609{n:02d}", ["0932 1 3 0.30", "930 1 2 0.20"]) for n in range(24, 30)]
     _stub(monkeypatch, days=list(reversed(days)))
@@ -79,8 +93,8 @@ def test_zero_values_and_fractional_lot_to_integral_shares(monkeypatch):
 @pytest.mark.parametrize("method,code", [
     ("equity_intraday", "60051"), ("equity_intraday_5d", "６００５１９"),
     ("equity_intraday", 600519), ("equity_intraday", "bj920001"),
-    ("equity_intraday", "920001"), ("index_intraday", "000688"),
-    ("index_intraday_5d", "399107"), ("index_intraday", "600519"),
+    ("equity_intraday", "920001"), ("index_intraday", "000300"),
+    ("index_intraday", "600519"),
 ])
 def test_invalid_or_unsupported_code_fails_before_request(monkeypatch, method, code):
     calls = _stub(monkeypatch)

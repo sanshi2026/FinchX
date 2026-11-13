@@ -170,11 +170,16 @@ def test_boundary_bucket_above_capacity_fails_without_partial(monkeypatch):
         request(limit=500)
 
 
-def test_page_budget_never_returns_partial(monkeypatch):
-    server(monkeypatch, sequence(100))
-    monkeypatch.setattr(agp, "_MAX_PAGES", 2)
-    with pytest.raises(SourceError, match="分页达到防护上限"):
+def test_later_page_error_never_returns_partial(monkeypatch):
+    def damage_second_page(selected, call):
+        if call == 2:
+            selected[-1]["id"] = ""
+        return selected
+
+    calls, _ = server(monkeypatch, sequence(100), transform=damage_second_page)
+    with pytest.raises(SourceError):
         request(limit=100)
+    assert len(calls) == 2
 
 
 def test_initial_upper_bound_same_second_allows_first_boundary_probe(monkeypatch):

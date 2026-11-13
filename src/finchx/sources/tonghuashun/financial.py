@@ -5,7 +5,7 @@ from decimal import Decimal
 import json
 import re
 
-from finchx._common.convert import parse_date_parameter, resolve_code, to_number, validate_timeout
+from finchx._common.convert import parse_date_parameter, to_number, validate_timeout
 from finchx._common.errors import SourceError
 from finchx._common.http import DEFAULT_HEADERS, get_text
 
@@ -17,6 +17,7 @@ _STATEMENTS = {
     "cash_flow_statement": "cash",
 }
 _DATE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
+_CODE = re.compile(r"[0-9]{6}")
 _VALUE = re.compile(
     r"([+-]?(?:[0-9]{1,3}(?:,[0-9]{3})+(?:\.[0-9]+)?|"
     r"(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?))(万亿|亿|万)?(元)?"
@@ -164,7 +165,8 @@ def _parse(text: str) -> list[dict]:
 def statements(code: str, statement: str, period_end: str | None = None,
                max_periods: int | None = None, *, timeout: float) -> list[dict]:
     """一次读取选定报表，按真实报告期降序返回完整业务科目。"""
-    resolve_code(code, kind="stock")
+    if not isinstance(code, str) or not _CODE.fullmatch(code):
+        raise ValueError("code 必须是六位 ASCII 数字字符串")
     if not isinstance(statement, str) or statement not in _STATEMENTS:
         raise ValueError("statement 必须是 balance_sheet、income_statement 或 cash_flow_statement")
     if period_end is not None:

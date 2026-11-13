@@ -181,15 +181,51 @@ def test_full_source_page_validated_even_after_limit(monkeypatch, source, failur
 
 
 @pytest.mark.parametrize("source", [agp, bd])
-def test_stalled_page_and_budget_never_return_partial(monkeypatch, source):
+def test_stalled_page_never_returns_partial(monkeypatch, source):
     page = response(source, generated(source, 0, 20))
     serve(monkeypatch, source, [page, page])
     with pytest.raises(SourceError):
         invoke(source, limit=40)
-    monkeypatch.setattr(source, "_MAX_PAGES", 1)
-    serve(monkeypatch, source, [page])
-    with pytest.raises(SourceError, match="防护上限"):
-        invoke(source, limit=40)
+
+
+def test_agp_time_window_ends_after_more_than_1000_pages(monkeypatch):
+    calls = []
+    boundary = (_START - timedelta(days=1000)).date().isoformat()
+
+    def get(url, **kwargs):
+        query = parse_qs(urlsplit(url).query, keep_blank_values=True)
+        calls.append(query)
+        index = len(calls) - 1
+        raw = generated(agp, index, 1)[0]
+        raw["rec_time"] = str(int((_START - timedelta(days=index)).timestamp()))
+        return response(agp, [raw])
+
+    monkeypatch.setattr(agp, "get_json", get)
+    rows = agp.agp_list(limit=2000, since=boundary, timeout=17)
+    assert len(calls) == 1002
+    assert len(rows) == 1001
+    assert [row["id"] for row in rows] == [str(index) for index in range(1001)]
+    assert rows[-1]["published_at"].startswith(boundary)
+    assert calls[0]["before"] == ["0"]
+    assert all(int(current["before"][0]) > int(following["before"][0])
+               for current, following in zip(calls[1:], calls[2:]))
+
+
+def test_bd_empty_page_ends_after_more_than_1000_pages(monkeypatch):
+    calls = []
+
+    def get(url, **kwargs):
+        query = parse_qs(urlsplit(url).query, keep_blank_values=True)
+        calls.append(query)
+        index = len(calls) - 1
+        return response(bd, generated(bd, index, 1)) if index < 1001 else response(bd, [])
+
+    monkeypatch.setattr(bd, "get_json", get)
+    rows = bd.bd_list(limit=1002, timeout=17)
+    assert len(calls) == 1002
+    assert len(rows) == 1001
+    assert [row["id"] for row in rows] == [f"opaque-{index}" for index in range(1001)]
+    assert [call["pn"] for call in calls] == [[str(index)] for index in range(1002)]
 
 
 def test_missing_relations_media_and_unmarked_title_are_not_fabricated(monkeypatch):

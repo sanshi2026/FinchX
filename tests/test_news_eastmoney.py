@@ -160,11 +160,22 @@ def test_explicit_exhaustion_empty_and_fewer_than_limit(monkeypatch):
     assert len(calls) == 2
 
 
-def test_budget_does_not_return_partial(monkeypatch):
-    monkeypatch.setattr(news, "_MAX_PAGES", 1)
-    mock_pages(monkeypatch, [payload(rows(), total=40)])
-    with pytest.raises(SourceError, match="预算"):
-        news.em_list("600519", limit=40, timeout=1)
+def test_source_total_allows_more_than_250_pages_and_stops_at_end(monkeypatch):
+    total = 5001
+    calls = []
+
+    def get(url, **kwargs):
+        query = parse_qs(urlsplit(url).query)
+        page = int(query["pageIndex"][0])
+        calls.append(page)
+        start = (page - 1) * 20
+        count = min(20, total - start)
+        return payload(rows(count, start), page, total)
+
+    monkeypatch.setattr(news, "get_json", get)
+    result = news.em_list("600519", limit=6000, timeout=1)
+    assert len(result) == total
+    assert len(calls) == 251 and calls[0] == 1 and calls[-1] == 251
 
 
 @pytest.mark.parametrize("filename,url,author,published,source", [

@@ -15,7 +15,6 @@ _SOURCE = "tonghuashun"
 _API = "https://t.10jqka.com.cn/lgt/topic/open/api/topic_info/v3/recommend_list"
 _HEADERS = {**DEFAULT_HEADERS, "Referer": "https://t.10jqka.com.cn/"}
 _PAGE_SIZE = 15
-_MAX_PAGES = 1000
 
 
 def _topic_code(url: str) -> str:
@@ -170,7 +169,7 @@ def ths_list(topic_url: str, limit: int = 20, *, timeout: float) -> list[dict]:
     rows: dict[tuple[int, str], dict] = {}
     consumed: set[tuple[int, str]] = set()
     query_type, page, stalled = "recommend", 1, 0
-    for _ in range(_MAX_PAGES):
+    while True:
         url = _API + "?" + urlencode({"code": code, "page": page, "pageSize": _PAGE_SIZE, "queryType": query_type})
         payload = get_json(url, timeout=seconds, headers=_HEADERS, source=_SOURCE)
         if not isinstance(payload, dict) or type(payload.get("status_code")) is not int or payload["status_code"] != 0:
@@ -204,4 +203,3 @@ def ths_list(topic_url: str, limit: int = 20, *, timeout: float) -> list[dict]:
             if stalled >= 3:
                 _fail("目录分页持续无进展")
             page += 1
-    _fail("目录达到读取防护预算，尚未确认完成")

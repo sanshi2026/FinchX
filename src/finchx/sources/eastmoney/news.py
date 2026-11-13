@@ -19,7 +19,6 @@ from finchx._common.news import BEIJING_TZ, in_window, validate_limit, validate_
 ENDPOINT = "https://np-listapi.eastmoney.com/comm/web/getListInfo"
 _HEADERS = {**DEFAULT_HEADERS, "Referer": "https://quote.eastmoney.com/"}
 _PAGE_SIZE = 20
-_MAX_PAGES = 250
 _ID = re.compile(r"[0-9]+")
 _TIME = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}")
 _HEAD_TIME = re.compile(r"([0-9]{4})年([0-9]{2})月([0-9]{2})日\s+([0-9]{2}:[0-9]{2}(?::[0-9]{2})?)")
@@ -143,7 +142,8 @@ def em_list(
     total = None
     previous_oldest = None
     ordered = True
-    for page in range(1, _MAX_PAGES + 1):
+    page = 1
+    while True:
         params = {"cfh": 1, "client": "web", "mTypeAndCode": f"{market}.{code}",
                   "type": 1, "pageSize": _PAGE_SIZE, "pageIndex": page}
         payload = get_json(f"{ENDPOINT}?{urlencode(params)}", timeout=seconds,
@@ -197,7 +197,7 @@ def em_list(
             return matched
         if lower is not None and ordered and timestamps and all(stamp < lower for stamp in timestamps):
             return matched
-    _fail("文章目录达到分页防护预算，不能确认查询已完成")
+        page += 1
 
 
 class _Redirect(HTTPRedirectHandler):

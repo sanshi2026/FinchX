@@ -14,7 +14,6 @@ _SOURCE = "baidu"
 _ENDPOINT = "https://finance.pae.baidu.com/selfselect/expressnews"
 _HEADERS = {**DEFAULT_HEADERS, "Referer": "https://gushitong.baidu.com/expressnews"}
 _PAGE_SIZE = 20
-_MAX_PAGES = 1000
 
 
 def _text(value: Any, field: str, *, required: bool = False) -> str | None:
@@ -114,7 +113,7 @@ def bd_list(limit: int = 20, since: str | None = None, until: str | None = None,
     seconds = validate_timeout(timeout)
     collected, seen = {}, set()
     offset, previous_oldest = 0, None
-    for _ in range(_MAX_PAGES):
+    while True:
         url = _ENDPOINT + "?" + urlencode({"rn": _PAGE_SIZE, "pn": offset, "tag": "",
                                           "filterByUserStocks": 0, "finClientType": "pc"})
         raw_rows = _page(get_json(url, timeout=seconds, headers=_HEADERS, source=_SOURCE))
@@ -142,4 +141,3 @@ def bd_list(limit: int = 20, since: str | None = None, until: str | None = None,
             return matched[:target]
         offset += len(raw_rows)
         previous_oldest = moments[-1]
-    raise SourceError(_SOURCE, "快讯分页达到防护上限，不能确认请求范围已完成")

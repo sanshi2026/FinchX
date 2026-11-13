@@ -256,12 +256,16 @@ def test_stalled_source_is_error_not_partial(monkeypatch):
         source.ths_list(TOPIC, 20, timeout=1)
 
 
-def test_discussion_only_progress_reaches_budget_not_fake_exhaustion(monkeypatch):
-    monkeypatch.setattr(source, "_MAX_PAGES", 2)
-    install_pages(monkeypatch, [topic_page([topic_discussion()], True),
-        topic_page([topic_discussion("2410013809")], True)])
-    with pytest.raises(SourceError, match="防护预算"):
-        source.ths_list(TOPIC, timeout=1)
+def test_discussion_pages_continue_past_1000_until_source_exhaustion(monkeypatch):
+    pages = [topic_page([topic_discussion(str(2410013808 + index))], index < 1000)
+             for index in range(1001)]
+    pages.append(topic_page([], segment="feed"))
+    calls = install_pages(monkeypatch, pages)
+    assert source.ths_list(TOPIC, timeout=1) == []
+    assert len(calls) == 1002
+    assert [(call[0]["queryType"][0], call[0]["page"][0]) for call in calls[:1001]] == [
+        ("recommend", str(page)) for page in range(1, 1002)]
+    assert calls[-1][0]["queryType"] == ["feed"] and calls[-1][0]["page"] == ["1"]
 
 
 @pytest.mark.parametrize("url", [None, 885976, "885976", "Tv47iqu", "https://example.com/m/topic/index.html?code=Tv47iqu",

@@ -145,7 +145,7 @@ def test_three_rounds_incomplete_fail(monkeypatch):
     assert len(calls) == 6
 
 
-@pytest.mark.parametrize("case", ["duplicate", "short", "drift", "repeat", "budget", "bad_identity", "bad_last_numeric_time", "bad_page_size", "bool_success"])
+@pytest.mark.parametrize("case", ["duplicate", "short", "drift", "repeat", "bad_identity", "bad_last_numeric_time", "bad_page_size", "bool_success"])
 def test_necessary_page_damage_fails_not_partial(monkeypatch, case):
     def response(q):
         number = int(q["page_index"])
@@ -160,8 +160,18 @@ def test_necessary_page_damage_fails_not_partial(monkeypatch, case):
         if case == "bool_success": value["success"] = True
         return value
     small(monkeypatch, response)
-    if case == "budget": monkeypatch.setattr(ds, "_MAX_REQUESTS", 1)
     with pytest.raises(SourceError): ds.em_list("300308", timeout=3)
+
+
+def test_source_total_allows_more_than_1000_requests_and_stops_at_end(monkeypatch):
+    total = 1002
+    calls = small(monkeypatch, lambda q: page(
+        int(q["page_index"]), [row(int(q["page_index"]))], total, size=1))
+    monkeypatch.setattr(ds, "_PAGE_SIZE", 1)
+    result = ds.em_list("300308", limit=total + 1, timeout=3)
+    assert len(result) == total
+    assert len(calls) == total
+    assert calls[0]["page_index"] == "1" and calls[-1]["page_index"] == str(total)
 
 
 def test_complete_page_validation_before_limit(monkeypatch):

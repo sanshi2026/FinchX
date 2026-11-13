@@ -15,7 +15,6 @@ _TOPIC_URL = "https://dq.10jqka.com.cn/fuyao/hot_list_data/out/hot_list/v1/topic
 _ARTICLE_URL = "https://ai.iwencai.com/index/urp/getdata/basic"
 _HEADERS = {**DEFAULT_HEADERS, "Referer": "https://eq.10jqka.com.cn/"}
 _PAGE_SIZE = 30
-_MAX_PAGES = 1000
 _TOPIC_PATHS = {"/lgt/main/frontend-main-service/topic/index.html", "/m/topic/index.html"}
 
 
@@ -138,7 +137,8 @@ def _topics(limit: int, timeout: float) -> list[dict]:
     merged: dict[tuple[str, str], dict] = {}
     seen_pages: set[tuple[tuple[str, str], ...]] = set()
     stalled = 0
-    for page in range(1, _MAX_PAGES + 1):
+    page = 1
+    while True:
         payload = _status(get_json(_TOPIC_URL + "?" + urlencode({"page": page, "page_size": _PAGE_SIZE}),
                                    timeout=timeout, headers=_HEADERS, source=_SOURCE))
         data = payload.get("data")
@@ -161,8 +161,7 @@ def _topics(limit: int, timeout: float) -> list[dict]:
             _fail("话题分页持续没有新身份")
         if len(merged) >= limit:
             break
-    else:
-        _fail("话题分页达到防护预算，未确认耗尽")
+        page += 1
     result = list(merged.values())
     for rank, row in enumerate(result, 1):
         row["rank"] = rank

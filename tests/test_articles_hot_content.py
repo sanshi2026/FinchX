@@ -129,11 +129,14 @@ def test_duplicate_same_page_and_repeated_page_fail(monkeypatch):
         source.hot_content(timeout=3)
 
 
-def test_topic_budget_stop_is_error(monkeypatch):
-    monkeypatch.setattr(source, "_MAX_PAGES", 1)
-    responses(monkeypatch, [page(topic())])
-    with pytest.raises(SourceError, match="预算"):
-        source.hot_content(timeout=3)
+def test_topics_continue_past_1000_pages_until_source_empty(monkeypatch):
+    calls = responses(monkeypatch, [page(topic(code=f"T{index:06d}")) for index in range(1001)] + [page()])
+    result = source.hot_content(limit=1002, timeout=3)
+    assert len(calls) == 1002
+    assert len(result) == 1001
+    assert [row["rank"] for row in result] == list(range(1, 1002))
+    assert parse_qs(urlsplit(calls[0][0]).query)["page"] == ["1"]
+    assert parse_qs(urlsplit(calls[-1][0]).query)["page"] == ["1002"]
 
 
 def test_real_articles_entire_window_uses_source_rank_and_keeps_boards(monkeypatch):

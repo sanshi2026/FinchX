@@ -61,6 +61,28 @@ def test_watchlist_preserves_etf_northern_stocks_optional_dates_and_source_links
     assert api.watchlist()==rows and len(calls)==2
 
 
+def test_watchlist_uses_source_market_for_new_convertible_bond_code(monkeypatch):
+    source=fixture('watchlist')+[fixture('watchlist_fuxin_convertible_bond')]
+    serve(monkeypatch,{'watchlist':source})
+    row=next(row for row in FinchX().regulation.watchlist() if row['code']=='111012')
+    assert row=={
+        'code':'111012','exchange':'sh','name':'福新转债',
+        'monitor_start_date':'2026-11-12','expected_end_date':'2026-11-25',
+        'source_url':'https://wap.18.cn/app/detail/818/3669',
+    }
+
+
+def test_watchlist_maps_exchange_from_market_for_same_unknown_code(monkeypatch):
+    code='111013'
+    source=fixture('watchlist')+[
+        {'MARKET':market,'STKCODE':code,'STKNAME':'测试证券','VALIDATESTARTDATE':'2026-11-12','VALIDATEENDDATE':'2026-11-25'}
+        for market in ('1','0','B')
+    ]
+    serve(monkeypatch,{'watchlist':source})
+    rows=[row for row in FinchX().regulation.watchlist() if row['code']==code]
+    assert [row['exchange'] for row in rows]==['sh','sz','bj']
+
+
 def test_two_announcement_types_share_resource_but_preserve_current_history_records(monkeypatch):
     calls=serve(monkeypatch);api=FinchX().regulation
     ordinary=api.abnormal_records();severe=api.abnormal_records('severe')
@@ -120,7 +142,8 @@ def test_missing_event_dates_cannot_be_replaced_with_announcement_or_monitor_dat
 
 
 @pytest.mark.parametrize('method,key,field,value',[
-    ('watchlist','watchlist','MARKET','?'),('watchlist','watchlist','STKCODE','９２０５７５'),
+    ('watchlist','watchlist','MARKET','?'),('watchlist','watchlist','MARKET',['1']),
+    ('watchlist','watchlist','STKCODE','９２０５７５'),
     ('abnormal_records','ordinary','UNUSUAL_TYPE','999'),('abnormal_records','ordinary','INFO_CODE',None),
     ('abnormal_prediction_history','history','IS_POSITIVE','2'),('abnormal_prediction_history','history','IS_HAPPEN','2'),
     ('abnormal_prediction_history','history','IS_SYSDATE','2'),('abnormal_prediction_history','history','CHANGE_RATE',True),

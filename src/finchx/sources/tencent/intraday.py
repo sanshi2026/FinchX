@@ -17,7 +17,6 @@ _HEADERS = {**DEFAULT_HEADERS, "Referer": "https://finance.qq.com/"}
 _ASSIGNMENT = re.compile(r"\s*([A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*(\{.*\})\s*;?\s*", re.S)
 _DATE = re.compile(r"(?:[0-9]{8}|[0-9]{4}-[0-9]{2}-[0-9]{2})")
 _TIME = re.compile(r"[0-9]{3,4}")
-_INDEX_SYMBOLS = {"sh000001", "sz399001", "sz399006"}
 
 
 def _fail(reason: str) -> None:
@@ -138,8 +137,6 @@ def _parse_days(days: Any, *, explicit_success: bool, five_day: bool) -> list[di
 
 def _fetch(code: str, *, kind: str, five_day: bool, minute: bool, timeout: float) -> list[dict]:
     symbol = resolve_code(code, kind)
-    if kind == "index" and symbol not in _INDEX_SYMBOLS:
-        raise ValueError("指数分时仅支持 000001、399001、399006")
     seconds = validate_timeout(timeout)
     variable = f"min_data_{symbol}" if minute else f"fdays_data_{symbol}"
     endpoint = _MINUTE_URL if minute else _DAY_URL

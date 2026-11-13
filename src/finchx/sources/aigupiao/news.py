@@ -15,7 +15,6 @@ _SOURCE = "aigupiao"
 _ENDPOINT = "https://apis.aigupiao.com/Express/express_list/"
 _HEADERS = {**DEFAULT_HEADERS, "Referer": "https://www.aigupiao.com/"}
 _PAGE_SIZE = 20
-_MAX_PAGES = 1000
 
 
 def _text(value: Any, field: str, *, required: bool = False) -> str | None:
@@ -155,7 +154,7 @@ def agp_list(limit: int = 20, since: str | None = None, until: str | None = None
     before = 0 if upper is None else math.floor(upper.timestamp()) + 1
     collected, seen = {}, set()
     pending_boundary = None
-    for _ in range(_MAX_PAGES):
+    while True:
         url = _ENDPOINT + "?" + urlencode({"before": before, "source": "pc", "web_data": "yes",
                                           "number": _PAGE_SIZE, "division": "", "express_show_type": 1})
         raw_rows = _page(get_json(url, timeout=seconds, headers=_HEADERS, source=_SOURCE))
@@ -188,4 +187,3 @@ def agp_list(limit: int = 20, since: str | None = None, until: str | None = None
         if before and next_before > before:
             raise SourceError(_SOURCE, "快讯分页 before 未推进")
         before, pending_boundary = next_before, oldest
-    raise SourceError(_SOURCE, "快讯分页达到防护上限，不能确认请求范围已完成")

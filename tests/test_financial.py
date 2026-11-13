@@ -110,6 +110,15 @@ def test_missing_false_and_zero_negative_values_and_fresh_calls(monkeypatch):
     assert api.statements("600519","income_statement",max_periods=5) == rows and len(calls) == 2
 
 
+def test_beijing_exchange_code_uses_original_six_digit_identity(monkeypatch):
+    calls = serve(monkeypatch, payload())
+    rows = FinchX().financial.statements("920627", "income_statement", max_periods=1)
+    assert len(rows) == 1 and rows[0]["period_end"] == "2026-06-30"
+    assert urlsplit(calls[0][0]).path.endswith("/920627_benefit.json")
+    assert calls[0][1]["headers"]["Referer"].endswith("/920627/finance.html")
+    assert len(calls) == 1
+
+
 @pytest.mark.parametrize("unit,value,expected_unit,expected", [
     ("万元","1.23456789","元",12345.6789),
     ("亿元","1.25万元","元",12500.0),
@@ -176,7 +185,8 @@ def test_invalid_arguments_fail_before_network_and_public_contract_has_no_aliase
     calls = serve(monkeypatch); api = FinchX().financial
     assert list(inspect.signature(api.statements).parameters) == ["code","statement","period_end","max_periods"]
     for kwargs in [
-        {"code":600519}, {"code":"６００５１９"}, {"code":"430047"},
+        {"code":600519}, {"code":"６００５１９"}, {"code":"43004"},
+        {"code":"sh920627"},
         {"statement":None}, {"statement":"income"}, {"period_end":"2026-6-30"}, {"period_end":"2026-02-29"},
         {"max_periods":True}, {"max_periods":0}, {"max_periods":1.5},
     ]:

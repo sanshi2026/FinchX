@@ -13,7 +13,6 @@ _LIST_ENDPOINT = "https://np-anotice-stock.eastmoney.com/api/security/ann"
 _DETAIL_ENDPOINT = "https://np-cnotice-stock.eastmoney.com/api/content/ann"
 _HEADERS = {**DEFAULT_HEADERS, "Referer": "https://data.eastmoney.com/"}
 _PAGE_SIZE = 100
-_MAX_REQUESTS = 1000
 _MAX_DETAIL_PAGES = 1000
 _AN = r"AN[0-9]{12,24}"
 _SOURCE_TIME = re.compile(r"([0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2})(?::([0-9]{1,6}))?")
@@ -189,14 +188,11 @@ def _data(payload):
     return payload["data"]
 
 
-def _branch(code, market, node, seconds, budget, *, limit=None, lower=None, upper=None):
+def _branch(code, market, node, seconds, *, limit=None, lower=None, upper=None):
     rows, total = {}, None
     for _ in range(3):
         page, seen_pages, stalled = 1, set(), 0
         while True:
-            budget[0] += 1
-            if budget[0] > _MAX_REQUESTS:
-                _fail("公告目录达到读取防护预算，尚未确认完成")
             params = {"page_size": _PAGE_SIZE, "page_index": page, "market_code": market,
                       "stock_list": code, "client_source": "web"}
             if node is not None:
@@ -282,12 +278,12 @@ def em_list(code: str, limit: int = 20, since=None, until=None, categories=None,
     maximum = validate_limit(limit)
     lower, upper = _window(since, until)
     nodes, seconds = _categories(categories), validate_timeout(timeout)
-    market, budget = ("1" if symbol.startswith("sh") else "0"), [0]
+    market = "1" if symbol.startswith("sh") else "0"
     if len(nodes) == 1:
-        return _branch(code, market, nodes[0], seconds, budget, limit=maximum, lower=lower, upper=upper)
+        return _branch(code, market, nodes[0], seconds, limit=maximum, lower=lower, upper=upper)
     merged = {}
     for node in nodes:
-        for row in _branch(code, market, node, seconds, budget):
+        for row in _branch(code, market, node, seconds):
             previous = merged.get(row["id"])
             if previous is not None and any(not _compatible_value(previous[key], row[key], key) for key in ("title", "notice_date", "related_securities")):
                 _fail("不同分类的同公告业务身份冲突")
