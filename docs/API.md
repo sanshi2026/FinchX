@@ -2985,6 +2985,8 @@ fx.regulation.abnormal_counts()
 
 来源：腾讯股票前复权日线（仅 `qfqday` 完全缺键时兼容同份响应的合法不复权 `day`）、前复权历史终值的不复权日线、对应指数不复权日线及股票和指数快照；交易日历同 `fx.reference.trading_calendar`。
 
+偏离值计算先读取所需历史至截止日所在月的月末。未找到下一交易日时按月追加，最多搜索至截止日后 45 天。每段查询沿用基础工具的日历回退规则。
+
 **参数**
 
 | 参数 | 类型 | 是否必需 | 默认值 | 说明 |
@@ -3991,6 +3993,8 @@ fx.articles.ths_list(
 | `disclaimer` | `str \| None` | 来源明确免责声明。 |
 | `related_entities` | `list[dict] \| None` | 来源证券、行业、概念等关联对象；缺失为 None，明确空数组为 []。 |
 
+新闻详情的原文链接为 `#` 等占位值或无法用作网页链接时，`original_url` 为 `None`，正文照常返回。
+
 关联对象每行固定三个字段：
 
 | 字段 | 类型 | 说明 |
@@ -4086,6 +4090,8 @@ fx.articles.ths_get(url="https://t.10jqka.com.cn/pid_700648219.shtml")
 | `related_securities` | `list[dict] \| None` | 来源明确关联的境内外证券。 |
 | `related_securities[].symbol` | `str` | 来源证券标识，如 sh600026、bj920522、CL。 |
 | `related_securities[].name` | `str \| None` | 来源证券名称。 |
+
+文章详情与题材目录保留来源给出的标的代码，包括新类型和新市场的代码。主题和缺少代码的关联项不进入 `related_securities`。名称不可用时为 `None`。来源关联数组不可用时为 `None`，数组内无可用标的时为 `[]`，正文照常返回。
 
 **调用与返回示例**
 

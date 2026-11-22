@@ -2,6 +2,7 @@
 
 
 from datetime import date, datetime, time, timedelta, timezone
+from calendar import monthrange
 from decimal import Decimal, localcontext
 import re
 import warnings
@@ -172,6 +173,10 @@ def _coverage(short_history: bool, halt: bool) -> str:
     return "short_history" if short_history else "complete"
 
 
+def _month_end(day: date) -> date:
+    return day.replace(day=monthrange(day.year, day.month)[1])
+
+
 def deviation(
     code: str, windows: tuple[int, ...] | list[int] = (10, 30),
     end_date: str | None = None, *, timeout: float,
@@ -203,8 +208,14 @@ def deviation(
     cutoff = latest if requested is None else requested
     # 历史和下一交易日边界都来自日历；请求范围按业务日期扩展，不造交易标记。
     start = date.fromordinal(max(1, cutoff.toordinal() - (max(windows) * 5 + 45)))
-    end = date.fromordinal(min(date.max.toordinal(), cutoff.toordinal() + 45))
+    search_end = date.fromordinal(min(date.max.toordinal(), cutoff.toordinal() + 45))
+    end = min(_month_end(cutoff), search_end)
     sessions = _calendar(calendar(start, end), start, end)
+    while not any(day > cutoff for day in sessions) and end < search_end:
+        next_start = end + timedelta(days=1)
+        next_end = min(_month_end(next_start), search_end)
+        sessions.extend(_calendar(calendar(next_start, next_end), next_start, next_end))
+        end = next_end
     if reset is not None:
         reset_sessions = (sessions if start <= reset <= end
                           else _calendar(calendar(reset, reset), reset, reset))

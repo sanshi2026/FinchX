@@ -129,12 +129,21 @@ def test_oversized_source_timestamp_is_source_error_without_fallback(monkeypatch
         assert len(calls)==1
 
 
-@pytest.mark.parametrize("field,value", [("seq","680459705"),("encodedSeq","wrong"),("ctime",True),("ctime",float("nan")),("ctime",float("inf")),("ctime","1791426040"),("title",False),("content",[]),("author",23),("media",[]),("sourceUrl","javascript:alert(1)")])
+@pytest.mark.parametrize("field,value", [("seq","680459705"),("encodedSeq","wrong"),("ctime",True),("ctime",float("nan")),("ctime",float("inf")),("ctime","1791426040"),("title",False),("content",[]),("author",23),("media",[])])
 def test_damaged_news_business_fields_fail_without_fallback(monkeypatch, field, value):
     payload = news(); payload["data"]["article"][field] = value
     calls=wire(monkeypatch,payload)
     with pytest.raises(SourceError): source.ths_get(NEWS,timeout=3)
     assert len(calls)==1
+
+
+@pytest.mark.parametrize("value", ["#", "", None, "javascript:alert(1)"])
+def test_news_unusable_source_url_keeps_valid_article(monkeypatch, value):
+    payload = news(); payload["data"]["article"]["sourceUrl"] = value
+    calls = wire(monkeypatch, payload)
+    result = source.ths_get(NEWS, timeout=3)
+    assert result["original_url"] is None and result["content"]
+    assert len(calls) == 1
 
 
 @pytest.mark.parametrize("where,value", [("status_code",False),("status_code",1),("data",[]),("modules",[]),("settings",False),("related",{}),("related",[{"stockCode":"CL","marketId":False}]),("related",[{"stockCode":"CL","marketId":"65","stockName":[]}])])

@@ -99,7 +99,7 @@ def test_empty_first_page_is_empty_list(monkeypatch):
 
 def test_full_source_page_validated_even_beyond_output_limit(monkeypatch):
     bad = row("2")
-    bad["msg"]["stock_info"] = False
+    bad["msg"]["id"] = False
     pages(monkeypatch, [page(row("1"), bad)])
     with pytest.raises(SourceError):
         source.agp_topic_articles(1, timeout=3)
@@ -151,7 +151,7 @@ def test_broken_page_is_not_empty_success(monkeypatch, payload):
     ("kind", "unknown"), ("title", 0), ("brief", {}), ("content", False),
     ("content_pc", 7), ("rec_time", True), ("rec_time", "2026-02-30 11:00:00"),
     ("rec_time", float("nan")), ("image", "url"), ("image", [False]),
-    ("article_category_name", []), ("topic", [{}]), ("stock_info", [{"kind": "other"}])])
+    ("article_category_name", []), ("topic", [{}])])
 def test_known_field_corruption_fails(monkeypatch, field, value):
     raw = row()
     raw["msg"][field] = value
@@ -322,19 +322,38 @@ def test_verified_live_account_mentions_are_not_securities(monkeypatch):
     {"l_id": 67, "kind": "unconfirmed", "name": "行者"},
     {"l_id": 67, "kind": "stock", "code": False, "name": "中远海能"},
 ])
-def test_account_relation_does_not_hide_malformed_or_unconfirmed_identity(monkeypatch, relation):
+def test_unusable_optional_relations_do_not_hide_article(monkeypatch, relation):
     raw = user_detail()
     raw["stock_info"] = [relation]
     monkeypatch.setattr(source, "get_text", lambda *args, **kwargs: html(raw))
-    with pytest.raises(SourceError):
-        source.agp_get("https://www.aigupiao.com/dynamic/detail/5792378", timeout=3)
+    result = source.agp_get("https://www.aigupiao.com/dynamic/detail/5792378", timeout=3)
+    assert result["content"]
+    expected = [] if not relation.get("code") else [{
+        "symbol": relation["code"], "name": relation.get("name") if isinstance(relation.get("name"), str) else None}]
+    assert result["related_securities"] == expected
 
 
-def test_explicit_account_only_relations_are_empty_not_unknown(monkeypatch):
+def test_security_codes_are_preserved_when_other_relations_lack_codes(monkeypatch):
+    raw = user_detail()
+    raw["stock_info"] = [
+        {"kind": "index_future", "code": "", "name": "股指期货"},
+        {"kind": "future", "code": "IF2606", "name": None},
+        {"kind": "new_kind", "code": "bj920522", "name": "万达轴承"},
+    ]
+    monkeypatch.setattr(source, "get_text", lambda *args, **kwargs: html(raw))
+    result = source.agp_get("https://www.aigupiao.com/dynamic/detail/5792378", timeout=3)
+    assert result["content"]
+    assert result["related_securities"] == [
+        {"symbol": "IF2606", "name": None}, {"symbol": "bj920522", "name": "万达轴承"}]
+
+
+@pytest.mark.parametrize("relations,expected", [([{"l_id": 67, "name": "行者"}], []), (False, None)])
+def test_optional_relations_do_not_block_topic_listing(monkeypatch, relations, expected):
     raw = row()
-    raw["msg"]["stock_info"] = [{"l_id": 67, "name": "行者"}]
+    raw["msg"]["stock_info"] = relations
     pages(monkeypatch, [page(raw)])
-    assert source.agp_topic_articles(1, timeout=3)[0]["related_securities"] == []
+    article = source.agp_topic_articles(1, timeout=3)[0]
+    assert article["content"] and article["related_securities"] == expected
 
 
 def test_same_public_dynamic_article_can_have_verified_express_kind(monkeypatch):

@@ -158,29 +158,22 @@ def _topics(raw: dict) -> list[str] | None:
 
 
 def _securities(raw: dict) -> list[dict] | None:
-    items = _array(raw, "stock_info")
-    if items is None:
+    items = raw.get("stock_info")
+    if not isinstance(items, list):
         return None
     result = []
     for item in items:
         if not isinstance(item, dict):
-            raise SourceError(_SOURCE, "stock_info 条目结构无效")
-        kind = item.get("kind")
-        if kind == "stock":
-            result.append({"symbol": _text(item.get("code"), "stock_info.code", required=True),
-                           "name": _text(item.get("name"), "stock_info.name")})
-        elif kind == "theme":
-            _text(item.get("name"), "stock_info.name")
-        elif "kind" not in item and "code" not in item and "l_id" in item:
-            # 官网正文自动链接的发布账号与证券共用 stock_info；不是证券身份。
-            account_id = item["l_id"]
-            if type(account_id) is int and account_id > 0:
-                pass
-            else:
-                _identity(account_id, "stock_info.l_id")
-            _text(item.get("name"), "stock_info.name", required=True)
-        else:
-            raise SourceError(_SOURCE, "stock_info 出现未确认的关联类型")
+            continue
+        if item.get("kind") == "theme":
+            continue
+        code = item.get("code")
+        if not isinstance(code, str) or not code.strip():
+            continue
+        name = item.get("name")
+        if not isinstance(name, str) or not name.strip():
+            name = None
+        result.append({"symbol": code, "name": name})
     return result
 
 

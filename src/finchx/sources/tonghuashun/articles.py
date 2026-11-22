@@ -326,7 +326,11 @@ def _news_detail(detail, seq: str, base: str):
     if modules is not None:
         modules = _object(modules, "relatedModules")
     content, images, videos = _markup(article.get("content"), base)
-    return _result("news", title=_text(article.get("title"), "标题"), published_at=_timestamp(article.get("ctime"), "ctime"), source_name=_text(media.get("name") if media is not None else None, "媒体名称"), author=_text(article.get("author"), "作者"), original_url=_url(article.get("sourceUrl"), "原文链接"), content=content, image_urls=images, video_urls=videos, disclaimer=_text(settings.get("disclaimer") if settings is not None else None, "免责声明"), related_entities=_entities(modules.get("associatedStocks") if modules is not None else None))
+    try:
+        original_url = _url(article.get("sourceUrl"), "原文链接")
+    except SourceError:
+        original_url = None
+    return _result("news", title=_text(article.get("title"), "标题"), published_at=_timestamp(article.get("ctime"), "ctime"), source_name=_text(media.get("name") if media is not None else None, "媒体名称"), author=_text(article.get("author"), "作者"), original_url=original_url, content=content, image_urls=images, video_urls=videos, disclaimer=_text(settings.get("disclaimer") if settings is not None else None, "免责声明"), related_entities=_entities(modules.get("associatedStocks") if modules is not None else None))
 
 
 def _news_payload(payload, seq, base):

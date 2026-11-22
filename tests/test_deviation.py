@@ -187,6 +187,10 @@ def test_public_default_shape_order_real_named_fields_and_no_preopen(monkeypatch
     assert all(row['stock_time'] == '2026-10-08T16:14:57+08:00' for row in result['windows'])
     assert all(row['benchmark_time'] == '2026-10-08T16:15:00+08:00' for row in result['windows'])
     assert all(row['stock_price'] == 160 for row in result['windows'])
+    assert [row['target_date'] for row in result['windows'] if row['scenario'] == 'next_session'] == [
+        '2026-10-09', '2026-10-09',
+    ]
+    assert [call[2] for call in state['calls'] if call[0] == 'calendar'] == [date(2026, 10, 31)]
     assert len([call for call in state['calls'] if call[0] == 'daily']) == 2
     assert all(call[-1] == 2.5 for call in state['calls'])
     assert not hasattr(FinchX().market, 'deviation')
@@ -199,7 +203,14 @@ def test_historical_raw_anchor_and_input_window_order_share_source_calls(monkeyp
     assert_shape(result)
     assert [(row['window_days'], row['scenario']) for row in result['windows']] == [(30, 'current'), (30, 'next_session'), (10, 'current'), (10, 'next_session')]
     assert len([call for call in state['calls'] if call[0] == 'daily']) == 3
-    assert len([call for call in state['calls'] if call[0] == 'calendar']) == 1
+    calendar_calls = [call for call in state['calls'] if call[0] == 'calendar']
+    assert [(call[1], call[2]) for call in calendar_calls] == [
+        (date(2026, 3, 19), date(2026, 9, 30)),
+        (date(2026, 10, 1), date(2026, 10, 31)),
+    ]
+    assert [row['target_date'] for row in result['windows'] if row['scenario'] == 'next_session'] == [
+        '2026-10-01', '2026-10-01',
+    ]
     row = result['windows'][0]
     assert row['stock_price_type'] == 'daily_close'
     assert row['stock_time'] is row['benchmark_time'] is None
