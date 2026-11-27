@@ -239,7 +239,7 @@ class FakeBrowser:
         assert '_isMounted' in expression and kwargs['timeout'] > 0
         self.operation('mount', kwargs)
     def get_by_text(self, text, **kwargs):
-        assert text == '全部异动解析' and kwargs['exact']
+        assert text == '人工异动解析' and kwargs['exact']
         self.operation('locator')
         return self
     def click(self, **kwargs):
@@ -369,12 +369,12 @@ def test_browser_null_json_response_is_malformed_not_timeout(monkeypatch):
     with pytest.raises(SourceError, match='响应不是对象'): replay.jygs_replay(session=SESSION, timeout=2)
 
 
-def test_capture_ignores_navigation_requests_that_precede_all_click(monkeypatch):
+def test_capture_listens_to_navigation_and_manual_tab_requests(monkeypatch):
     browser = FakeBrowser()
     original = browser.goto
     def goto(url, **kwargs):
         original(url, **kwargs)
-        assert not browser.handlers  # 初始/SSR链不能混入点击后的链。
+        assert len(browser.handlers) == 3  # 捕获初始化 count-pc 与标签触发的 field。
     browser.goto = goto
     install_fake(monkeypatch, browser)
     assert replay.jygs_replay(session=SESSION, timeout=2)['date'] == DATE
@@ -497,8 +497,8 @@ def test_unrelated_requestfailed_does_not_poison_official_chain(monkeypatch):
 @pytest.mark.parametrize('failure,stage', [
     ('launch', '浏览器启动'), ('context', '初始化上下文/页面'),
     ('cookies', '初始化上下文/页面'), ('page', '初始化上下文/页面'),
-    ('goto', '打开页面'), ('mount', '等待初始化'), ('locator', '点击全部异动解析'),
-    ('click', '点击全部异动解析'), ('count', '等待 count-pc 响应'), ('field', '等待 field 响应'),
+    ('goto', '打开页面'), ('mount', '等待初始化'), ('locator', '点击人工异动解析'),
+    ('click', '点击人工异动解析'), ('count', '等待 count-pc 响应'), ('field', '等待 field 响应'),
 ])
 def test_each_stage_timeout_hides_exception_chain_and_closes_acquired_resources(monkeypatch, failure, stage):
     browser = FakeBrowser(fail='timeout-' + failure)
@@ -514,7 +514,7 @@ def test_each_stage_timeout_hides_exception_chain_and_closes_acquired_resources(
 
 @pytest.mark.parametrize('failure,stage', [
     ('context', '初始化上下文/页面'), ('cookies', '初始化上下文/页面'),
-    ('page', '初始化上下文/页面'), ('mount', '等待初始化'), ('locator', '点击全部异动解析'),
+    ('page', '初始化上下文/页面'), ('mount', '等待初始化'), ('locator', '点击人工异动解析'),
 ])
 def test_stage_unexpected_errors_have_only_safe_static_reason(monkeypatch, failure, stage):
     browser = FakeBrowser(fail=failure)
@@ -580,7 +580,7 @@ def test_response_json_failure_does_not_leak_exception(monkeypatch):
 @pytest.mark.parametrize('operation,next_operation,stage', [
     ('launch', 'context', '初始化上下文/页面'), ('context', 'cookies', '初始化上下文/页面'),
     ('cookies', 'page', '初始化上下文/页面'), ('page', 'goto', '打开页面'),
-    ('goto', 'mount', '等待初始化'), ('mount', 'click', '点击全部异动解析'),
+    ('goto', 'mount', '等待初始化'), ('mount', 'click', '点击人工异动解析'),
 ])
 def test_expired_budget_stops_next_stage_without_resetting_timeout(monkeypatch, operation, next_operation, stage):
     browser = FakeBrowser()

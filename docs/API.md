@@ -3476,7 +3476,7 @@ fx.fupan.jygs_replay(
 <a id="api-fupan-jygs_replay_ego"></a>
 ### `fx.fupan.jygs_replay_ego`
 
-`fx.fupan.jygs_replay_ego(date=None)` 通过 Ego Lite 读取韭研公社复盘，日期格式和返回结构与 [`fx.fupan.jygs_replay`](#api-fupan-jygs_replay) 相同。请先安装并启动 Ego Lite，确保 `ego-browser` 命令可用，并在 Ego 中手动登录韭研公社。接口无需传入 session 或 headless，也不需要安装 Playwright。`FinchX(timeout=45)` 设置总采集预算。
+`fx.fupan.jygs_replay_ego(date=None)` 通过 Ego Lite 读取韭研公社复盘，日期格式和返回结构与 [`fx.fupan.jygs_replay`](#api-fupan-jygs_replay) 相同。请先安装并启动 Ego Lite，确保 `ego-browser` 命令可用，并在 Ego 中手动登录韭研公社。接口无需传入 session 或 headless，也不需要安装 Playwright。`FinchX(timeout=45)` 设置总采集预算。从页面加载起监听官网请求，切换到“人工异动解析”后读取同一次复盘的 `count-pc` 与 `field` 响应；返回日期以官网响应为准。
 
 ```python
 from finchx import FinchX

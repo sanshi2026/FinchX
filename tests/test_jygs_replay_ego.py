@@ -92,16 +92,15 @@ def test_script_returns_single_login_response():
     if not node:
         pytest.skip('Node.js unavailable')
     stub = '''
-let calls = 0;
 const page = {
   cdp: async (method) => method === 'Network.getResponseBody' ? {body: '{"errCode":1}', base64Encoded: false} : {},
   goto: async () => {}, waitForFunction: async () => {}, click: async () => {},
-  events: async () => ++calls === 1 ? [] : [
+  events: async () => [
     {method:'Network.requestWillBeSent', params:{requestId:'1', request:{url: API + 'count-pc', method:'POST', postData:'{"date":"2026-10-30"}'}}},
     {method:'Network.responseReceived', params:{requestId:'1', response:{status:200}}},
     {method:'Network.loadingFinished', params:{requestId:'1'}}
   ],
-  close: async () => {}
+  waitForTimeout: async () => {}, close: async () => {}
 };
 const taskSpace = async () => ({page: () => page, finish: async () => {}});
 '''.replace('API', json.dumps(replay._API))

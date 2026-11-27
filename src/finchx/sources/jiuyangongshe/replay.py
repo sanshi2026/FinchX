@@ -153,7 +153,7 @@ def _load_playwright():
 
 
 def _capture(url: str, session: str, timeout: float, headless: bool) -> tuple[dict, dict, str, str]:
-    """执行官网动态签名流程，只捕获点击全部解析产生的两份响应。"""
+    """读取官网加载及切换人工异动标签时发出的复盘响应。"""
     sync_playwright = _load_playwright()
     deadline = time.monotonic() + timeout
     records = []
@@ -227,6 +227,10 @@ def _capture(url: str, session: str, timeout: float, headless: bool) -> tuple[di
                 remaining()
                 page = context.new_page()
                 stage = "打开页面"
+                # 默认页可能在切换人工异动标签前就发出 count-pc。
+                page.on("request", on_request)
+                page.on("response", on_response)
+                page.on("requestfailed", on_request_failed)
                 navigation = page.goto(url, wait_until="domcontentloaded", timeout=remaining())
                 if navigation is not None:
                     failure = http_failure(navigation.status)
@@ -238,12 +242,8 @@ def _capture(url: str, session: str, timeout: float, headless: bool) -> tuple[di
                     "() => Boolean(window.$nuxt && window.$nuxt._isMounted)",
                     timeout=remaining(),
                 )
-                # 导航阶段的 SSR/初始请求不充当点击后取得的业务链。
-                page.on("request", on_request)
-                page.on("response", on_response)
-                page.on("requestfailed", on_request_failed)
-                stage = "点击全部异动解析"
-                page.get_by_text("全部异动解析", exact=True).first.click(timeout=remaining())
+                stage = "点击人工异动解析"
+                page.get_by_text("人工异动解析", exact=True).first.click(timeout=remaining())
                 while True:
                     completed = [record for record in records if record["error"] or record["complete"]]
                     for record in completed:
@@ -253,7 +253,7 @@ def _capture(url: str, session: str, timeout: float, headless: bool) -> tuple[di
                     counts = [record for record in completed if record["endpoint"].endswith("/count-pc")]
                     fields = [record for record in completed if record["endpoint"].endswith("/field")]
                     if counts and fields:
-                        # 一次点击应只有一条链，不能混合来源不明的多次更新。
+                        # 一次页面采集应只有一条复盘请求链。
                         if len(counts) != 1 or len(fields) != 1 or len(records) != 2:
                             raise SourceError(SOURCE, "官网复盘请求链不唯一")
                         count, field = counts[0], fields[0]

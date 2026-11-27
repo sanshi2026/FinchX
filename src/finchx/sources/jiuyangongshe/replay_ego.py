@@ -18,8 +18,8 @@ try {
 await page.cdp('Network.enable', {}, {timeout: remaining()});
 await page.goto(input.url, {timeout: remaining()});
 await page.waitForFunction(() => Boolean(window.$nuxt && window.$nuxt._isMounted), undefined, {timeout: remaining()});
-await page.events();
-await page.click('text="全部异动解析" >> nth=0', {timeout: remaining()});
+// 保留默认页切换标签前发出的 count-pc 事件。
+await page.click('text="人工异动解析" >> nth=0', {timeout: remaining()});
 const records = [];
 while (remaining() > 0) {
   for (const event of await page.events()) {
